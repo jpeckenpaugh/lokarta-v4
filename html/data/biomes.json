@@ -27,5 +27,15 @@
     "minLevel": 5,
     "maxLevel": 5,
     "lightColor": "#ffd700"
-  }
+  },
+
+  "cinder_gate": { "id": "cinder_gate", "name": "The Cinder Gate", "lightColor": "#ff6a00" },
+  "slagworks": { "id": "slagworks", "name": "The Slagworks", "lightColor": "#ff7a18" },
+  "molten_hall": { "id": "molten_hall", "name": "The Molten Hall", "lightColor": "#f97316" },
+  "forge_heart": { "id": "forge_heart", "name": "The Forge Heart", "lightColor": "#fb923c" },
+  "anvil_crown": { "id": "anvil_crown", "name": "The Anvil Crown", "lightColor": "#fbbf24" },
+
+  "frost_threshold": { "id": "frost_threshold", "name": "The Frost Threshold", "lightColor": "#7dd3fc" },
+  "bell_aerie": { "id": "bell_aerie", "name": "The Bell Aerie", "lightColor": "#a5b4fc" },
+  "choir_loft": { "id": "choir_loft", "name": "The Choir Loft", "lightColor": "#c4b5fd" }
 }

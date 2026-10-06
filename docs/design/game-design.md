@@ -169,8 +169,126 @@ signature attack. Status is the `onHit` descriptor.
   their rolled `attacks[].damageMin/Max` by it. Catalog damage stays floor-agnostic
   base data, mirroring `baseHp`/`statScale.hp`; floor 1 remains scale 1.0. Summons
   inherit their summoner's `damageScale`.
-* **Tower roster wiring is LIV-5.** `tower_levels.json` monster pools still list the launch
-  five; this bestiary is the pool source for LIV-5 to assign per tower/floor.
-* **Boss wiring handoff:** `tidebound_king` is authored and ready, but the
-  `sunken_catacombs` tower boss still points at `abyssal_overlord`. Point
-  `tower.boss.type` at `tidebound_king` when that tower's identity is finalized.
+* **Tower roster wiring is LIV-5 (done).** `tower_levels.json` now assigns this
+  bestiary per tower and per floor via `monsterGroups.pool` / `keyHolderType`
+  (see §7); the launch five remain on the Spire of Light.
+* **Boss wiring handoff (done).** `sunken_catacombs` now points `tower.boss.type`
+  at `tidebound_king`; the two new towers carry their own bosses
+  (`forgemaster_kol`, `frostbound_choirmaster`). Four distinct bosses total.
+
+---
+
+## 7. Themed Tower Lineup (LIV-5)
+
+The single 5-level tower is now a set of themed towers. Every field a run needs
+— levels, gates, key-holder tables, monster pools, boss, theme map, stat curve,
+prop policy, and starter cache — resolves from
+[`html/data/tower_levels.json`](../html/data/tower_levels.json) through
+`listTowerDefinitions()` and `generateFloor(level, seed, towerId)`. There is no
+per-tower `if` in game logic; a tower is catalog data plus existing handlers.
+
+Four towers ship. **Count reconciliation:** the issue asked for "3 new themed
+towers (4 total)" from the original single spire. [LIV-3] generalized the schema
+and added one (the Sunken Catacombs) as the multi-tower proof; LIV-5 completes
+the set by giving the Catacombs its own roster + boss and adding the Emberforge
+and Rime Aerie — three new identities beyond the original spire, four total.
+
+### 7.1 Tower identity matrix
+
+| Tower (`id`) | Floors | Fantasy | Signature pressure → player response | Roster (role) | Boss | Palette family |
+| :--- | ---: | :--- | :--- | :--- | :--- | :--- |
+| **The Spire of Light** (`spire_of_light`) | 5 | Holy ascent; the baseline. | Balanced ramp; teaches keys, gates, kiting, and AoE reads. | Giant Rat, Bone Sentry (chaser); Shadow Cultist (zoner); Elite Cultist | **The Spire Warden** (`abyssal_overlord`) | Amber → gold (levels 1–5) |
+| **The Sunken Catacombs** (`sunken_catacombs`) | 4 | Flooded vaults, a drowned court. | Attrition: poison/slow chip while summoned adds hold doors → kill the zoner/summoner first. | Mire Hound (fast chaser); Brine Witch (poison zoner); Ossuary Priest (summoner); Barrow Knight (elite) | **The Tidebound King** (`tidebound_king`) | Cool/amber remap (levels 3→1→4→2) |
+| **The Emberforge** (`emberforge`) | 5 | A forgeshaft that never cooled. | Artillery tease: long telegraphs + burn warden off standing still → keep moving, rush the mortar. | Cinder Acolyte (fire zoner); Sepulcher Mortar (fire artillery); Grave Charger (charger); Barrow Knight (elite) | **The Forgemaster** (`forgemaster_kol`) | Ember brown → white-hot (`cinder_gate`…`anvil_crown`) |
+| **The Rime Aerie** (`rime_aerie`) | 3 | A frozen, bell-haunted belfry. | Control: slow and stun punish kiting; highest intensity per floor → prioritize the controller, then burst. | Bone Sentry (chaser); Rime Acolyte (frost zoner); Chime Wraith (controller); Elite Cultist (elite) | **The Frostbound Choirmaster** (`frostbound_choirmaster`) | Slate → violet frost (`frost_threshold`…`choir_loft`) |
+
+Each tower answers a different question at the door: Spire asks "can you learn
+the rules?", Catacombs asks "can you out-sustain chip?", Emberforge asks "can
+you keep your feet moving?", Rime Aerie asks "can you kill the enabler first?".
+
+### 7.2 Difficulty curves (`monsterGroups.statScale`, hp/atk per floor)
+
+| Tower | F1 | F2 | F3 | F4 | F5 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| Spire of Light | 1.00 / 1.00 | 1.35 / 1.25 | 1.80 / 1.55 | 2.40 / 1.90 | 3.20 / 2.40 |
+| Sunken Catacombs | 1.00 / 1.00 | 1.45 / 1.30 | 2.00 / 1.65 | 2.70 / 2.15 | — |
+| Emberforge | 1.00 / 1.00 | 1.30 / 1.20 | 1.75 / 1.50 | 2.35 / 1.90 | 3.05 / 2.35 |
+| Rime Aerie | 1.25 / 1.15 | 2.05 / 1.70 | 3.00 / 2.30 | — | — |
+
+* **Rime starts hot on purpose.** A three-floor tower that eases in reads as a
+  corridor. Its F1 scale (1.25) already exceeds every other tower's F2, so the
+  short length is a *spike*, not a truncated ramp. *Lenses: difficulty curve &
+  flow, mastery vs. frustration.*
+* **Catacombs outpaces the Spire per floor** (2.70 vs. 2.40 hp at the same
+  depth) to offset a low-burst attrition roster — without the extra padding the
+  poison/slow kit would out-heal the player's clear speed. *Lenses: balance
+  levers (one curve, not a roster rewrite), economy of threat.*
+* **Emberforge sits just under the Spire's hp ceiling** because its artillery +
+  burn already tax positioning; the threat budget is spent on arena control, not
+  raw stats. *Lenses: MDA (tension from the wind-up), enemy role taxonomy.*
+* Key holders carry `keyHolderModifier` (×1.5 hp, ×1.15 atk) in every tower, so
+  a key fight is always a step above its floor even when the pools are light.
+
+### 7.3 Bosses
+
+| Boss | Tower | HP | Signature (telegraph) | Guards | Read |
+| :--- | :--- | ---: | :--- | :--- | :--- |
+| The Spire Warden (`abyssal_overlord`) | Spire | 600 | Chase bruiser | 2× Elite Cultist | Baseline stat check |
+| The Tidebound King (`tidebound_king`) | Catacombs | 540 | `tidal_slam` AoE slow (0.7s) + `drown_the_ranks` Mire Hound summon (cap 2) | 2× Barrow Knight | Add-wave management; slow denies permanent kiting |
+| The Forgemaster (`forgemaster_kol`) | Emberforge | 560 | `forge_hammer` AoE burn (0.75s) + `slag_lob` projectile | 2× Barrow Knight | Reposition out of the footprint, then a damage window |
+| The Frostbound Choirmaster (`frostbound_choirmaster`) | Rime Aerie | 470 | `toll_of_frost` AoE slow (0.65s) + `rime_lance` projectile | 2× Elite Cultist | Lowest HP, hardest control; punish greedy re-approaches |
+
+Every boss telegraph is ≥0.65s and pair-matched to its tower's signature debuff
+(burn for Emberforge, slow for Rime/Catacombs), so the final duel reads as the
+tower's thesis rather than a stat wall. Bosses reuse the 48×48
+`abyssal_overlord` rig via `spriteId`; no bespoke pixel art is required to ship.
+*Lenses: core loop & fantasy (climactic duel), readability & legibility,
+replayability (add-wave / reposition management).*
+
+### 7.4 Theming contract
+
+* **Palettes (`tile_themes.json`).** Eight named tower palettes are authored —
+  five Emberforge (`cinder_gate`…`anvil_crown`) and three Rime Aerie
+  (`frost_threshold`…`choir_loft`) — each with a distinct `wall.fill`, full
+  wall/floor/stairs/door/features blocks, and decor `props`. The run floor is
+  selected by the tower's `theme.levelTheme` map, not by a floor-number
+  heuristic. *Lenses: theme coherence, readability (contrast).*
+* **Biomes (`biomes.json`).** Eight tower-specific tier IDs supply each level's
+  name and light colour. They are resolved by `tierId`; the launch five keep
+  their `minLevel`/`maxLevel` so the legacy floor scan is unchanged.
+* **Contrast bar (`docs/art/art-direction.md`).** Every new floor fill keeps
+  luminance ≤ 0.02 to hold the ≥ 3:1 actor rim ratio; palette ramps stay within
+  the 16-bit SNES bar.
+* **Props & actors.** New towers reuse the vetted prop set and the existing
+  actor rigs (all new opponents declare `spriteId`), so no new atlas assets ship
+  with this content. Boss emoji use committed OpenMoji codes (`1F528`, `2728`).
+
+### 7.5 Reward pacing
+
+* **Starter caches are tuned to tower pressure, not a single global table.**
+  Emberforge hands extra arrows early (F1) because its fire casters punish
+  melee closes; Rime hands two potions on its final floor to fund the compressed
+  spike; Catacombs stays potion-forward across all four floors.
+* **Bosses award a guaranteed greater-potion pair** (xFrostbound,
+  xForgemaster, xTidebound, xSpire) so a failed boss attempt is never a net
+  resource loss; `economy.json` `monsterGold` carries per-boss gold in the same
+  band as the Spire Warden. *Lenses: economy & reward pacing, Kano model
+  (must-have sustain vs. delighter variety).*
+
+### 7.6 Lenses cited (traceability)
+
+Core loop & fantasy (§7.1 rosters), enemy role taxonomy (§7.1, §7.3), game
+feel / readable telegraphs (§7.3), difficulty curve & flow (§7.2), balance
+levers (§7.2), economy & reward pacing (§7.5), theme coherence (§7.4),
+replayability (§7.1 four distinct demands), MDA (§7.2). No dark patterns or
+engagement mechanics are introduced.
+
+### 7.7 Data contract & verification
+
+* Every tower resolves through `listTowerDefinitions()` /
+  `generateFloor(level, seed, towerId)`; no bespoke per-tower game logic.
+* `html/tests/multi-tower.test.mjs` validates every authored tower generically
+  (catalog-only load, soft-lock-free levels, deterministic floor + boss).
+* Two content-count assertions were made expansion-aware alongside the new
+  palettes/tiers (`data-catalogs.test.mjs` biomes, `sprite-assets.test.mjs`
+  tile-theme levels) — see the Tech Lead handoff for review. **T0: 557/557 green.**

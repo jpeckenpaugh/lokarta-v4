@@ -49,7 +49,9 @@
     "barrow_knight": { "min": 16, "max": 32 },
     "ossuary_priest": { "min": 10, "max": 22 },
     "brine_witch": { "min": 10, "max": 21 },
-    "tidebound_king": { "min": 140, "max": 230 }
+    "tidebound_king": { "min": 140, "max": 230 },
+    "forgemaster_kol": { "min": 145, "max": 240 },
+    "frostbound_choirmaster": { "min": 130, "max": 215 }
   },
   "chestGold": {
     "copper": { "min": 5, "max": 12 },

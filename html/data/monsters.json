@@ -771,5 +771,158 @@
         "stat_bonus": 50
       }
     ]
+  },
+  "forgemaster_kol": {
+    "type": "forgemaster_kol",
+    "name": "The Forgemaster",
+    "isBoss": true,
+    "baseHp": 560,
+    "baseAttack": 19,
+    "baseDefense": 6,
+    "moveCadence": 0.7,
+    "attackCadence": 1.5,
+    "damageMin": 15,
+    "damageMax": 22,
+    "damageType": "fire",
+    "aiType": "bomber",
+    "standoffMin": 2,
+    "standoffMax": 5,
+    "spriteId": "abyssal_overlord",
+    "baseXp": 500,
+    "xpFloorScale": 0,
+    "svgCode": "1F528",
+    "attacks": [
+      {
+        "key": "forge_hammer",
+        "kind": "aoe",
+        "label": "Forge Hammer",
+        "cooldownSec": 3.4,
+        "range": 3,
+        "minRange": 1,
+        "requiresLOS": true,
+        "telegraphSec": 0.75,
+        "radius": 2,
+        "burstDurationMs": 340,
+        "telegraphColor": "#fb923c",
+        "damageMin": 15,
+        "damageMax": 22,
+        "damageType": "fire",
+        "projectile": { "type": "forge_hammer", "color": "#fb923c" },
+        "onHit": { "status": "burn", "durationSec": 3, "dps": 3 }
+      },
+      {
+        "key": "slag_lob",
+        "kind": "projectile",
+        "label": "Slag Lob",
+        "cooldownSec": 2.8,
+        "range": 7,
+        "minRange": 2,
+        "requiresLOS": true,
+        "damageMin": 9,
+        "damageMax": 14,
+        "damageType": "fire",
+        "projectile": {
+          "type": "slag_lob",
+          "speedTilesPerSec": 8,
+          "color": "#ff7a18",
+          "visual": { "trailType": "solid", "headRadius": 6, "glowColor": "#ffd166" }
+        }
+      }
+    ],
+    "lootTable": [
+      {
+        "always": true,
+        "item_id": "mana_potion",
+        "name": "Greater Mana Potion",
+        "type": "consumable",
+        "quantity": 3,
+        "stat_bonus": 60
+      },
+      {
+        "always": true,
+        "item_id": "health_potion",
+        "name": "Greater Health Potion",
+        "type": "consumable",
+        "quantity": 3,
+        "stat_bonus": 50
+      }
+    ]
+  },
+  "frostbound_choirmaster": {
+    "type": "frostbound_choirmaster",
+    "name": "The Frostbound Choirmaster",
+    "isBoss": true,
+    "baseHp": 470,
+    "baseAttack": 17,
+    "baseDefense": 5,
+    "moveCadence": 0.9,
+    "attackCadence": 1.8,
+    "damageMin": 12,
+    "damageMax": 18,
+    "damageType": "frost",
+    "aiType": "bomber",
+    "standoffMin": 2,
+    "standoffMax": 5,
+    "spriteId": "abyssal_overlord",
+    "baseXp": 440,
+    "xpFloorScale": 0,
+    "svgCode": "2728",
+    "attacks": [
+      {
+        "key": "toll_of_frost",
+        "kind": "aoe",
+        "label": "Toll of Frost",
+        "cooldownSec": 3.0,
+        "range": 5,
+        "minRange": 1,
+        "requiresLOS": true,
+        "telegraphSec": 0.65,
+        "radius": 2,
+        "burstDurationMs": 320,
+        "telegraphColor": "#7dd3fc",
+        "damageMin": 12,
+        "damageMax": 18,
+        "damageType": "frost",
+        "projectile": { "type": "toll_of_frost", "color": "#7dd3fc" },
+        "onHit": { "status": "slow", "durationSec": 3, "factor": 0.45 }
+      },
+      {
+        "key": "rime_lance",
+        "kind": "projectile",
+        "label": "Rime Lance",
+        "cooldownSec": 2.4,
+        "range": 6,
+        "minRange": 1,
+        "requiresLOS": true,
+        "damageMin": 8,
+        "damageMax": 13,
+        "damageType": "frost",
+        "projectile": {
+          "type": "rime_lance",
+          "speedTilesPerSec": 9,
+          "color": "#bae6fd",
+          "visual": { "trailType": "solid", "headRadius": 5, "glowColor": "#e0f2fe" }
+        },
+        "onHit": { "status": "slow", "durationSec": 2, "factor": 0.5 }
+      }
+    ],
+    "lootTable": [
+      {
+        "always": true,
+        "item_id": "mana_potion",
+        "name": "Greater Mana Potion",
+        "type": "consumable",
+        "quantity": 3,
+        "stat_bonus": 60
+      },
+      {
+        "always": true,
+        "item_id": "health_potion",
+        "name": "Greater Health Potion",
+        "type": "consumable",
+        "quantity": 3,
+        "stat_bonus": 50
+      }
+    ]
   }
 }

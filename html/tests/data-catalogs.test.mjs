@@ -234,15 +234,24 @@ test('JSON Data Catalogs', async (t) => {
     assert.equal(ABILITIES_CATALOG.paladin_heal.vocation, 'paladin');
   });
 
-  await t.test('loads and validates biomes.json catalog (5 tower tiers)', () => {
-    assert.equal(Object.keys(BIOMES_CATALOG).length, 5);
-    assert.ok(BIOMES_CATALOG.crypt);
-    assert.equal(BIOMES_CATALOG.crypt.minLevel, 1);
-    assert.equal(BIOMES_CATALOG.crypt.maxLevel, 1);
-    assert.ok(BIOMES_CATALOG.crown_spire);
-    assert.equal(BIOMES_CATALOG.crown_spire.minLevel, 5);
-    assert.equal(BIOMES_CATALOG.crown_spire.maxLevel, 5);
-    // Every level 1..5 is covered by exactly one tier.
+  await t.test('loads and validates biomes.json catalog (launch tiers + tower tierIds)', () => {
+    // The launch five tiers are level-scanned (legacy floor fallback) and keep
+    // their exact min/max levels. Tower-specific tiers added by LIV-5 resolve
+    // through each tower level's `tierId`, so they intentionally carry no
+    // min/max range and never participate in the level scan.
+    assert.ok(Object.keys(BIOMES_CATALOG).length >= 5, 'launch tiers plus tower tiers must load');
+    for (const [id, min, max] of [
+      ['crypt', 1, 1],
+      ['catacombs', 2, 2],
+      ['shadow_vaults', 3, 3],
+      ['abyssal_sanctum', 4, 4],
+      ['crown_spire', 5, 5],
+    ]) {
+      assert.ok(BIOMES_CATALOG[id], `missing launch biome ${id}`);
+      assert.equal(BIOMES_CATALOG[id].minLevel, min, `${id} minLevel`);
+      assert.equal(BIOMES_CATALOG[id].maxLevel, max, `${id} maxLevel`);
+    }
+    // Every level 1..5 is covered by exactly one level-scanned tier.
     for (let level = 1; level <= 5; level++) {
       const matches = Object.values(BIOMES_CATALOG).filter(
         (b) => level >= b.minLevel && level <= b.maxLevel

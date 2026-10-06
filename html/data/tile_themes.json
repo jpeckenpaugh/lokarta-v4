@@ -294,6 +294,334 @@
         "maxPerRoom": 4,
         "wallBias": 0.5
       }
+    },
+    "cinder_gate": {
+      "id": "tier_cinder_gate",
+      "name": "The Cinder Gate",
+      "wall": {
+        "fill": "#4a2a22",
+        "topHighlight": "#6b3f33",
+        "gridLine": "#1a0f0c",
+        "border": "#0d0705",
+        "shades": ["#4a2a22", "#4e2d24", "#46281f", "#4c2b23"]
+      },
+      "floor": {
+        "fill": "#241512",
+        "gridLine": "#180d0b",
+        "accentSquare": "#32201b",
+        "shades": ["#241512", "#261714", "#221310", "#251614"]
+      },
+      "stairs": {
+        "bg": "#3a1e12",
+        "stepEven": "#d4702a",
+        "stepOdd": "#8a4318",
+        "orb": "#ffb066",
+        "border": "#ff7a18"
+      },
+      "door": { "fill": "#4a2f1b", "border": "#2a1c10" },
+      "features": {
+        "banner": "#b23a1e",
+        "bannerTrim": "#f59e0b",
+        "sconce": "#8b5a2b",
+        "flame": "#ff8a3d",
+        "window": "#ffb066"
+      },
+      "decor": { "banner": 0.1, "sconce": 0.12, "window": 0.0 },
+      "props": {
+        "set": ["candelabra", "crate", "barrel", "brazier"],
+        "decor": [],
+        "focal": "brazier",
+        "density": 3,
+        "maxPerRoom": 3,
+        "wallBias": 0.4
+      }
+    },
+    "slagworks": {
+      "id": "tier_slagworks",
+      "name": "The Slagworks",
+      "wall": {
+        "fill": "#47302b",
+        "topHighlight": "#6a463b",
+        "gridLine": "#170c09",
+        "border": "#0a0504",
+        "shades": ["#47302b", "#4b332d", "#432c27", "#49312c"]
+      },
+      "floor": {
+        "fill": "#26170f",
+        "gridLine": "#1a0e09",
+        "accentSquare": "#35211a",
+        "shades": ["#26170f", "#281913", "#241510", "#271812"]
+      },
+      "stairs": {
+        "bg": "#3f2010",
+        "stepEven": "#e0702a",
+        "stepOdd": "#94421a",
+        "orb": "#ffb877",
+        "border": "#ff7a18"
+      },
+      "door": { "fill": "#4a2f1b", "border": "#2a1c10" },
+      "features": {
+        "banner": "#c0392b",
+        "bannerTrim": "#f59e0b",
+        "sconce": "#8b5a2b",
+        "flame": "#ff9a3d",
+        "window": "#ffb877"
+      },
+      "decor": { "banner": 0.12, "sconce": 0.1, "window": 0.0 },
+      "props": {
+        "set": ["crate", "barrel", "brazier", "bookshelf"],
+        "decor": [],
+        "focal": "brazier",
+        "density": 3,
+        "maxPerRoom": 4,
+        "wallBias": 0.35
+      }
+    },
+    "molten_hall": {
+      "id": "tier_molten_hall",
+      "name": "The Molten Hall",
+      "wall": {
+        "fill": "#4b2626",
+        "topHighlight": "#6d3a33",
+        "gridLine": "#190b0b",
+        "border": "#0b0404",
+        "shades": ["#4b2626", "#4f2a28", "#472423", "#4d2826"]
+      },
+      "floor": {
+        "fill": "#28120e",
+        "gridLine": "#1b0b08",
+        "accentSquare": "#37201a",
+        "shades": ["#28120e", "#2a1410", "#26100c", "#291410"]
+      },
+      "stairs": {
+        "bg": "#47200e",
+        "stepEven": "#f07a2a",
+        "stepOdd": "#a04818",
+        "orb": "#ffc07a",
+        "border": "#fb923c"
+      },
+      "door": { "fill": "#4a2f1b", "border": "#2a1c10" },
+      "features": {
+        "banner": "#d9483b",
+        "bannerTrim": "#fbbf24",
+        "sconce": "#8b5a2b",
+        "flame": "#ffa53d",
+        "window": "#ffc07a"
+      },
+      "decor": { "banner": 0.14, "sconce": 0.1, "window": 0.0 },
+      "props": {
+        "set": ["brazier", "candelabra", "altar", "crate"],
+        "decor": [],
+        "focal": "altar",
+        "density": 3,
+        "maxPerRoom": 4,
+        "wallBias": 0.5
+      }
+    },
+    "forge_heart": {
+      "id": "tier_forge_heart",
+      "name": "The Forge Heart",
+      "wall": {
+        "fill": "#3d1f1f",
+        "topHighlight": "#5e302a",
+        "gridLine": "#140707",
+        "border": "#080303",
+        "shades": ["#3d1f1f", "#412221", "#391d1d", "#3f2120"]
+      },
+      "floor": {
+        "fill": "#20100c",
+        "gridLine": "#150806",
+        "accentSquare": "#2e1a13",
+        "shades": ["#20100c", "#22120e", "#1e0e0a", "#21110d"]
+      },
+      "stairs": {
+        "bg": "#3a1808",
+        "stepEven": "#e86a1e",
+        "stepOdd": "#984212",
+        "orb": "#ffb060",
+        "border": "#f97316"
+      },
+      "door": { "fill": "#4a2f1b", "border": "#2a1c10" },
+      "features": {
+        "banner": "#b23a1e",
+        "bannerTrim": "#fde68a",
+        "sconce": "#6a4a1e",
+        "flame": "#ffb347",
+        "window": "#ffb060"
+      },
+      "decor": { "banner": 0.16, "sconce": 0.08, "window": 0.0 },
+      "props": {
+        "set": ["brazier", "altar", "candelabra", "table"],
+        "decor": [],
+        "focal": "altar",
+        "density": 3,
+        "maxPerRoom": 4,
+        "wallBias": 0.5
+      }
+    },
+    "anvil_crown": {
+      "id": "tier_anvil_crown",
+      "name": "The Anvil Crown",
+      "wall": {
+        "fill": "#2e2117",
+        "topHighlight": "#4a3626",
+        "gridLine": "#100b07",
+        "border": "#060403",
+        "shades": ["#2e2117", "#32241a", "#2c2016", "#302319"]
+      },
+      "floor": {
+        "fill": "#191109",
+        "gridLine": "#0f0a06",
+        "accentSquare": "#2a1e13",
+        "shades": ["#191109", "#1b130b", "#171009", "#1a120a"]
+      },
+      "stairs": {
+        "bg": "#2e1a08",
+        "stepEven": "#d4af37",
+        "stepOdd": "#8a6a1e",
+        "orb": "#ffe9a8",
+        "border": "#ffd700"
+      },
+      "door": { "fill": "#3f2a16", "border": "#1f1408" },
+      "features": {
+        "banner": "#c0392b",
+        "bannerTrim": "#fbbf24",
+        "sconce": "#8b5a2b",
+        "flame": "#ffcf7a",
+        "window": "#ffe9a8"
+      },
+      "decor": { "banner": 0.14, "sconce": 0.08, "window": 0.1 },
+      "props": {
+        "set": ["throne", "altar", "brazier", "candelabra"],
+        "decor": ["rug"],
+        "focal": "throne",
+        "density": 3,
+        "maxPerRoom": 4,
+        "wallBias": 0.5
+      }
+    },
+    "frost_threshold": {
+      "id": "tier_frost_threshold",
+      "name": "The Frost Threshold",
+      "wall": {
+        "fill": "#2a3644",
+        "topHighlight": "#40566b",
+        "gridLine": "#0e1218",
+        "border": "#070a0d",
+        "shades": ["#2a3644", "#2d3a49", "#2a3542", "#2c3846"]
+      },
+      "floor": {
+        "fill": "#161c24",
+        "gridLine": "#0e1217",
+        "accentSquare": "#222b36",
+        "shades": ["#161c24", "#181e26", "#141a22", "#171d25"]
+      },
+      "stairs": {
+        "bg": "#12283a",
+        "stepEven": "#4aa0d0",
+        "stepOdd": "#2e6a98",
+        "orb": "#b3ecff",
+        "border": "#7dd3fc"
+      },
+      "door": { "fill": "#33414f", "border": "#18222b" },
+      "features": {
+        "banner": "#2e86c1",
+        "bannerTrim": "#cbe6ff",
+        "sconce": "#5a6b7a",
+        "flame": "#9be3ff",
+        "window": "#bfe9ff"
+      },
+      "decor": { "banner": 0.1, "sconce": 0.1, "window": 0.14 },
+      "props": {
+        "set": ["crate", "barrel", "bookshelf", "candelabra"],
+        "decor": [],
+        "focal": "candelabra",
+        "density": 3,
+        "maxPerRoom": 4,
+        "wallBias": 0.3
+      }
+    },
+    "bell_aerie": {
+      "id": "tier_bell_aerie",
+      "name": "The Bell Aerie",
+      "wall": {
+        "fill": "#2f3350",
+        "topHighlight": "#474d73",
+        "gridLine": "#0f1019",
+        "border": "#08080e",
+        "shades": ["#2f3350", "#323756", "#2d314c", "#313555"]
+      },
+      "floor": {
+        "fill": "#181a2b",
+        "gridLine": "#10111b",
+        "accentSquare": "#262a40",
+        "shades": ["#181a2b", "#1a1c2e", "#161827", "#191b2c"]
+      },
+      "stairs": {
+        "bg": "#1c1a3a",
+        "stepEven": "#7a7ae0",
+        "stepOdd": "#4a4a9a",
+        "orb": "#cbcbff",
+        "border": "#a5b4fc"
+      },
+      "door": { "fill": "#3a3550", "border": "#1c1930" },
+      "features": {
+        "banner": "#8e6cd0",
+        "bannerTrim": "#d9d2ff",
+        "sconce": "#5a5a7a",
+        "flame": "#c4b5fd",
+        "window": "#d9d2ff"
+      },
+      "decor": { "banner": 0.16, "sconce": 0.08, "window": 0.1 },
+      "props": {
+        "set": ["bookshelf", "table", "candelabra", "altar"],
+        "decor": ["rug"],
+        "focal": "altar",
+        "density": 3,
+        "maxPerRoom": 4,
+        "wallBias": 0.4
+      }
+    },
+    "choir_loft": {
+      "id": "tier_choir_loft",
+      "name": "The Choir Loft",
+      "wall": {
+        "fill": "#332a52",
+        "topHighlight": "#4d4173",
+        "gridLine": "#110d1c",
+        "border": "#09060f",
+        "shades": ["#332a52", "#363056", "#31284e", "#342d57"]
+      },
+      "floor": {
+        "fill": "#1a1530",
+        "gridLine": "#110d1f",
+        "accentSquare": "#2a2348",
+        "shades": ["#1a1530", "#1c1733", "#18142c", "#1b1631"]
+      },
+      "stairs": {
+        "bg": "#241a44",
+        "stepEven": "#9a7ae0",
+        "stepOdd": "#5a4aa0",
+        "orb": "#e0d0ff",
+        "border": "#c4b5fd"
+      },
+      "door": { "fill": "#3a2e50", "border": "#1c1530" },
+      "features": {
+        "banner": "#a855f7",
+        "bannerTrim": "#ede9fe",
+        "sconce": "#4a3a5a",
+        "flame": "#d9b3ff",
+        "window": "#ede9fe"
+      },
+      "decor": { "banner": 0.18, "sconce": 0.08, "window": 0.12 },
+      "props": {
+        "set": ["altar", "throne", "candelabra", "bookshelf"],
+        "decor": ["rug"],
+        "focal": "altar",
+        "density": 3,
+        "maxPerRoom": 4,
+        "wallBias": 0.5
+      }
     }
   }
 }

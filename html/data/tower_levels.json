@@ -170,7 +170,7 @@
       "id": "sunken_catacombs",
       "name": "The Sunken Catacombs",
       "icon": "1F480",
-      "description": "A shorter four-tier descent through flooded vaults, with its own room weave, pools, and a drowned king.",
+      "description": "A shorter four-tier descent through flooded vaults. Attrition identity: poison and slow chip the player while summoned adds hold the doors, ending in the Tidebound King.",
       "theme": {
         "levelTheme": { "1": "3", "2": "1", "3": "4", "4": "2" }
       },
@@ -231,22 +231,22 @@
       "monsterGroups": {
         "groupSize": { "1": 3, "2": 3, "3": 4, "4": 4 },
         "pool": {
-          "1": ["giant_rat", "crypt_skeleton"],
-          "2": ["shadow_cultist", "crypt_skeleton", "giant_rat"],
-          "3": ["shadow_cultist", "elite_cultist"],
-          "4": ["elite_cultist", "shadow_cultist", "elite_cultist"]
+          "1": ["mire_hound", "crypt_skeleton"],
+          "2": ["mire_hound", "brine_witch", "crypt_skeleton"],
+          "3": ["brine_witch", "ossuary_priest", "barrow_knight"],
+          "4": ["barrow_knight", "ossuary_priest", "mire_hound"]
         },
         "keyHolderType": {
-          "1": { "copper": "crypt_skeleton", "silver": "crypt_skeleton", "gold": "shadow_cultist" },
-          "2": { "copper": "crypt_skeleton", "silver": "shadow_cultist", "gold": "shadow_cultist" },
-          "3": { "copper": "shadow_cultist", "silver": "elite_cultist", "gold": "elite_cultist" },
-          "4": { "copper": "elite_cultist", "silver": "elite_cultist", "gold": "elite_cultist" }
+          "1": { "copper": "crypt_skeleton", "silver": "crypt_skeleton", "gold": "mire_hound" },
+          "2": { "copper": "mire_hound", "silver": "brine_witch", "gold": "brine_witch" },
+          "3": { "copper": "brine_witch", "silver": "ossuary_priest", "gold": "barrow_knight" },
+          "4": { "copper": "barrow_knight", "silver": "barrow_knight", "gold": "ossuary_priest" }
         },
         "statScale": {
           "1": { "hp": 1.0, "atk": 1.0 },
-          "2": { "hp": 1.4, "atk": 1.3 },
-          "3": { "hp": 1.9, "atk": 1.6 },
-          "4": { "hp": 2.6, "atk": 2.1 }
+          "2": { "hp": 1.45, "atk": 1.3 },
+          "3": { "hp": 2.0, "atk": 1.65 },
+          "4": { "hp": 2.7, "atk": 2.15 }
         },
         "keyHolderModifier": { "hp": 1.5, "atk": 1.15 }
       },
@@ -254,18 +254,18 @@
         "level": 4,
         "room": 9,
         "tile": [32, 33],
-        "type": "abyssal_overlord",
-        "name": "The Sunken King",
-        "hp": 520,
-        "max_hp": 520,
+        "type": "tidebound_king",
+        "name": "The Tidebound King",
+        "hp": 540,
+        "max_hp": 540,
         "attack": 19,
         "defense": 6,
         "moveCadence": 0.75,
-        "attackCadence": 1.5,
+        "attackCadence": 1.6,
         "isBoss": true,
         "guardCount": 2,
-        "guardType": "elite_cultist",
-        "guardName": "Tidebound Sentinel"
+        "guardType": "barrow_knight",
+        "guardName": "Tidebound Reaver"
       },
       "chestTierRule": {
         "byRoomTier": { "0": "copper", "1": "silver", "2": "silver", "3": "gold" },
@@ -309,6 +309,310 @@
           { "item_id": "health_potion", "quantity": 1 }
         ],
         "4": [
+          { "item_id": "health_potion", "quantity": 2 }
+        ]
+      }
+    },
+    {
+      "id": "emberforge",
+      "name": "The Emberforge",
+      "icon": "1F525",
+      "description": "A forgeshaft that never cooled: five tiers of burning artillery and undead smiths, where standing still is the only real mistake.",
+      "theme": {
+        "levelTheme": {
+          "1": "cinder_gate",
+          "2": "slagworks",
+          "3": "molten_hall",
+          "4": "forge_heart",
+          "5": "anvil_crown"
+        }
+      },
+      "levelCount": 5,
+      "entry": { "level": 1, "room": 2, "doorTile": [19, 1], "spawnTile": [19, 2] },
+      "stairShaft": { "1": 9, "2": 6, "3": 3, "4": 8, "5": 5 },
+      "stairTiles": { "3": [33, 6], "5": [20, 20], "6": [33, 19], "8": [20, 33], "9": [32, 33] },
+      "levels": [
+        {
+          "level": 1,
+          "tierId": "cinder_gate",
+          "entryRoom": 2,
+          "stairRoom": 9,
+          "isFinal": false,
+          "openEdges": ["h12", "h23", "v36", "h56", "h45", "v47", "h78", "h89"],
+          "sealedEdges": ["v14", "v25", "v58", "v69"],
+          "gates": { "copper": "h23", "silver": "v36", "gold": "h56" },
+          "keyRooms": { "copper": 1, "silver": 3, "gold": 6 },
+          "roomTiers": { "1": 0, "2": 0, "3": 1, "4": 2, "5": 0, "6": 2, "7": 1, "8": 1, "9": 3 }
+        },
+        {
+          "level": 2,
+          "tierId": "slagworks",
+          "entryRoom": 9,
+          "stairRoom": 6,
+          "isFinal": false,
+          "openEdges": ["h23", "h45", "v36", "h78", "h89", "v14", "v47", "v25"],
+          "sealedEdges": ["h12", "v58", "h56", "v69"],
+          "gates": { "copper": "h78", "silver": "v47", "gold": "v36" },
+          "keyRooms": { "copper": 8, "silver": 7, "gold": 5 },
+          "roomTiers": { "1": 2, "2": 2, "3": 2, "4": 2, "5": 2, "6": 3, "7": 1, "8": 0, "9": 0 }
+        },
+        {
+          "level": 3,
+          "tierId": "molten_hall",
+          "entryRoom": 6,
+          "stairRoom": 3,
+          "isFinal": false,
+          "openEdges": ["h12", "h23", "h56", "h78", "v14", "v47", "v58", "v69"],
+          "sealedEdges": ["h45", "h89", "v25", "v36"],
+          "gates": { "copper": "v58", "silver": "h78", "gold": "h23" },
+          "keyRooms": { "copper": 5, "silver": 8, "gold": 2 },
+          "roomTiers": { "1": 2, "2": 2, "3": 3, "4": 2, "5": 0, "6": 0, "7": 2, "8": 1, "9": 0 }
+        },
+        {
+          "level": 4,
+          "tierId": "forge_heart",
+          "entryRoom": 3,
+          "stairRoom": 8,
+          "isFinal": false,
+          "openEdges": ["h23", "h45", "h56", "h78", "v14", "v47", "v25", "v69"],
+          "sealedEdges": ["h12", "h89", "v58", "v36"],
+          "gates": { "copper": "v25", "silver": "h45", "gold": "h78" },
+          "keyRooms": { "copper": 2, "silver": 5, "gold": 7 },
+          "roomTiers": { "1": 2, "2": 0, "3": 0, "4": 2, "5": 1, "6": 1, "7": 2, "8": 3, "9": 1 }
+        },
+        {
+          "level": 5,
+          "tierId": "anvil_crown",
+          "entryRoom": 8,
+          "stairRoom": 5,
+          "isFinal": true,
+          "openEdges": ["h23", "h12", "h89", "h78", "v36", "v25", "v69", "v47"],
+          "sealedEdges": ["h56", "h45", "v58", "v14"],
+          "gates": { "copper": "v69", "silver": "v36", "gold": "v25" },
+          "keyRooms": { "copper": 9, "silver": 6, "gold": 2 },
+          "roomTiers": { "1": 2, "2": 2, "3": 2, "4": 0, "5": 3, "6": 1, "7": 0, "8": 0, "9": 0 }
+        }
+      ],
+      "monsterGroups": {
+        "groupSize": { "1": 3, "2": 3, "3": 4, "4": 4, "5": 4 },
+        "pool": {
+          "1": ["grave_charger", "cinder_acolyte"],
+          "2": ["cinder_acolyte", "grave_charger", "crypt_skeleton"],
+          "3": ["sepulcher_mortar", "cinder_acolyte", "grave_charger"],
+          "4": ["barrow_knight", "sepulcher_mortar", "cinder_acolyte"],
+          "5": ["barrow_knight", "sepulcher_mortar", "cinder_acolyte"]
+        },
+        "keyHolderType": {
+          "1": { "copper": "grave_charger", "silver": "cinder_acolyte", "gold": "cinder_acolyte" },
+          "2": { "copper": "grave_charger", "silver": "cinder_acolyte", "gold": "grave_charger" },
+          "3": { "copper": "grave_charger", "silver": "sepulcher_mortar", "gold": "barrow_knight" },
+          "4": { "copper": "barrow_knight", "silver": "barrow_knight", "gold": "sepulcher_mortar" },
+          "5": { "copper": "barrow_knight", "silver": "barrow_knight", "gold": "barrow_knight" }
+        },
+        "statScale": {
+          "1": { "hp": 1.0, "atk": 1.0 },
+          "2": { "hp": 1.3, "atk": 1.2 },
+          "3": { "hp": 1.75, "atk": 1.5 },
+          "4": { "hp": 2.35, "atk": 1.9 },
+          "5": { "hp": 3.05, "atk": 2.35 }
+        },
+        "keyHolderModifier": { "hp": 1.5, "atk": 1.15 }
+      },
+      "boss": {
+        "level": 5,
+        "room": 5,
+        "tile": [19, 19],
+        "type": "forgemaster_kol",
+        "name": "The Forgemaster",
+        "hp": 560,
+        "max_hp": 560,
+        "attack": 19,
+        "defense": 6,
+        "moveCadence": 0.7,
+        "attackCadence": 1.5,
+        "isBoss": true,
+        "guardCount": 2,
+        "guardType": "barrow_knight",
+        "guardName": "Forge Sentinel"
+      },
+      "chestTierRule": {
+        "byRoomTier": { "0": "copper", "1": "silver", "2": "silver", "3": "gold" },
+        "goldKeyRoomOverride": "gold"
+      },
+      "propPolicy": {
+        "countByRoomTier": { "0": 2, "1": 3, "2": 3, "3": 2 },
+        "arrivalRoomMax": 1,
+        "clearCenter": true,
+        "minSpacingFromChest": 1,
+        "brazierLightRadius": 2.5,
+        "maxBrazierLights": 2,
+        "bossRoomFixed": { "room": 5, "props": ["throne", "brazier", "brazier"] }
+      },
+      "townGatePolicy": {
+        "roomRole": "entry",
+        "countPerLevel": 1,
+        "propId": "prop_town_gate",
+        "walkOn": true
+      },
+      "placement": {
+        "roles": {
+          "keyHolder": [2, 2],
+          "chest": [-3, 2],
+          "monsterSlot0": [0, 0],
+          "monsterSlot1": [-3, 0],
+          "monsterSlot2": [3, 0],
+          "monsterSlot3": [0, 3],
+          "starterCache": [0, 3]
+        },
+        "order": ["keyHolder", "chest", "monsterSlot0", "monsterSlot1", "monsterSlot2", "monsterSlot3", "starterCache"]
+      },
+      "starterCache": {
+        "1": [
+          { "item_id": "arrows", "quantity": 20 }
+        ],
+        "2": [
+          { "item_id": "health_potion", "quantity": 1 }
+        ],
+        "3": [
+          { "item_id": "health_potion", "quantity": 1 }
+        ],
+        "4": [
+          { "item_id": "mana_potion", "quantity": 1 }
+        ],
+        "5": [
+          { "item_id": "health_potion", "quantity": 2 }
+        ]
+      }
+    },
+    {
+      "id": "rime_aerie",
+      "name": "The Rime Aerie",
+      "icon": "1F52E",
+      "description": "A short, savage frozen belfry: three tiers of slow and stun that punish kiting, capped by the Frostbound Choirmaster. Highest intensity per floor.",
+      "theme": {
+        "levelTheme": {
+          "1": "frost_threshold",
+          "2": "bell_aerie",
+          "3": "choir_loft"
+        }
+      },
+      "levelCount": 3,
+      "entry": { "level": 1, "room": 2, "doorTile": [19, 1], "spawnTile": [19, 2] },
+      "stairShaft": { "1": 9, "2": 4, "3": 7 },
+      "stairTiles": { "4": [6, 19], "7": [6, 33], "9": [32, 33] },
+      "levels": [
+        {
+          "level": 1,
+          "tierId": "frost_threshold",
+          "entryRoom": 2,
+          "stairRoom": 9,
+          "isFinal": false,
+          "openEdges": ["h12", "h23", "h45", "h56", "v14", "v47", "h78", "h89"],
+          "sealedEdges": ["v25", "v36", "v58", "v69"],
+          "gates": { "copper": "v14", "silver": "h45", "gold": "h89" },
+          "keyRooms": { "copper": 1, "silver": 4, "gold": 6 },
+          "roomTiers": { "1": 0, "2": 0, "3": 0, "4": 1, "5": 2, "6": 2, "7": 1, "8": 1, "9": 3 }
+        },
+        {
+          "level": 2,
+          "tierId": "bell_aerie",
+          "entryRoom": 9,
+          "stairRoom": 4,
+          "isFinal": false,
+          "openEdges": ["v69", "v25", "v58", "v14", "h23", "h12", "h56", "h78"],
+          "sealedEdges": ["v36", "v47", "h45", "h89"],
+          "gates": { "copper": "h56", "silver": "v25", "gold": "v14" },
+          "keyRooms": { "copper": 6, "silver": 5, "gold": 1 },
+          "roomTiers": { "1": 2, "2": 2, "3": 2, "4": 3, "5": 1, "6": 0, "7": 1, "8": 1, "9": 0 }
+        },
+        {
+          "level": 3,
+          "tierId": "choir_loft",
+          "entryRoom": 4,
+          "stairRoom": 7,
+          "isFinal": true,
+          "openEdges": ["h89", "h78", "h45", "h23", "v69", "v36", "v25", "v14"],
+          "sealedEdges": ["h56", "h12", "v58", "v47"],
+          "gates": { "copper": "v25", "silver": "h23", "gold": "h78" },
+          "keyRooms": { "copper": 5, "silver": 2, "gold": 8 },
+          "roomTiers": { "1": 0, "2": 1, "3": 2, "4": 0, "5": 0, "6": 2, "7": 3, "8": 2, "9": 2 }
+        }
+      ],
+      "monsterGroups": {
+        "groupSize": { "1": 4, "2": 4, "3": 5 },
+        "pool": {
+          "1": ["crypt_skeleton", "rime_acolyte"],
+          "2": ["rime_acolyte", "chime_wraith", "crypt_skeleton"],
+          "3": ["chime_wraith", "rime_acolyte", "elite_cultist"]
+        },
+        "keyHolderType": {
+          "1": { "copper": "crypt_skeleton", "silver": "rime_acolyte", "gold": "rime_acolyte" },
+          "2": { "copper": "rime_acolyte", "silver": "chime_wraith", "gold": "chime_wraith" },
+          "3": { "copper": "chime_wraith", "silver": "elite_cultist", "gold": "elite_cultist" }
+        },
+        "statScale": {
+          "1": { "hp": 1.25, "atk": 1.15 },
+          "2": { "hp": 2.05, "atk": 1.7 },
+          "3": { "hp": 3.0, "atk": 2.3 }
+        },
+        "keyHolderModifier": { "hp": 1.45, "atk": 1.15 }
+      },
+      "boss": {
+        "level": 3,
+        "room": 7,
+        "tile": [8, 33],
+        "type": "frostbound_choirmaster",
+        "name": "The Frostbound Choirmaster",
+        "hp": 470,
+        "max_hp": 470,
+        "attack": 17,
+        "defense": 5,
+        "moveCadence": 0.9,
+        "attackCadence": 1.8,
+        "isBoss": true,
+        "guardCount": 2,
+        "guardType": "elite_cultist",
+        "guardName": "Choir Acolyte"
+      },
+      "chestTierRule": {
+        "byRoomTier": { "0": "copper", "1": "silver", "2": "silver", "3": "gold" },
+        "goldKeyRoomOverride": "gold"
+      },
+      "propPolicy": {
+        "countByRoomTier": { "0": 2, "1": 3, "2": 3, "3": 2 },
+        "arrivalRoomMax": 1,
+        "clearCenter": true,
+        "minSpacingFromChest": 1,
+        "brazierLightRadius": 2.6,
+        "maxBrazierLights": 2,
+        "bossRoomFixed": { "room": 7, "props": ["throne", "brazier", "brazier"] }
+      },
+      "townGatePolicy": {
+        "roomRole": "entry",
+        "countPerLevel": 1,
+        "propId": "prop_town_gate",
+        "walkOn": true
+      },
+      "placement": {
+        "roles": {
+          "keyHolder": [2, 2],
+          "chest": [-3, 2],
+          "monsterSlot0": [0, 0],
+          "monsterSlot1": [-3, 0],
+          "monsterSlot2": [3, 0],
+          "monsterSlot3": [0, 3],
+          "starterCache": [0, 3]
+        },
+        "order": ["keyHolder", "chest", "monsterSlot0", "monsterSlot1", "monsterSlot2", "monsterSlot3", "starterCache"]
+      },
+      "starterCache": {
+        "1": [
+          { "item_id": "arrows", "quantity": 24 }
+        ],
+        "2": [
+          { "item_id": "health_potion", "quantity": 1 }
+        ],
+        "3": [
           { "item_id": "health_potion", "quantity": 2 }
         ]
       }

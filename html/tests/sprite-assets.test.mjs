@@ -326,7 +326,11 @@ test('Prop & tower tile assets', async t => {
   await t.test('17. every tower level defines a full, distinct tile theme', () => {
     const levels = TILE_THEMES_CATALOG.levels;
     assert.ok(levels, 'tile_themes.levels missing');
-    assert.equal(Object.keys(levels).length, 5, 'expected 5 tower levels');
+    // The launch five levels are the level-scanned default tower themes; LIV-5
+    // adds further named tower palettes (emberforge / rime aerie) resolved by
+    // each tower's `theme.levelTheme` map.
+    const keys = Object.keys(levels);
+    assert.ok(keys.length >= 5, 'expected at least the 5 launch tower levels');
     const seen = new Set();
     for (const [n, lv] of Object.entries(levels)) {
       for (const key of ['wall', 'floor', 'stairs', 'door']) {
@@ -338,7 +342,7 @@ test('Prop & tower tile assets', async t => {
       assert.ok(luminance(lv.floor.fill) <= 0.02, `level ${n} floor too bright (${luminance(lv.floor.fill)})`);
       seen.add(lv.wall.fill);
     }
-    assert.equal(seen.size, 5, 'each level must have a distinct wall fill');
+    assert.equal(seen.size, keys.length, 'each level must have a distinct wall fill');
   });
 
   await t.test('18. committed props preview matches a fresh export (no drift)', () => {
