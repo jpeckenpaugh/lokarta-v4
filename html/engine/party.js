@@ -326,6 +326,37 @@ export function setActiveMember(player, memberId) {
 }
 
 /**
+ * Cycles which party member the player controls (LIV-27 / FIX-12). `direction`
+ * +1 selects the next living member in party order, any negative value the
+ * previous one; the search wraps. Downed members are skipped so control never
+ * lands on a corpse, and the active member's own mirror is never re-selected.
+ * Every other member keeps its `aiMode` (`auto` by default) and stays driven by
+ * the `party_ai.json` profiles, so no AI bookkeeping is needed here.
+ *
+ * Returns the newly active member, or null when control did not move (no party,
+ * fewer than two members, or no other member is alive). Mutates and returns the
+ * player through `setActiveMember`.
+ * @param {object} player
+ * @param {number} [direction=1]
+ * @returns {object|null}
+ */
+export function cycleActiveMember(player, direction = 1) {
+  if (!player || !Array.isArray(player.party) || player.party.length < 2) return null;
+  const count = player.party.length;
+  const current = activeMemberIndex(player);
+  if (current < 0) return null;
+  const step = Number(direction) < 0 ? -1 : 1;
+  for (let offset = 1; offset < count; offset++) {
+    const idx = (((current + step * offset) % count) + count) % count;
+    const member = player.party[idx];
+    if (!member || member.hp <= 0 || !member.memberId) continue;
+    setActiveMember(player, member.memberId);
+    return member;
+  }
+  return null;
+}
+
+/**
  * Creates the default campaign progress: no towers completed and only the first
  * tower in campaign order unlocked.
  * @returns {{ completedTowerIds: string[], unlockedTowerIds: string[] }}

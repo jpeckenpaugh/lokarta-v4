@@ -174,10 +174,14 @@ export class ModalManager {
   /**
    * Options modal. Changes apply immediately via callbacks.onChange.
    */
-  static showOptionsModal(modalOverlayEl, options, callbacks = {}) {
+  static showOptionsModal(modalOverlayEl, options, callbacks = {}, context = {}) {
     const opts = options || {};
     this._reset(modalOverlayEl);
     modalOverlayEl.classList.remove('title-active');
+
+    // Debug action (not a toggle): only offered while a live game can still
+    // recruit another vocation. Hidden entirely otherwise (LIV-29/FIX-14).
+    const canRecruitCharacter = context.canRecruitCharacter === true;
 
     const toggle = (key, label) => `
       <div class="option-row" data-option="${key}">
@@ -215,6 +219,11 @@ export class ModalManager {
           <div class="options-section-label">Debug</div>
           ${toggle('walkThruWalls', 'Walk Thru Walls')}
           ${toggle('testerStrength', "Tester's Strength")}
+          ${canRecruitCharacter ? `
+          <div class="option-row" data-option="recruitCharacter">
+            <span class="option-label">Recruit Character</span>
+            <button class="option-toggle" id="options-recruit-character">RECRUIT</button>
+          </div>` : ''}
         </div>
         <div class="modal-back-action options-actions">
           <button class="action-btn" id="options-save-data">SAVE DATA</button>
@@ -733,7 +742,8 @@ export class ModalManager {
           <div class="guide-section">
             <h3>Movement & Floor Interaction</h3>
             <ul class="guide-list">
-              <li><code>W</code>, <code>A</code>, <code>S</code>, <code>D</code> / Arrow Keys: Move character in 4 directions.</li>
+              <li>Arrow Keys: Move character in 4 directions.</li>
+              <li><code>A</code> / <code>S</code>: Cycle control to the previous / next party member. Every other member fights on auto-AI.</li>
               <li><strong>Walkover Auto-Loot:</strong> Step on any item tile to immediately collect it into lowest empty Action Slot or Backpack.</li>
               <li><strong>Left-Click Floor Tile:</strong> Target enemies or inspect/loot items directly.</li>
             </ul>

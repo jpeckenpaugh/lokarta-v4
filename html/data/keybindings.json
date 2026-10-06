@@ -5,6 +5,10 @@
     "down": ["ArrowDown"],
     "right": ["ArrowRight"]
   },
+  "party": {
+    "prev": ["KeyA"],
+    "next": ["KeyS"]
+  },
   "keySlots": {
     "equipment": {
       "q": "main_hand",

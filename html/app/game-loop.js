@@ -11,13 +11,14 @@ import {
   EconomySystem,
   ChestSystem,
   PartyAI,
+  cycleActiveMember,
 } from '../engine/index.js';
 import {
   firstMonsterOnSegment,
   monstersCaughtByBeam,
 } from '../engine/projectile-collision.js';
 import { soundFX } from '../audio/index.js';
-import { KEYBINDINGS_CATALOG, UI_CATALOG } from '../data/index.js';
+import { KEYBINDINGS_CATALOG, UI_CATALOG, VOCATIONS_CATALOG } from '../data/index.js';
 import { setAnimState, advanceAnim } from './animation-state.js';
 import { swapWithPartyMemberAt } from '../engine/party-swap.js';
 
@@ -414,6 +415,28 @@ export const gameLoopMethods = {
       deltaSec,
     });
     for (const ev of events) this.applyPartyEvent(ev);
+  },
+  /**
+   * LIV-27 / FIX-12: hand control to the next (`direction` +1) or previous
+   * (-1) living party member. Delegates the swap to the engine
+   * `cycleActiveMember`, which keeps every non-active member on its
+   * `party_ai.json` auto-AI profile. Returns true when control actually moved.
+   */
+  cycleControlledMember(direction) {
+    const member = cycleActiveMember(this.player, direction);
+    if (!member) return false;
+    // Held keys belong to the previous actor; drop them, and clear any stale
+    // monster target, so the new member does not inherit either on the next tick.
+    this.keysDown.clear();
+    this.selectedMonsterId = null;
+    setAnimState(this.player, 'idle');
+    const voc = VOCATIONS_CATALOG?.[member.vocation];
+    const label = (voc && (voc.name || voc.renderTheme?.classLabel)) || member.vocation;
+    this.logCombat(`Now controlling ${label}.`, 'system');
+    soundFX.play('click');
+    this.updateHUD();
+    this.persistSave();
+    return true;
   },
   /**
    * LIV-22 — an auto ally collects any ground item it steps onto, routing it

@@ -45,6 +45,16 @@ export const EQUIPMENT_KEY_MAP = KEYBINDINGS_CATALOG?.keySlots?.equipment || {
 /** Ordered equipment slots (`main_hand`/`off_hand`/`armor`/`relic`). */
 export const EQUIPMENT_SLOT_KEYS = Object.values(EQUIPMENT_KEY_MAP);
 
+/**
+ * Party-member cycle bindings (`keybindings.json.party`), as keyboard-event
+ * codes: `prev` steps to the previous living member, `next` to the following
+ * one. Safe baseline mirrors the catalog (LIV-27 / FIX-12).
+ */
+export const PARTY_CYCLE_BINDINGS = KEYBINDINGS_CATALOG?.party || {
+  prev: ['KeyA'],
+  next: ['KeyS'],
+};
+
 export const CONFIG = {
   GRID_SIZE: 64, // pixels per tile
   MAP_WIDTH: 40,

@@ -3,13 +3,27 @@
  */
 
 import { GestureEngine } from '../engine/index.js';
-import { EQUIPMENT_KEY_MAP } from '../engine/config.js';
+import { EQUIPMENT_KEY_MAP, PARTY_CYCLE_BINDINGS } from '../engine/config.js';
 import { soundFX } from '../audio/index.js';
 
 /** `{ KeyQ: 'main_hand', KeyE: 'armor', ... }` from `keybindings.json`. */
 const EQUIPMENT_KEY_CODE_MAP = Object.fromEntries(
   Object.entries(EQUIPMENT_KEY_MAP || {}).map(([key, slot]) => [`Key${String(key).toUpperCase()}`, slot])
 );
+
+/**
+ * `{ KeyA: -1, KeyS: 1 }` from `keybindings.json.party` (LIV-27): the event
+ * code of each cycle key maps to the direction it steps through the party.
+ * Catalog-driven, so a rebind is a `keybindings.json` edit.
+ */
+const PARTY_CYCLE_KEY_CODE_MAP = (() => {
+  const map = {};
+  const prev = PARTY_CYCLE_BINDINGS && PARTY_CYCLE_BINDINGS.prev;
+  const next = PARTY_CYCLE_BINDINGS && PARTY_CYCLE_BINDINGS.next;
+  if (Array.isArray(prev)) for (const code of prev) map[code] = -1;
+  if (Array.isArray(next)) for (const code of next) map[code] = 1;
+  return map;
+})();
 
 export class InputController {
   constructor(app) {
@@ -40,6 +54,17 @@ export class InputController {
       // Modal-owned surfaces (pause, town, temple, fate grant) pause the
       // simulation; never let a gameplay hotkey leak through while paused.
       if (this.app.isPaused) return;
+
+      // Party control (LIV-27): catalog `keybindings.json.party` cycles which
+      // member the player drives; every other member stays on auto-AI. Handled
+      // before `keysDown` so a cycle key can never leak into held movement.
+      const cycleDirection = PARTY_CYCLE_KEY_CODE_MAP[e.code];
+      if (cycleDirection !== undefined) {
+        e.preventDefault();
+        soundFX.init();
+        this.app.cycleControlledMember(cycleDirection);
+        return;
+      }
 
       this.app.keysDown.add(e.code);
 
