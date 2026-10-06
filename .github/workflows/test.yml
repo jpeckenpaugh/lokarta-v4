@@ -1,0 +1,25 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # T0 gate (docs/engineering/agents.md §8-9): the native Node test runner
+      # over every html/tests/*.test.mjs, zero dependencies.
+      - name: Run T0 suite
+        run: node --test html/tests/*.test.mjs
