@@ -832,8 +832,16 @@ describe('FateGrantSystem', () => {
     const result = FateGrantSystem.applyDraftedCards(player, chosenCards, grid);
 
     assert.ok(result.addedToHotbar.length + result.addedToBackpack.length >= 2);
-    // Drafted items populate either main_hand/off_hand paperdoll (auto-equip), action_bar or backpack
-    const hasItemPlaced = player.paperdoll.main_hand !== null || player.paperdoll.off_hand !== null || player.action_bar[0] !== null || player.backpack[0] !== null;
+    // Drafted items populate any paperdoll slot (auto-equip, including armor
+    // and relic), an action_bar slot, or a backpack slot. The assertion must
+    // cover every valid destination, not just slot 0 / the two hand slots.
+    const hasItemPlaced =
+      player.paperdoll.main_hand !== null ||
+      player.paperdoll.off_hand !== null ||
+      player.paperdoll.armor !== null ||
+      player.paperdoll.relic !== null ||
+      player.action_bar.some(s => s !== null) ||
+      player.backpack.some(s => s !== null);
     assert.ok(hasItemPlaced);
   });
 
