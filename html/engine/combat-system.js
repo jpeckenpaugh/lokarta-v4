@@ -53,6 +53,26 @@ export class CombatSystem {
     return sameActor(a, b);
   }
 
+  /**
+   * Debug-only multiplier applied to every incoming party hit, driven by the
+   * off-by-default `testerStrength` option (`ui.json` `options.debug`). `1`
+   * is normal gameplay; a smaller value reduces attack and damage-over-time
+   * damage alike. Held at class scope so newly recruited members inherit it
+   * without per-actor bookkeeping.
+   */
+  static DEBUG_INCOMING_DAMAGE_MULTIPLIER = 1;
+
+  /**
+   * Sets the debug multiplier from a 0-100 reduction percentage (90 = Tester's
+   * Strength takes 10% of incoming damage). Non-finite input resets to normal.
+   * @param {number} pct
+   */
+  static setDebugIncomingDamageReductionPct(pct) {
+    const n = Number(pct);
+    const clamped = Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 0;
+    CombatSystem.DEBUG_INCOMING_DAMAGE_MULTIPLIER = 1 - clamped / 100;
+  }
+
   static randomBetween(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
   }
@@ -169,6 +189,12 @@ export class CombatSystem {
     }
 
     let dmg = damage;
+
+    // 1b. Tester's Strength (debug option): scale incoming damage before the
+    //     class mitigations below so the toggle keeps the tester alive.
+    if (CombatSystem.DEBUG_INCOMING_DAMAGE_MULTIPLIER < 1 && dmg > 0) {
+      dmg = Math.round(dmg * CombatSystem.DEBUG_INCOMING_DAMAGE_MULTIPLIER);
+    }
 
     // 2. Fortify Stance: halve incoming damage while active (10 s).
     if (player.fortifyActive) {
@@ -1472,6 +1498,12 @@ export class CombatSystem {
       }
     }
 
+    // Tester's Strength (debug option) also covers damage-over-time ticks.
+    if (CombatSystem.DEBUG_INCOMING_DAMAGE_MULTIPLIER < 1) {
+      const m = CombatSystem.DEBUG_INCOMING_DAMAGE_MULTIPLIER;
+      if (result.burnDamage > 0) result.burnDamage = Math.round(result.burnDamage * m);
+      if (result.poisonDamage > 0) result.poisonDamage = Math.round(result.poisonDamage * m);
+    }
     result.damage = result.burnDamage + result.poisonDamage;
     if (result.damage > 0) {
       player.hp = Math.max(0, player.hp - result.damage);

@@ -502,6 +502,10 @@ test('JSON Data Catalogs', async (t) => {
     assert.equal(UI_CATALOG.saveSlots.count, 5);
     assert.equal(UI_CATALOG.options.defaults.sfxVolume, 70);
     assert.equal(UI_CATALOG.options.ranges.pixelScale['3x'], 96);
+    // Debug options default off; magnitude is authored, not hardcoded in JS.
+    assert.equal(UI_CATALOG.options.defaults.walkThruWalls, false);
+    assert.equal(UI_CATALOG.options.defaults.testerStrength, false);
+    assert.equal(UI_CATALOG.options.debug.testerStrengthDamageReductionPct, 90);
     // D1 §2.7 + §3.2: catalog field names.
     assert.equal(UI_CATALOG.inventory.backpack.defaultSlots, 36);
     assert.equal(UI_CATALOG.inventory.backpack.columns, 6);

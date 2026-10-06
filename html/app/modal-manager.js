@@ -212,6 +212,9 @@ export class ModalManager {
           ${toggle('fullscreen', 'Fullscreen')}
           ${toggle('damageNumbers', 'Damage Numbers')}
           ${toggle('showFps', 'Frame Rate Counter')}
+          <div class="options-section-label">Debug</div>
+          ${toggle('walkThruWalls', 'Walk Thru Walls')}
+          ${toggle('testerStrength', "Tester's Strength")}
         </div>
         <div class="modal-back-action options-actions">
           <button class="action-btn" id="options-save-data">SAVE DATA</button>

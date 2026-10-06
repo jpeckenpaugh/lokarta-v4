@@ -96,6 +96,23 @@ export class GridMap {
     return true;
   }
 
+  /**
+   * Step allowance for the active member. Identical to `isWalkable`, except
+   * when `throughWalls` is true (the off-by-default Walk Thru Walls debug
+   * option in `ui.json`) any in-bounds tile may be entered — wall, shut gate,
+   * spring, or blocked prop. Out-of-bounds is always blocked so the debug
+   * toggle can never carry the player off the map.
+   *
+   * @param {number} x
+   * @param {number} y
+   * @param {boolean} [throughWalls=false]
+   * @returns {boolean}
+   */
+  canStep(x, y, throughWalls = false) {
+    if (this.isWalkable(x, y)) return true;
+    return throughWalls === true && this.isInBounds(x, y);
+  }
+
   /** Marks a tile impassable without changing its type. */
   blockTile(x, y, blocked = true) {
     const tile = this.getTile(x, y);

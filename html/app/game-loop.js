@@ -519,7 +519,9 @@ export const gameLoopMethods = {
         // Door just opened — allow the step-through this turn.
       }
 
-      if (this.gridMap.isWalkable(targetX, targetY)) {
+      // Walk Thru Walls (debug option): allows in-bounds non-walkable tiles.
+      // Occupancy rules below still keep the player off monsters and allies.
+      if (this.gridMap.canStep(targetX, targetY, this.options?.walkThruWalls === true)) {
         const monsterAtTarget = this.monsters.find(m => m.x === targetX && m.y === targetY && m.hp > 0);
         const allyAtTarget = PartyAI.partyMemberAt(this.player, targetX, targetY);
         if (allyAtTarget) {

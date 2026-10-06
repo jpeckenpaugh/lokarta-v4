@@ -2,7 +2,7 @@
  * Lokarta: Come Into The Light - Save & App Flow Controller
  */
 
-import { ChestSystem } from '../engine/index.js';
+import { ChestSystem, CombatSystem } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
 import { UI_CATALOG } from '../data/index.js';
 import { normalizeOptions, resolveReducedMotion, slotSummary } from '../services/save-slots.js';
@@ -44,6 +44,11 @@ export const saveControllerMethods = {
     const pixelMap = UI_CATALOG?.options?.ranges?.pixelScale || {};
     const zoom = typeof pixelMap[o.pixelScale] === 'number' ? pixelMap[o.pixelScale] : 64;
     this.renderer.setZoom(zoom);
+
+    // Debug option (off by default): Tester's Strength scales incoming damage
+    // for the whole party. Magnitude is authored in ui.json `options.debug`.
+    const debugPct = Number(UI_CATALOG?.options?.debug?.testerStrengthDamageReductionPct) || 0;
+    CombatSystem.setDebugIncomingDamageReductionPct(o.testerStrength ? debugPct : 0);
 
     this.updateFpsBadge();
   },

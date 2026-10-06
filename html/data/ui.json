@@ -133,12 +133,18 @@
       "pixelScale": "auto",
       "fullscreen": false,
       "damageNumbers": true,
-      "showFps": false
+      "showFps": false,
+      "walkThruWalls": false,
+      "testerStrength": false
     },
     "ranges": {
       "sfxVolume": { "min": 0, "max": 100, "step": 5 },
       "uiScale": { "small": 0.85, "normal": 1.0, "large": 1.15, "xlarge": 1.3 },
       "pixelScale": { "auto": 64, "1x": 32, "2x": 64, "3x": 96 }
+    },
+    "debug": {
+      "testerStrengthDamageReductionPct": 90,
+      "description": "Debug toggles (default off). Walk Thru Walls lets the active member step onto any in-bounds tile, including walls. Tester's Strength reduces all incoming attack and damage-over-time damage by testerStrengthDamageReductionPct."
     }
   }
 }

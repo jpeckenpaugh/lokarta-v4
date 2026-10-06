@@ -690,6 +690,15 @@
   gap: 8px;
 }
 
+.options-section-label {
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
 .option-row {
   display: flex;
   align-items: center;
