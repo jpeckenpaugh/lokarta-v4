@@ -149,5 +149,194 @@
         "stat_bonus": 50
       }
     ]
+  },
+  "cinder_acolyte": {
+    "type": "cinder_acolyte",
+    "name": "Cinder Acolyte",
+    "baseHp": 38,
+    "baseAttack": 11,
+    "baseDefense": 2,
+    "moveCadence": 1.1,
+    "attackCadence": 2.2,
+    "damageMin": 8,
+    "damageMax": 12,
+    "damageType": "fire",
+    "aiType": "ranged",
+    "standoffMin": 3,
+    "standoffMax": 5,
+    "spriteId": "shadow_cultist",
+    "baseXp": 50,
+    "xpFloorScale": 11,
+    "svgCode": "1F525",
+    "attacks": [
+      {
+        "key": "ember_bolt",
+        "kind": "projectile",
+        "label": "Ember Bolt",
+        "cooldownSec": 2.2,
+        "range": 6,
+        "minRange": 1,
+        "requiresLOS": true,
+        "damageMin": 8,
+        "damageMax": 12,
+        "damageType": "fire",
+        "projectile": {
+          "type": "ember_bolt",
+          "speedTilesPerSec": 9,
+          "color": "#ff7a18",
+          "visual": { "trailType": "solid", "headRadius": 6, "glowColor": "#ffd166" }
+        },
+        "onHit": { "status": "burn", "durationSec": 3, "dps": 2 }
+      }
+    ],
+    "lootTable": [
+      {
+        "minRoll": 0.0,
+        "maxRoll": 1.0,
+        "item_id": "mana_potion",
+        "name": "Mana Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 40
+      }
+    ]
+  },
+  "grave_charger": {
+    "type": "grave_charger",
+    "name": "Grave Charger",
+    "baseHp": 70,
+    "baseAttack": 16,
+    "baseDefense": 4,
+    "moveCadence": 1.0,
+    "attackCadence": 2.4,
+    "damageMin": 12,
+    "damageMax": 18,
+    "aiType": "charger",
+    "standoffMin": 1,
+    "standoffMax": 5,
+    "spriteId": "crypt_skeleton",
+    "baseXp": 60,
+    "xpFloorScale": 12,
+    "svgCode": "1F480",
+    "attacks": [
+      {
+        "key": "grave_charge",
+        "kind": "dash",
+        "label": "Grave Charge",
+        "cooldownSec": 3.0,
+        "range": 5,
+        "minRange": 2,
+        "requiresLOS": true,
+        "telegraphSec": 0.35,
+        "dashTiles": 3,
+        "damageMin": 12,
+        "damageMax": 18,
+        "damageType": "physical",
+        "projectile": { "type": "dash_trail", "color": "#f97316" },
+        "onHit": { "status": "stun", "durationSec": 1.5 }
+      }
+    ],
+    "lootTable": [
+      {
+        "minRoll": 0.0,
+        "maxRoll": 1.0,
+        "item_id": "health_potion",
+        "name": "Health Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 30
+      }
+    ]
+  },
+  "plague_bomber": {
+    "type": "plague_bomber",
+    "name": "Plague Bomber",
+    "baseHp": 55,
+    "baseAttack": 13,
+    "baseDefense": 3,
+    "moveCadence": 1.2,
+    "attackCadence": 2.8,
+    "damageMin": 10,
+    "damageMax": 16,
+    "damageType": "poison",
+    "aiType": "bomber",
+    "standoffMin": 2,
+    "standoffMax": 5,
+    "spriteId": "elite_cultist",
+    "baseXp": 58,
+    "xpFloorScale": 12,
+    "svgCode": "1F9EA",
+    "attacks": [
+      {
+        "key": "plague_burst",
+        "kind": "aoe",
+        "label": "Plague Burst",
+        "cooldownSec": 3.5,
+        "range": 6,
+        "minRange": 1,
+        "requiresLOS": true,
+        "telegraphSec": 0.8,
+        "radius": 2,
+        "burstDurationMs": 320,
+        "telegraphColor": "#84cc16",
+        "damageMin": 10,
+        "damageMax": 16,
+        "damageType": "poison",
+        "projectile": { "type": "plague_burst", "color": "#84cc16" },
+        "onHit": { "status": "poison", "durationSec": 4, "dps": 3 }
+      }
+    ],
+    "lootTable": [
+      {
+        "minRoll": 0.0,
+        "maxRoll": 1.0,
+        "item_id": "health_potion",
+        "name": "Health Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 30
+      }
+    ]
+  },
+  "bone_summoner": {
+    "type": "bone_summoner",
+    "name": "Bone Summoner",
+    "baseHp": 48,
+    "baseAttack": 10,
+    "baseDefense": 3,
+    "moveCadence": 1.3,
+    "attackCadence": 3.0,
+    "damageMin": 7,
+    "damageMax": 11,
+    "aiType": "summoner",
+    "standoffMin": 3,
+    "standoffMax": 6,
+    "spriteId": "shadow_cultist",
+    "baseXp": 55,
+    "xpFloorScale": 12,
+    "svgCode": "1F9D9",
+    "attacks": [
+      {
+        "key": "raise_bones",
+        "kind": "summon",
+        "label": "Raise Bones",
+        "cooldownSec": 5.0,
+        "range": 7,
+        "minRange": 1,
+        "requiresLOS": true,
+        "summon": { "type": "crypt_skeleton", "maxActive": 2 }
+      }
+    ],
+    "lootTable": [
+      {
+        "minRoll": 0.0,
+        "maxRoll": 1.0,
+        "item_id": "mana_potion",
+        "name": "Mana Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 40
+      }
+    ]
   }
 }

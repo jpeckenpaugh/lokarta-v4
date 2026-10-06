@@ -1261,6 +1261,99 @@ export class CombatSystem {
   }
 
   /**
+   * Catalog-driven status-effect dispatch tables (LIV-2). An opponent's
+   * `attacks[].onHit` descriptor (`{ status, durationSec, dps, factor }`) is
+   * applied through `applyPlayerStatus` and advanced each tick through
+   * `tickPlayerStatusEffects`. Adding a status is a new catalog value plus
+   * (when it has real behavior) one applier/ticker entry — unknown statuses
+   * are safe no-ops.
+   */
+  static STATUS_EFFECT_APPLIERS = {
+    burn: (player, effect) => {
+      player.burnTimer = Math.max(player.burnTimer || 0, effect.durationSec || 3);
+      player.burnDps = Math.max(player.burnDps || 0, effect.dps || 1);
+    },
+    poison: (player, effect) => {
+      player.poisonTimer = Math.max(player.poisonTimer || 0, effect.durationSec || 3);
+      player.poisonDps = Math.max(player.poisonDps || 0, effect.dps || 1);
+    },
+    slow: (player, effect) => {
+      player.slowTimer = Math.max(player.slowTimer || 0, effect.durationSec || 3);
+      player.slowFactor = Math.min(player.slowFactor ?? 1, effect.factor ?? 0.5);
+    },
+    stun: (player, effect) => {
+      player.stunTimer = Math.max(player.stunTimer || 0, effect.durationSec || 1);
+    },
+  };
+
+  /**
+   * Applies one catalog `onHit` status descriptor. Returns false (safe no-op)
+   * when the status has no registered applier.
+   */
+  static applyPlayerStatus(player, effect) {
+    if (!player || !effect || !effect.status) return false;
+    const handler = CombatSystem.STATUS_EFFECT_APPLIERS[effect.status];
+    if (!handler) return false;
+    handler(player, effect);
+    return true;
+  }
+
+  /**
+   * Advances player DoT/control timers one tick. Damage-over-time accumulates
+   * as whole HP (fractions never leak). Returns a small result object; allocates
+   * at most once per tick, never per monster/frame.
+   */
+  static tickPlayerStatusEffects(player, deltaSec) {
+    const result = { burnDamage: 0, poisonDamage: 0, damage: 0, slowed: false, stunned: false };
+    if (!player) return result;
+
+    if (player.burnTimer > 0) {
+      player.burnTimer = Math.max(0, player.burnTimer - deltaSec);
+      player.burnAccumulator = (player.burnAccumulator || 0) + (player.burnDps || 0) * deltaSec;
+      const whole = Math.floor(player.burnAccumulator);
+      if (whole > 0) {
+        player.burnAccumulator -= whole;
+        result.burnDamage = whole;
+      }
+      if (player.burnTimer <= 0) {
+        player.burnDps = 0;
+        player.burnAccumulator = 0;
+      }
+    }
+
+    if (player.poisonTimer > 0) {
+      player.poisonTimer = Math.max(0, player.poisonTimer - deltaSec);
+      player.poisonAccumulator = (player.poisonAccumulator || 0) + (player.poisonDps || 0) * deltaSec;
+      const whole = Math.floor(player.poisonAccumulator);
+      if (whole > 0) {
+        player.poisonAccumulator -= whole;
+        result.poisonDamage = whole;
+      }
+      if (player.poisonTimer <= 0) {
+        player.poisonDps = 0;
+        player.poisonAccumulator = 0;
+      }
+    }
+
+    result.damage = result.burnDamage + result.poisonDamage;
+    if (result.damage > 0) {
+      player.hp = Math.max(0, player.hp - result.damage);
+    }
+
+    if (player.slowTimer > 0) {
+      player.slowTimer = Math.max(0, player.slowTimer - deltaSec);
+      if (player.slowTimer <= 0) player.slowFactor = 1;
+      result.slowed = player.slowTimer > 0;
+    }
+    if (player.stunTimer > 0) {
+      player.stunTimer = Math.max(0, player.stunTimer - deltaSec);
+      result.stunned = player.stunTimer > 0;
+    }
+
+    return result;
+  }
+
+  /**
    * Ticks poison DoT and Hunter's Mark timers on every monster. Poison damage
    * accumulates as whole HP so per-tick fractions do not leak. Returns the
    * monsters slain by poison this tick (caller resolves loot/XP).

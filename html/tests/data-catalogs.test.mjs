@@ -45,17 +45,51 @@ test('JSON Data Catalogs', async (t) => {
 
   await t.test('loads and validates monsters.json catalog', () => {
     const expectedMonsters = ['giant_rat', 'crypt_skeleton', 'shadow_cultist', 'elite_cultist', 'abyssal_overlord'];
-    assert.equal(Object.keys(MONSTERS_CATALOG).length, 5);
+    // The launch five are the floor-generation pool; the catalog may carry
+    // additional opponents (LIV-2 framework demos) authored for the expansion.
+    assert.ok(Object.keys(MONSTERS_CATALOG).length >= 5);
+    for (const key of expectedMonsters) assert.ok(MONSTERS_CATALOG[key], `Missing launch monster ${key}`);
 
-    for (const key of expectedMonsters) {
-      const monster = MONSTERS_CATALOG[key];
-      assert.ok(monster, `Missing monster definition for ${key}`);
+    const aiTypes = ['chase', 'standoff', 'ranged', 'charger', 'bomber', 'summoner'];
+    const attackKinds = ['melee', 'projectile', 'aoe', 'dash', 'summon'];
+
+    for (const [key, monster] of Object.entries(MONSTERS_CATALOG)) {
       assert.ok(monster.baseHp > 0, `Monster ${key} must have baseHp > 0`);
       assert.ok(monster.baseAttack > 0, `Monster ${key} must have baseAttack > 0`);
       assert.ok(typeof monster.moveCadence === 'number', `Monster ${key} must specify moveCadence`);
       assert.ok(typeof monster.attackCadence === 'number', `Monster ${key} must specify attackCadence`);
-      assert.ok(['chase', 'standoff'].includes(monster.aiType), `Invalid aiType for ${key}`);
+      assert.ok(aiTypes.includes(monster.aiType), `Invalid aiType "${monster.aiType}" for ${key}`);
       assert.ok(Array.isArray(monster.lootTable), `Monster ${key} must specify lootTable array`);
+      if (monster.attacks) {
+        assert.ok(Array.isArray(monster.attacks), `Monster ${key} attacks must be an array`);
+        for (const atk of monster.attacks) {
+          assert.ok(atk.key, `Monster ${key} attack must declare a key`);
+          assert.ok(attackKinds.includes(atk.kind), `Monster ${key} attack ${atk.key} has unknown kind ${atk.kind}`);
+        }
+      }
+    }
+  });
+
+  await t.test('ships catalog-driven opponents covering each attack style (LIV-2)', () => {
+    // Each opponent runs purely from its catalog spec: these assertions lock in
+    // the aiType + attack-kind coverage the engine dispatch tables resolve.
+    const coverage = {
+      cinder_acolyte: { aiType: 'ranged', kind: 'projectile', status: 'burn' },
+      grave_charger: { aiType: 'charger', kind: 'dash', status: 'stun' },
+      plague_bomber: { aiType: 'bomber', kind: 'aoe', status: 'poison' },
+      bone_summoner: { aiType: 'summoner', kind: 'summon', status: null },
+    };
+    for (const [key, spec] of Object.entries(coverage)) {
+      const monster = MONSTERS_CATALOG[key];
+      assert.ok(monster, `missing framework opponent ${key}`);
+      assert.equal(monster.aiType, spec.aiType, `${key} aiType`);
+      const attack = monster.attacks.find(a => a.kind === spec.kind);
+      assert.ok(attack, `${key} must declare a ${spec.kind} attack`);
+      if (spec.status) {
+        assert.equal(attack.onHit?.status, spec.status, `${key} onHit status`);
+        assert.ok(attack.onHit.durationSec > 0, `${key} onHit duration`);
+      }
+      assert.ok(monster.spriteId, `${key} must declare a shared spriteId (no bespoke art required to ship)`);
     }
   });
 

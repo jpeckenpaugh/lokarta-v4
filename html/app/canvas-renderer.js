@@ -77,6 +77,56 @@ function isNearDoor(gridMap, x, y, radius) {
   return false;
 }
 
+/**
+ * Presentation dispatch for catalog projectiles (LIV-2). A projectile resolves
+ * through `renderKey`/`type`; unknown keys fall through to the generic
+ * energy-trail renderer in `renderProjectiles`, so a new catalog attack needs
+ * no renderer to function. Renderers are called with `this` bound to the
+ * renderer instance (they read `this.cameraX` / `this.cameraY`).
+ */
+const PROJECTILE_RENDERERS = {
+  telegraph(ctx, p) {
+    const sw = CONFIG.GRID_SIZE;
+    const cx = p.x * sw + sw / 2 - this.cameraX;
+    const cy = p.y * sw + sw / 2 - this.cameraY;
+    const radius = (p.radius || 1) * sw + sw / 2;
+    const pulse = 0.4 + 0.28 * Math.sin((p.elapsedMs || 0) / 80);
+    ctx.save();
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = p.color || '#ef4444';
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = Math.min(1, pulse + 0.35);
+    ctx.strokeStyle = p.color || '#ef4444';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  },
+  aoe_burst(ctx, p) {
+    const sw = CONFIG.GRID_SIZE;
+    const cx = p.x * sw + sw / 2 - this.cameraX;
+    const cy = p.y * sw + sw / 2 - this.cameraY;
+    const progress = Math.min(1, (p.elapsedMs || 0) / (p.durationMs || 320));
+    const radius = ((p.radius || 1) * sw + sw / 2) * (0.35 + 0.65 * progress);
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, 1 - progress);
+    ctx.fillStyle = p.color || '#ef4444';
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = Math.max(0, 0.9 - progress);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  },
+};
+
 export class CanvasRenderer {
   constructor(canvas) {
     this.canvas = canvas;
@@ -515,6 +565,13 @@ export class CanvasRenderer {
 
   renderProjectiles(ctx, projectiles) {
     for (const p of projectiles) {
+      // Catalog presentation hook: a registered renderer wins; otherwise the
+      // generic energy-trail/fade renderer below handles it.
+      const custom = PROJECTILE_RENDERERS[p.renderKey || p.type];
+      if (custom) {
+        custom.call(this, ctx, p);
+        continue;
+      }
       if (p.type === 'energy_beam' && p.waves) {
         ctx.save();
         const stepColors = p.visual?.stepColors || ['#ff00aa', '#ff66dd', '#d946ef', '#a855f7'];

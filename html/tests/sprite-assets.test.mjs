@@ -84,12 +84,22 @@ function makeFakeCtx() {
 
 test('Sprite assets', async t => {
   await t.test('1. manifest completeness for every catalog actor', () => {
-    const ids = [...Object.keys(VOCATIONS_CATALOG), ...Object.keys(MONSTERS_CATALOG)];
-    for (const id of ids) {
+    // Vocations always own a dedicated sprite.
+    for (const id of Object.keys(VOCATIONS_CATALOG)) {
       assert.ok(SPRITE_MANIFEST.actors[id], `manifest missing actor ${id}`);
       assert.ok(SPRITE_CATALOG[id], `catalog missing actor ${id}`);
       const file = path.join(SPRITES_DIR, SPRITE_MANIFEST.actors[id].file);
       assert.ok(fs.existsSync(file), `sprite file missing for ${id}: ${file}`);
+    }
+    // Monsters resolve to their own sprite, or to a declared shared `spriteId`
+    // (the renderer's own `resolveSpriteId` precedence), so a catalog opponent
+    // can ship before it has bespoke art without breaking the art pipeline.
+    for (const id of Object.keys(MONSTERS_CATALOG)) {
+      const spriteId = resolveSpriteId(MONSTERS_CATALOG[id]) || id;
+      assert.ok(SPRITE_MANIFEST.actors[spriteId], `manifest missing actor ${id} (sprite ${spriteId})`);
+      assert.ok(SPRITE_CATALOG[spriteId], `catalog missing actor ${id} (sprite ${spriteId})`);
+      const file = path.join(SPRITES_DIR, SPRITE_MANIFEST.actors[spriteId].file);
+      assert.ok(fs.existsSync(file), `sprite file missing for ${id} (sprite ${spriteId}): ${file}`);
     }
   });
 

@@ -114,6 +114,22 @@ export const gameLoopMethods = {
       if (this.player.poisonTipTimer <= 0) this.player.poisonTipArrows = 0;
     }
 
+    // Player status effects (catalog `attacks[].onHit`): burn/poison DoT plus
+    // slow/stun control timers, advanced through the engine dispatch table.
+    const statusResult = CombatSystem.tickPlayerStatusEffects(this.player, deltaSec);
+    if (statusResult.damage > 0) {
+      if (statusResult.burnDamage > 0) {
+        this.addFloatingText(`-${statusResult.burnDamage} burn`, this.player.x, this.player.y, '#f97316');
+      }
+      if (statusResult.poisonDamage > 0) {
+        this.addFloatingText(`-${statusResult.poisonDamage} poison`, this.player.x, this.player.y, '#84cc16');
+      }
+      this.logCombat(`Status effects sear you for ${statusResult.damage} damage!`, 'warning');
+      soundFX.play('playerHurt');
+      setAnimState(this.player, 'hit', this.nowMs());
+      this.updateHUD();
+    }
+
     // Tick poison DoT + Hunter's Mark on monsters. Any enemy slain by
     // poison resolves through the normal death/loot/XP path.
     const poisonedDeaths = CombatSystem.tickStatusEffects(this.monsters, deltaSec);
@@ -257,6 +273,18 @@ export const gameLoopMethods = {
     for (const res of aiResults) {
       if (res.message) this.logCombat(res.message, 'combat');
       if (res.projectiles) this.projectiles.push(...res.projectiles);
+      // Catalog `onHit` status effects land on the player.
+      if (res.statusEffects) {
+        for (const eff of res.statusEffects) {
+          if (CombatSystem.applyPlayerStatus(this.player, eff)) {
+            this.addFloatingText(eff.status.toUpperCase(), this.player.x, this.player.y, '#f97316');
+          }
+        }
+      }
+      // Catalog `summon` attacks spawn new opponents (built in the engine).
+      if (res.spawns && res.spawns.length > 0) {
+        for (const spawn of res.spawns) this.monsters.push(spawn);
+      }
       if (res.sourceMonster && (res.dodged || (res.damageToPlayer && res.damageToPlayer > 0) || (res.absorbed && res.absorbed > 0))) {
         setAnimState(res.sourceMonster, 'attack', this.nowMs());
       }
@@ -322,6 +350,10 @@ export const gameLoopMethods = {
     );
   },
   processMovementInput() {
+    // Player control statuses (catalog `onHit`): stun skips input entirely;
+    // slow accumulates toward a full step so cadence drops by `slowFactor`.
+    if (this.player.stunTimer > 0) return;
+
     let dx = 0;
     let dy = 0;
     let newFacing = this.player.facing;
@@ -337,6 +369,12 @@ export const gameLoopMethods = {
           break;
         }
       }
+    }
+
+    if ((dx !== 0 || dy !== 0) && this.player.slowTimer > 0) {
+      this.player.slowAccumulator = (this.player.slowAccumulator || 0) + (this.player.slowFactor || 0.5);
+      if (this.player.slowAccumulator < 1) return;
+      this.player.slowAccumulator -= 1;
     }
 
     if (dx !== 0 || dy !== 0) {
