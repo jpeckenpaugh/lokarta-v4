@@ -395,7 +395,8 @@ export const gameLoopMethods = {
     if (!ev || !ev.member) return;
     const member = ev.member;
     if (ev.type === 'move') {
-      soundFX.play('footstep');
+      // No footstep cue for auto allies: 3 members stepping every tick would
+      // flood the audio channel. Only the player's own step plays.
       setAnimState(member, 'walk');
       return;
     }
