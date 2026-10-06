@@ -95,6 +95,62 @@ export const floorControllerMethods = {
       anim: createAnimState(s.facing || 'down'),
     }));
     if (this.player) this.player.anim = createAnimState(this.player.facing || 'down');
+    this.layoutPartyOnFloor();
+  },
+  /**
+   * Places and revives the non-active party on a freshly loaded floor
+   * (LIV-13/WS4). Allies that fell on the previous floor recover between levels
+   * so the party stays viable, and any member sharing the active member's tile
+   * (e.g. a fresh recruit) is spread to a free adjacent square.
+   */
+  layoutPartyOnFloor() {
+    const player = this.player;
+    if (!player || !Array.isArray(player.party)) return;
+    const grid = this.gridMap;
+    const activeId = player.activeMemberId;
+    const occupied = new Set([`${player.x},${player.y}`]);
+
+    for (const member of player.party) {
+      if (!member || member.memberId === activeId) continue;
+
+      if (member.hp <= 0) {
+        member.hp = member.max_hp;
+        member.mana = member.max_mana;
+        member.aiTargetId = null;
+        member.aiRetargetTimer = 0;
+      }
+      member.anim = createAnimState(member.facing || 'down');
+
+      const valid =
+        Number.isFinite(member.x) &&
+        Number.isFinite(member.y) &&
+        grid.isWalkable(member.x, member.y) &&
+        !occupied.has(`${member.x},${member.y}`);
+      if (!valid) {
+        const spot = this.findPartySpot(player.x, player.y, occupied);
+        if (spot) {
+          member.x = spot.x;
+          member.y = spot.y;
+        }
+      }
+      occupied.add(`${member.x},${member.y}`);
+    }
+  },
+  /** Nearest free walkable tile in a ring around (cx, cy), or null. */
+  findPartySpot(cx, cy, occupied) {
+    const grid = this.gridMap;
+    const isFree = (x, y) => grid.isWalkable(x, y) && !occupied.has(`${x},${y}`);
+    for (let r = 1; r <= 4; r++) {
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+          const x = cx + dx;
+          const y = cy + dy;
+          if (isFree(x, y)) return { x, y };
+        }
+      }
+    }
+    return null;
   },
   /**
    * Resolves a floor-clear event. `resolution` comes from `StairSystem.resolve`

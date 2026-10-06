@@ -11,6 +11,7 @@ export * from './progression-system.js';
 export * from './combat-system.js';
 export * from './projectile-collision.js';
 export * from './entity-ai.js';
+export * from './party-ai.js';
 export * from './inventory-system.js';
 export * from './economy-system.js';
 export * from './item-stats.js';

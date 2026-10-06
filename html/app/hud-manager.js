@@ -374,9 +374,16 @@ export class HUDManager {
         const label = theme.classLabel || voc.charAt(0).toUpperCase();
         const color = theme.primary || '#5c2d91';
         const accent = theme.accent || '#ffd700';
-        const hpPct = Math.max(0, Math.min(100, (Number(member.hp) / Math.max(1, Number(member.max_hp))) * 100));
-        const mpPct = Math.max(0, Math.min(100, (Number(member.mana) / Math.max(1, Number(member.max_mana))) * 100));
         const isActive = member.memberId === activeId;
+        // The active member's live state lives on the top-level player, not its
+        // (capture-time) party mirror; read it here so the panel bar is current
+        // without a per-tick JSON clone of the whole actor.
+        const hp = isActive ? player.hp : member.hp;
+        const maxHp = isActive ? player.max_hp : member.max_hp;
+        const mp = isActive ? player.mana : member.mana;
+        const maxMp = isActive ? player.max_mana : member.max_mana;
+        const hpPct = Math.max(0, Math.min(100, (Number(hp) / Math.max(1, Number(maxHp))) * 100));
+        const mpPct = Math.max(0, Math.min(100, (Number(mp) / Math.max(1, Number(maxMp))) * 100));
         const name = voc.charAt(0).toUpperCase() + voc.slice(1);
         return `
           <div class="party-chip${isActive ? ' is-active' : ''}" data-member="${member.memberId || voc}" title="${name} · Lv ${member.level || 1}" style="--party-color: ${color}; --party-accent: ${accent};">

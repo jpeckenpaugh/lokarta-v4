@@ -178,7 +178,8 @@ export class CanvasRenderer {
     particles = [],
     deathEffects = [],
     chests = [],
-    props = []
+    props = [],
+    party = []
   ) {
     if (!this.canvas || !this.ctx) return;
     const { width, height } = this.canvas;
@@ -386,6 +387,21 @@ export class CanvasRenderer {
           );
           ctx.stroke();
         }
+      }
+    }
+
+    // 5b. Party Allies Layer (LIV-13/WS4): every living non-active member draws
+    //     with the shared player sprite pipeline (vocation sprite + animation).
+    //     The live active member is the top-level player drawn below, so its
+    //     stale `party` mirror is skipped (matched by memberId).
+    if (Array.isArray(party) && party.length > 1) {
+      for (const member of party) {
+        if (!member || member.hp <= 0) continue;
+        if (member.memberId && member.memberId === player.activeMemberId) continue;
+        const memberScreenX = member.x * CONFIG.GRID_SIZE - this.cameraX;
+        const memberScreenY = member.y * CONFIG.GRID_SIZE - this.cameraY;
+        SpriteRenderer.drawPlayer(ctx, member, memberScreenX, memberScreenY);
+        this.drawActorBars(ctx, member, memberScreenX, memberScreenY, true);
       }
     }
 

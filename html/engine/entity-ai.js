@@ -152,8 +152,20 @@ export class EntityAI {
    * @param {number} deltaSec
    * @returns {Array<object>}
    */
-  static updateMonsters(monsters, player, gridMap, deltaSec) {
+  static updateMonsters(monsters, player, gridMap, deltaSec, targets = null) {
     const results = [];
+
+    // Party targeting (LIV-13/WS4): when the app passes the living party, each
+    // hostile engages the nearest member. A single-target call (or a legacy
+    // caller) keeps the original "everything targets the player" behavior.
+    let partyTargets = null;
+    if (Array.isArray(targets) && targets.length > 0) {
+      partyTargets = [];
+      for (let i = 0; i < targets.length; i++) {
+        if (targets[i] && targets[i].hp > 0) partyTargets.push(targets[i]);
+      }
+      if (partyTargets.length === 0) partyTargets = null;
+    }
 
     for (const monster of monsters) {
       if (monster.hp <= 0) continue;
@@ -164,13 +176,19 @@ export class EntityAI {
         continue; // Stunned: skip movement and attack actions!
       }
 
+      const target = (partyTargets && EntityAI.selectTarget(monster, partyTargets)) || player;
+      if (!target) continue;
+
       // Wind-up: a telegraphed attack holds the monster in place until the
       // timer elapses, then the catalog handler resolves the payload.
       if (monster.pendingAttack || monster.telegraphTimer > 0) {
         monster.telegraphTimer = Math.max(0, (monster.telegraphTimer || 0) - deltaSec);
         if (monster.telegraphTimer <= 0) {
-          const action = EntityAI.resolvePendingAttack(monster, player, gridMap, monsters);
-          if (action) results.push(action);
+          const action = EntityAI.resolvePendingAttack(monster, target, gridMap, monsters);
+          if (action) {
+            action.target = action.target || target;
+            results.push(action);
+          }
         }
         continue;
       }
@@ -193,11 +211,40 @@ export class EntityAI {
       const mData = MONSTERS_CATALOG[monster.type] || (monster.type === 'boss_overlord' ? MONSTERS_CATALOG.abyssal_overlord : null);
       const aiType = mData?.aiType || 'chase';
       const handler = AI_HANDLERS[aiType] || AI_HANDLERS.chase;
-      const action = handler(monster, player, gridMap, monsters, mData);
-      if (action) results.push(action);
+      const action = handler(monster, target, gridMap, monsters, mData);
+      if (action) {
+        action.target = action.target || target;
+        results.push(action);
+      }
     }
 
     return results;
+  }
+
+  /**
+   * Nearest living hostile party target for a monster, or null when none.
+   * Faction-gated via `CombatSystem.isHostile`, so an ally can never be
+   * selected as a monster's own-faction target.
+   * @param {object} monster
+   * @param {object[]} targets
+   * @returns {object|null}
+   */
+  static selectTarget(monster, targets) {
+    if (!targets || targets.length === 0) return null;
+    if (targets.length === 1) return targets[0];
+    let best = null;
+    let bestDist = Number.POSITIVE_INFINITY;
+    for (let i = 0; i < targets.length; i++) {
+      const t = targets[i];
+      if (!t || t.hp <= 0) continue;
+      if (!CombatSystem.isHostile(monster, t)) continue;
+      const d = Math.hypot(t.x - monster.x, t.y - monster.y);
+      if (d < bestDist) {
+        bestDist = d;
+        best = t;
+      }
+    }
+    return best || targets[0] || null;
   }
 
   static idleWander(monster, gridMap, allMonsters) {

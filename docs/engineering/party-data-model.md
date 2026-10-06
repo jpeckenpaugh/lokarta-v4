@@ -252,3 +252,67 @@ reads a global player. `CombatSystem.tickActorTimers(actor, dt)` /
   one-member calls are unchanged. The app passes `player.party`.
 
 T0 coverage: `html/tests/liv11-combat-actors.test.mjs`.
+
+---
+
+## 8. WS4 party auto-AI, loop & render integration (LIV-13)
+
+WS4 drives every non-active member from a pure engine module and wires it into
+the fixed tick and the renderer. No app-side vocation/ability names are used.
+
+### 8.1 `html/engine/party-ai.js` (new)
+
+Pure, browser-free: it imports only `data/index.js`, `combat-system.js`,
+`entity-ai.js`, `lighting-system.js` and `faction.js`.
+
+| Symbol | Purpose |
+| :--- | :--- |
+| `profileForVocation(vocation)` | Resolved `party_ai.json` profile (`profiles[voc]` over `default` over `DEFAULT_AI_PROFILE`). |
+| `PartyAI.inactiveMembers(player)` | Living, non-active, `aiMode !== 'manual'` members — the auto allies. |
+| `PartyAI.livingAllies(player)` | Top-level active player + living non-active members (the heal/target set). |
+| `PartyAI.partyMemberAt(player, x, y)` | Living non-active member on a tile (ally collision), or null. |
+| `PartyAI.updateAllies(player, { gridMap, monsters, deltaSec })` | Drives each ally once; mutates positions/timers and returns one intent event per member. |
+
+Per-member decision order each tick (all catalog-driven):
+
+1. **Retreat** — below `retreatHpPct` while threatened, step away from the threat.
+2. **Cast** — first ready ability in `preferredAbilities` (heals only when
+   `healAlliesWhenHurt`); gates are per-actor cooldown, mana, range, LOS and (for
+   the Beam line attack) rough cardinal alignment.
+3. **Engage** — close to `castRange` with A* (`EntityAI.findNextStepAStar`).
+4. **Follow** — trail the active member at `followDistance`.
+
+Movement never enters an occupied tile (monster, ally or active member) and
+always uses `gridMap.isWalkable`; `blockersFor` passes integer-keyed occupancy
+to the shared A*.
+
+Ability dispatch is a table keyed by the catalog `actionKey`
+(`wand_spark`, `energy_beam`, `bow_shot`, `power_shot`, `slash`, `cleave`,
+`holy_strike`, `healing_prayer`). An unknown/unsupported `actionKey` is skipped,
+never guessed. Auto bow casts pass `{ freeAmmo: true }` to
+`executeBowShot`/`executePowerShot` so allies cast their kit without draining the
+party's finite arrow stock; the manual active member never sets it.
+
+Events are `{ member, type: 'ability' | 'move' | 'idle', abilityId?, actionKey?,
+target?, result? }`. `game-loop.js` turns them into animation, sound, combat log,
+floating text and loot by routing single-target results through the existing
+`handleCombatResult`, so ally kills share the party's XP/loot.
+
+### 8.2 Loop, render, HUD
+
+- `game-loop.updatePartyAllies(deltaSec)` ticks each ally's cooldowns, shield,
+  fortify, status DoTs and passive recovery before running `PartyAI.updateAllies`.
+- Monster AI now targets the nearest living party member:
+  `EntityAI.updateMonsters(monsters, player, gridMap, dt, targets)`;
+  `EntityAI.selectTarget(monster, targets)` is faction-gated and each result
+  carries `target`, so the loop applies damage/status/animation to the actor
+  actually struck. A one-target call (legacy) behaves exactly as before.
+- `canvas-renderer.render(..., party)` draws every living non-active member with
+  the shared `SpriteRenderer.drawPlayer` pipeline plus HP/MP bars.
+- `hud-manager.renderPartyPanel` reads the active member's live HP/MP from the
+  top-level player (no per-tick JSON capture).
+- `floor-controller.layoutPartyOnFloor()` revives downed allies between floors
+  and spreads any member sharing the active member's tile to a free adjacent
+  square.
+
+T0 coverage: `html/tests/liv13-party-ai.test.mjs`.

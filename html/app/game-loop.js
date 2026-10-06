@@ -10,6 +10,7 @@ import {
   CombatSystem,
   EconomySystem,
   ChestSystem,
+  PartyAI,
 } from '../engine/index.js';
 import {
   firstMonsterOnSegment,
@@ -267,17 +268,25 @@ export const gameLoopMethods = {
     // 3. Update lighting
     LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
 
-    // 4. Update monster AI
+    // 4. Update monster AI (targets the nearest living party member)
     const positionsBefore = this.monsters.map(m => ({ m, x: m.x, y: m.y }));
-    const aiResults = EntityAI.updateMonsters(this.monsters, this.player, this.gridMap, deltaSec);
+    const aiResults = EntityAI.updateMonsters(
+      this.monsters,
+      this.player,
+      this.gridMap,
+      deltaSec,
+      PartyAI.livingAllies(this.player)
+    );
     for (const res of aiResults) {
+      const hitTarget = res.target || this.player;
+      const isActiveTarget = hitTarget === this.player;
       if (res.message) this.logCombat(res.message, 'combat');
       if (res.projectiles) this.projectiles.push(...res.projectiles);
-      // Catalog `onHit` status effects land on the player.
+      // Catalog `onHit` status effects land on whichever member was struck.
       if (res.statusEffects) {
         for (const eff of res.statusEffects) {
-          if (CombatSystem.applyPlayerStatus(this.player, eff)) {
-            this.addFloatingText(eff.status.toUpperCase(), this.player.x, this.player.y, '#f97316');
+          if (CombatSystem.applyPlayerStatus(hitTarget, eff)) {
+            this.addFloatingText(eff.status.toUpperCase(), hitTarget.x, hitTarget.y, '#f97316');
           }
         }
       }
@@ -290,22 +299,22 @@ export const gameLoopMethods = {
       }
       if (res.deflected) {
         soundFX.play('lightSpell');
-        this.addFloatingText('DEFLECTED!', this.player.x, this.player.y, '#38bdf8');
+        this.addFloatingText('DEFLECTED!', hitTarget.x, hitTarget.y, '#38bdf8');
       } else if (res.dodged) {
         soundFX.play('monsterAttack');
-        this.addFloatingText('DODGE!', this.player.x, this.player.y, '#22c55e');
+        this.addFloatingText('DODGE!', hitTarget.x, hitTarget.y, '#22c55e');
       } else if (res.damageToPlayer && res.damageToPlayer > 0) {
         soundFX.play('monsterAttack');
-        soundFX.play('playerHurt');
-        setAnimState(this.player, 'hit', this.nowMs());
-        this.addFloatingText(`-${res.damageToPlayer}`, this.player.x, this.player.y, '#ef4444');
-        if (res.absorbed && res.absorbed > 0) {
+        if (isActiveTarget) soundFX.play('playerHurt');
+        setAnimState(hitTarget, 'hit', this.nowMs());
+        this.addFloatingText(`-${res.damageToPlayer}`, hitTarget.x, hitTarget.y, '#ef4444');
+        if (res.absorbed && res.absorbed > 0 && isActiveTarget) {
           this.logCombat(`Your holy shield absorbed ${res.absorbed} of the blow.`, 'spell');
         }
       } else if (res.absorbed && res.absorbed > 0) {
         // Hit fully absorbed by the bubble — no HP lost.
         soundFX.play('monsterAttack');
-        this.addFloatingText(`shield -${res.absorbed}`, this.player.x, this.player.y, '#38bdf8');
+        this.addFloatingText(`shield -${res.absorbed}`, hitTarget.x, hitTarget.y, '#38bdf8');
       }
     }
     // Walk cycles advance once per tile step (event-driven, not on a timer).
@@ -314,6 +323,11 @@ export const gameLoopMethods = {
       if (m.x !== x || m.y !== y) setAnimState(m, 'walk');
       else if (m.anim && m.anim.state === 'walk') setAnimState(m, 'idle');
     }
+
+    // 4b. Party auto-AI (LIV-13/WS4): non-active members act after the player
+    //     and monsters. Engine decides + applies movement/abilities; the app
+    //     turns the returned events into sounds, log, float text and loot.
+    this.updatePartyAllies(deltaSec);
 
     // 5. Defeat check
     if (this.player.hp <= 0 && !this.isGameOver) {
@@ -334,6 +348,118 @@ export const gameLoopMethods = {
     // 7. Update HUD
     this.updateHUD();
   },
+  /**
+   * Runs a full tick for every auto member and applies each returned intent:
+   * per-member timers/status first, then the engine's `PartyAI.updateAllies`.
+   * Empty party (legacy single-character save) is a no-op.
+   */
+  updatePartyAllies(deltaSec) {
+    const members = PartyAI.inactiveMembers(this.player);
+    if (!members || members.length === 0) return;
+
+    const regen = EconomySystem.passiveRecovery();
+    for (const member of members) {
+      CombatSystem.tickActorTimers(member, deltaSec);
+
+      if (member.shieldDurationSec > 0) {
+        member.shieldDurationSec = Math.max(0, member.shieldDurationSec - deltaSec);
+        if (member.shieldDurationSec <= 0) member.shieldAbsorb = 0;
+      }
+      if (member.fortifyTimer > 0) {
+        member.fortifyTimer = Math.max(0, member.fortifyTimer - deltaSec);
+        if (member.fortifyTimer <= 0) member.fortifyActive = false;
+      }
+
+      const status = CombatSystem.tickPlayerStatusEffects(member, deltaSec);
+      if (status.damage > 0) {
+        this.addFloatingText(`-${status.damage}`, member.x, member.y, '#f97316');
+        if (member.hp <= 0) this.addFloatingText('DOWN!', member.x, member.y, '#ef4444');
+      }
+
+      member._regenAccumulator = (member._regenAccumulator || 0) + deltaSec;
+      if (member._regenAccumulator >= regen.intervalSec) {
+        member._regenAccumulator -= regen.intervalSec;
+        EconomySystem.applyPassiveRecovery(member);
+      }
+    }
+
+    const events = PartyAI.updateAllies(this.player, {
+      gridMap: this.gridMap,
+      monsters: this.monsters,
+      deltaSec,
+    });
+    for (const ev of events) this.applyPartyEvent(ev);
+  },
+  /** Turns one party-AI intent into animation, sound, log, float text and loot. */
+  applyPartyEvent(ev) {
+    if (!ev || !ev.member) return;
+    const member = ev.member;
+    if (ev.type === 'move') {
+      soundFX.play('footstep');
+      setAnimState(member, 'walk');
+      return;
+    }
+    if (ev.type === 'idle') {
+      if (member.anim && member.anim.state === 'walk') setAnimState(member, 'idle');
+      return;
+    }
+    if (ev.type === 'ability') {
+      setAnimState(member, 'attack', this.nowMs());
+      this.resolvePartyAbilityResult(ev);
+    }
+  },
+  /** Resolves an auto-ally ability through the shared combat-result pipeline. */
+  resolvePartyAbilityResult(ev) {
+    const res = ev.result;
+    if (!res || !res.success) return;
+    const member = ev.member;
+    this.playPartyAbilitySound(ev.actionKey);
+
+    // Multi-target (Cleave): per-hit float text + shared defeat resolution.
+    if (Array.isArray(res.hits) && res.hits.length > 0) {
+      if (res.message) this.logCombat(res.message, 'combat');
+      if (res.projectiles) this.projectiles.push(...res.projectiles);
+      for (const hit of res.hits) {
+        this.addFloatingText(`-${hit.damage}`, hit.monster.x, hit.monster.y, '#ffdd44');
+        if (hit.defeated && hit.monster.id) {
+          this.handleCombatResult({
+            success: true,
+            defeatedMonsterId: hit.monster.id,
+            droppedLoot: CombatSystem.generateMonsterLoot(hit.monster),
+          }, hit.monster.x, hit.monster.y);
+        }
+      }
+      return;
+    }
+
+    // Ally heal: float the restored HP on the healed member.
+    if (res.healAmount > 0 || res.hpRestored > 0) {
+      if (res.message) this.logCombat(res.message, 'spell');
+      const hx = res.targetX ?? member.x;
+      const hy = res.targetY ?? member.y;
+      if (res.healAmount > 0) this.addFloatingText(`+${res.healAmount} HP`, hx, hy, '#22c55e');
+      if (res.hpRestored > 0) this.addFloatingText(`+${res.hpRestored} HP`, hx, hy, '#22c55e');
+      return;
+    }
+
+    // Single-target / projectile abilities share the player combat-result path.
+    this.handleCombatResult(res, ev.target ? ev.target.x : member.x, ev.target ? ev.target.y : member.y);
+  },
+  /** Per-action sound cue for an auto-ally cast (`actionKey` from the catalog). */
+  playPartyAbilitySound(actionKey) {
+    const cues = {
+      wand_spark: 'wandSpark',
+      energy_beam: 'energyBeam',
+      bow_shot: 'bowShot',
+      power_shot: 'powerShot',
+      slash: 'hit',
+      cleave: 'hit',
+      holy_strike: 'hit',
+      healing_prayer: 'lightSpell',
+    };
+    const cue = cues[actionKey];
+    if (cue) soundFX.play(cue);
+  },
   render() {
     this.renderer.render(
       this.gridMap,
@@ -346,7 +472,8 @@ export const gameLoopMethods = {
       this.particles,
       this.deathEffects,
       this.chests,
-      this.props
+      this.props,
+      this.player.party
     );
   },
   processMovementInput() {
@@ -393,7 +520,10 @@ export const gameLoopMethods = {
 
       if (this.gridMap.isWalkable(targetX, targetY)) {
         const monsterAtTarget = this.monsters.find(m => m.x === targetX && m.y === targetY && m.hp > 0);
-        if (monsterAtTarget) {
+        const allyAtTarget = PartyAI.partyMemberAt(this.player, targetX, targetY);
+        if (allyAtTarget) {
+          // An ally holds that tile; the active member cannot stack on the party.
+        } else if (monsterAtTarget) {
           this.selectedMonsterId = monsterAtTarget.id;
           this.logCombat(`Target locked on ${monsterAtTarget.name} (${monsterAtTarget.hp}/${monsterAtTarget.max_hp} HP).`, 'system');
         } else {
@@ -753,6 +883,11 @@ export const gameLoopMethods = {
 
     // Presentation-only animation clocks (idle/walk are event-driven).
     if (this.player) advanceAnim(this.player, dtMs);
+    if (this.player && Array.isArray(this.player.party)) {
+      for (const member of this.player.party) {
+        if (member && member.memberId !== this.player.activeMemberId) advanceAnim(member, dtMs);
+      }
+    }
     if (this.monsters) {
       for (const m of this.monsters) advanceAnim(m, dtMs);
     }

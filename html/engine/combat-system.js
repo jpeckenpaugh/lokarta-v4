@@ -548,7 +548,7 @@ export class CombatSystem {
   /**
    * Executes Archer Bow Shot ability.
    */
-  static executeBowShot(player, target, gridMap, item = null) {
+  static executeBowShot(player, target, gridMap, item = null, opts = {}) {
     if (player.cooldowns?.bow_shot > 0) {
       return { success: false, message: 'Bow Shot is on cooldown.' };
     }
@@ -567,7 +567,9 @@ export class CombatSystem {
       return { success: false, message: 'Line of sight to target is blocked.' };
     }
 
-    if (!CombatSystem.consumeArrow(player)) {
+    // Auto-mode allies (`opts.freeAmmo`) cast their kit without draining the
+    // party's finite arrow stock; the manual active member never sets this.
+    if (!opts.freeAmmo && !CombatSystem.consumeArrow(player)) {
       return { success: false, message: 'Out of arrows! Cannot fire bow.' };
     }
 
@@ -641,7 +643,7 @@ export class CombatSystem {
   /**
    * Executes Archer Power Shot ability.
    */
-  static executePowerShot(player, target, gridMap, item = null) {
+  static executePowerShot(player, target, gridMap, item = null, opts = {}) {
     if (player.cooldowns?.power_shot > 0) {
       return { success: false, message: 'Power Shot is on cooldown.' };
     }
@@ -660,7 +662,9 @@ export class CombatSystem {
       return { success: false, message: 'Line of sight to target is blocked.' };
     }
 
-    if (!CombatSystem.consumeArrow(player)) {
+    // Auto-mode allies (`opts.freeAmmo`) cast their kit without draining the
+    // party's finite arrow stock; the manual active member never sets this.
+    if (!opts.freeAmmo && !CombatSystem.consumeArrow(player)) {
       return { success: false, message: 'Out of arrows! Cannot fire Power Shot.' };
     }
 
