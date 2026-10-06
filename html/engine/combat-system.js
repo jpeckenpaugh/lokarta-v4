@@ -1002,6 +1002,111 @@ export class CombatSystem {
   }
 
   /**
+   * Chooses the most-injured friendly actor within `radius` tiles of `actor`
+   * that does not already carry an active shield, always including the actor
+   * itself. Allies are gated by `isFriendly` (never ward an enemy) and
+   * de-duplicated against the active mirror. When `hpBelowFraction > 0` only
+   * actors at or below that HP fraction qualify, so a full-HP party is never
+   * warded. Returns null when nobody qualifies — the anti-spam gate that stops
+   * shield recasts while a bubble is already up.
+   *
+   * @param {object} actor The casting ally.
+   * @param {object[]} [allies] Party members to consider.
+   * @param {number} [radius] Tiles; <= 0 disables the ally range gate.
+   * @param {number} [hpBelowFraction] 0-1 HP ceiling; <= 0 disables the gate.
+   * @returns {object|null} the actor, an ally, or null.
+   */
+  static selectShieldTarget(actor, allies = [], radius = 0, hpBelowFraction = 0) {
+    if (!actor) return null;
+    let best = null;
+    let bestHpFraction = Number.POSITIVE_INFINITY;
+
+    const consider = (candidate, isSelf) => {
+      if (!candidate || typeof candidate.hp !== 'number' || typeof candidate.max_hp !== 'number') return;
+      if (candidate.max_hp <= 0 || candidate.hp <= 0) return;
+      // Already warded: never re-arm (anti-spam) until the bubble drops.
+      if ((candidate.shieldAbsorb || 0) > 0 && (candidate.shieldDurationSec || 0) > 0) return;
+      if (!isSelf) {
+        if (!CombatSystem.isFriendly(actor, candidate)) return;
+        if (radius > 0 && Math.hypot((candidate.x || 0) - (actor.x || 0), (candidate.y || 0) - (actor.y || 0)) > radius) return;
+      }
+      const fraction = candidate.hp / candidate.max_hp;
+      if (hpBelowFraction > 0 && fraction > hpBelowFraction) return;
+      if (fraction < bestHpFraction) {
+        bestHpFraction = fraction;
+        best = candidate;
+      }
+    };
+
+    consider(actor, true);
+    if (Array.isArray(allies)) {
+      for (const ally of allies) {
+        if (!ally || CombatSystem.sameActor(actor, ally)) continue;
+        consider(ally, false);
+      }
+    }
+    return best;
+  }
+
+  /**
+   * Executes the party auto-AI's ally-targeted "force shield" support ability
+   * (LIV-25). The catalog `spec` declares `manaCost`, `cooldownSec`,
+   * `shieldAbsorb` and `shieldDurationSec`; the cooldown is keyed on the
+   * declared `actionKey`. On success it arms/refreshes the shared bubble seam
+   * (`shieldAbsorb`/`shieldDurationSec`) on the chosen friendly `target`
+   * without downgrading a stronger existing bubble (`Math.max`), so the exact
+   * same damage intercept in `applyIncomingDamage` and bubble decay in the
+   * party/main tick apply. Only friendly actors can be shielded.
+   *
+   * @param {object} actor The casting ally.
+   * @param {object} target The friendly actor to ward (usually `selectShieldTarget`).
+   * @param {object} [spec] The resolved `abilities.json` entry.
+   */
+  static executeForceShield(actor, target, spec = {}) {
+    if (!actor || !target) {
+      return { success: false, message: 'No ally to shield.' };
+    }
+    if (!CombatSystem.sameActor(actor, target) && !CombatSystem.isFriendly(actor, target)) {
+      return { success: false, message: 'Force Shield only protects allies.' };
+    }
+
+    const actionKey = spec.actionKey || 'force_shield';
+    if (actor.cooldowns?.[actionKey] > 0) {
+      return { success: false, message: 'Force Shield is on cooldown.' };
+    }
+
+    const manaCost = Number(spec.manaCost) || 0;
+    if (Number(actor.mana || 0) < manaCost) {
+      return { success: false, message: 'Not enough Mana for Force Shield.' };
+    }
+
+    const absorb = Number(spec.shieldAbsorb) || 0;
+    const duration = Number(spec.shieldDurationSec) || Number(spec.durationSec) || 0;
+    if (absorb <= 0 || duration <= 0) {
+      return { success: false, message: 'Force Shield has no ward to raise.' };
+    }
+
+    actor.mana -= manaCost;
+    if (!actor.cooldowns) actor.cooldowns = {};
+    actor.cooldowns[actionKey] = Number(spec.cooldownSec) || 0;
+    target.shieldAbsorb = Math.max(target.shieldAbsorb || 0, absorb);
+    target.shieldDurationSec = Math.max(target.shieldDurationSec || 0, duration);
+
+    const shieldedAlly = !CombatSystem.sameActor(actor, target);
+    return {
+      success: true,
+      message: `Force Shield raised! ${shieldedAlly ? `${target.name || target.vocation || 'An ally'} gains` : 'You gain'} a ${absorb}-damage ward for ${duration}s (${manaCost} MP).`,
+      shieldAbsorb: absorb,
+      shieldDurationSec: duration,
+      manaCost,
+      shieldedAlly,
+      targetId: target.memberId || target.id || null,
+      targetX: target.x,
+      targetY: target.y,
+    };
+  }
+
+  /**
    * Executes Healing Prayer for Paladin. Ally-aware (LIV-11): with a party, the
    * prayer lands on the most-injured friendly actor within the catalog
    * `paladin_heal.healRadius` (`targetsAllies`), falling back to self. A

@@ -155,5 +155,20 @@
     "targetsAllies": true,
     "soundId": "holy_chime",
     "actionKey": "healing_prayer"
+  },
+  "holy_shield": {
+    "id": "holy_shield",
+    "name": "Aegis Holy Shield",
+    "vocation": "paladin",
+    "type": "shield",
+    "shieldAbsorb": 25,
+    "shieldDurationSec": 12,
+    "manaCost": 18,
+    "cooldownSec": 12.0,
+    "range": 6,
+    "healRadius": 6,
+    "targetsAllies": true,
+    "soundId": "holy_chime",
+    "actionKey": "force_shield"
   }
 }

@@ -224,7 +224,7 @@ test('JSON Data Catalogs', async (t) => {
   });
 
   await t.test('loads and validates abilities.json catalog', () => {
-    assert.equal(Object.keys(ABILITIES_CATALOG).length, 9);
+    assert.equal(Object.keys(ABILITIES_CATALOG).length, 10);
     assert.ok(ABILITIES_CATALOG.magician_spark);
     assert.equal(ABILITIES_CATALOG.magician_spark.vocation, 'magician');
     assert.ok(ABILITIES_CATALOG.magician_spark.visual, 'magician_spark must specify visual config');
@@ -232,6 +232,14 @@ test('JSON Data Catalogs', async (t) => {
     assert.ok(ABILITIES_CATALOG.magician_spark.visual.burstParticleCount > 0);
     assert.ok(ABILITIES_CATALOG.paladin_heal);
     assert.equal(ABILITIES_CATALOG.paladin_heal.vocation, 'paladin');
+    // LIV-25: the ally-castable force shield is a first-class support ability.
+    assert.ok(ABILITIES_CATALOG.holy_shield);
+    assert.equal(ABILITIES_CATALOG.holy_shield.vocation, 'paladin');
+    assert.equal(ABILITIES_CATALOG.holy_shield.type, 'shield');
+    assert.equal(ABILITIES_CATALOG.holy_shield.actionKey, 'force_shield');
+    assert.equal(ABILITIES_CATALOG.holy_shield.targetsAllies, true);
+    assert.ok(ABILITIES_CATALOG.holy_shield.shieldAbsorb > 0);
+    assert.ok(ABILITIES_CATALOG.holy_shield.shieldDurationSec > 0);
   });
 
   await t.test('loads and validates biomes.json catalog (launch tiers + tower tierIds)', () => {

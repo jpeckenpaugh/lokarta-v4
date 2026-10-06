@@ -468,6 +468,15 @@ export const gameLoopMethods = {
       return;
     }
 
+    // Ally shield (LIV-25): float the ward on the shielded member.
+    if (res.shieldAbsorb > 0) {
+      if (res.message) this.logCombat(res.message, 'spell');
+      const sx = res.targetX ?? member.x;
+      const sy = res.targetY ?? member.y;
+      this.addFloatingText(`shield +${res.shieldAbsorb}`, sx, sy, '#38bdf8');
+      return;
+    }
+
     // Single-target / projectile abilities share the player combat-result path.
     this.handleCombatResult(res, ev.target ? ev.target.x : member.x, ev.target ? ev.target.y : member.y);
   },
@@ -482,6 +491,7 @@ export const gameLoopMethods = {
       cleave: 'hit',
       holy_strike: 'hit',
       healing_prayer: 'lightSpell',
+      force_shield: 'holyChime',
     };
     const cue = cues[actionKey];
     if (cue) soundFX.play(cue);
