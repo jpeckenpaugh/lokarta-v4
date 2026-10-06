@@ -309,6 +309,11 @@ floating text and loot by routing single-target results through the existing
   actually struck. A one-target call (legacy) behaves exactly as before.
 - `canvas-renderer.render(..., party)` draws every living non-active member with
   the shared `SpriteRenderer.drawPlayer` pipeline plus HP/MP bars.
+- Healing fountains (`game-loop.applySpringRegenToParty`) restore the **whole
+  living party** while the active member is adjacent, gated by
+  `economy.springs.healsParty` (default true); `healsParty: false` keeps the
+  legacy single-actor rule. Each member is capped at its own max and downed
+  members are skipped, so a fountain is not a revive.
 - `hud-manager.renderPartyPanel` reads the active member's live HP/MP from the
   top-level player (no per-tick JSON capture).
 - `floor-controller.layoutPartyOnFloor()` revives downed allies between floors

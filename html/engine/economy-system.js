@@ -127,6 +127,16 @@ export class EconomySystem {
   }
 
   /**
+   * True when an adjacent healing spring restores the whole party, not only the
+   * member standing beside it. Catalog-driven via `economy.springs.healsParty`;
+   * absent/true heals the party, explicit `false` keeps the legacy solo rule.
+   */
+  static springHealsParty() {
+    const s = cfg('springs', DEFAULTS.springs);
+    return s.healsParty !== false;
+  }
+
+  /**
    * Applies one second of adjacent-spring regeneration.
    * Restores up to `hpPerSec` / `mpPerSec`, never over max. Mutates the player
    * and returns the amount actually restored `{ hp, mp }`.

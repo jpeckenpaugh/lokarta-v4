@@ -18,7 +18,8 @@
     "mpPerSec": 5,
     "roomsPerFloor": 1,
     "rooms": "stairRoom",
-    "description": "Springs are impassable fountains; standing adjacent restores +5 HP and +5 MP per second, capped at max."
+    "healsParty": true,
+    "description": "Springs are impassable fountains; while a member stands adjacent, the whole party restores +5 HP and +5 MP per second, capped at max (healsParty false limits it to the adjacent member)."
   },
   "temple": {
     "healCostPerHp": 1,

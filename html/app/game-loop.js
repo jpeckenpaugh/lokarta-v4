@@ -180,16 +180,15 @@ export const gameLoopMethods = {
       if (restored.hp > 0 || restored.mp > 0) this.updateHUD();
     }
 
-    // Healing spring: while the player stands on a square
-    // adjacent to a fountain, restore +5 HP and +5 MP each second (capped).
+    // Healing spring: while the active member stands on a square adjacent to a
+    // fountain, the whole living party (catalog `economy.springs.healsParty`)
+    // restores +5 HP and +5 MP each second, capped at max.
     if (this.findAdjacentSpring()) {
       this.springRegenAccumulator += deltaSec;
       if (this.springRegenAccumulator >= 1) {
         this.springRegenAccumulator -= Math.floor(this.springRegenAccumulator);
-        const springRestored = EconomySystem.applySpringRegen(this.player);
-        if (springRestored.hp > 0) this.addFloatingText(`+${springRestored.hp} HP`, this.player.x, this.player.y, '#22c55e');
-        if (springRestored.mp > 0) this.addFloatingText(`+${springRestored.mp} MP`, this.player.x, this.player.y, '#3b82f6');
-        if (springRestored.hp > 0 || springRestored.mp > 0) {
+        const healed = this.applySpringRegenToParty();
+        if (healed > 0) {
           soundFX.play('holyChime');
           this.updateHUD();
         }
@@ -347,6 +346,31 @@ export const gameLoopMethods = {
 
     // 7. Update HUD
     this.updateHUD();
+  },
+  /**
+   * Applies one second of healing-spring regen and floats the restored amounts.
+   * Catalog rule `economy.springs.healsParty` (default true) restores every
+   * living party member; `healsParty: false` keeps the legacy single-actor rule.
+   * @returns {number} how many members actually recovered HP or MP
+   */
+  applySpringRegenToParty() {
+    if (!EconomySystem.springHealsParty()) {
+      return this.applySpringRegenToMember(this.player) ? 1 : 0;
+    }
+    const allies = PartyAI.livingAllies(this.player);
+    let healed = 0;
+    for (let i = 0; i < allies.length; i++) {
+      if (this.applySpringRegenToMember(allies[i])) healed++;
+    }
+    return healed;
+  },
+  /** Restores one member and floats its recovered HP/MP. Returns true when healed. */
+  applySpringRegenToMember(member) {
+    if (!member) return false;
+    const restored = EconomySystem.applySpringRegen(member);
+    if (restored.hp > 0) this.addFloatingText(`+${restored.hp} HP`, member.x, member.y, '#22c55e');
+    if (restored.mp > 0) this.addFloatingText(`+${restored.mp} MP`, member.x, member.y, '#3b82f6');
+    return restored.hp > 0 || restored.mp > 0;
   },
   /**
    * Runs a full tick for every auto member and applies each returned intent:

@@ -26,9 +26,11 @@ import {
   DoorSystem,
   TILE_TYPES,
   createPlayer,
+  createPartyPlayer,
+  createPartyMember,
 } from '../engine/index.js';
 import { generateFloor } from '../services/floor-generator.js';
-import { ITEMS_CATALOG, UI_CATALOG, CHESTS_CATALOG } from '../data/index.js';
+import { ITEMS_CATALOG, UI_CATALOG, CHESTS_CATALOG, ECONOMY_CATALOG } from '../data/index.js';
 import { LokartaApp } from '../app/app-controller.js';
 import { SpriteRenderer } from '../app/sprite-renderer.js';
 import { soundFX } from '../audio/index.js';
@@ -335,6 +337,54 @@ describe('Healing fountain', () => {
     p.mana = 10;
     const regen = EconomySystem.applySpringRegen(p);
     assert.deepEqual(regen, { hp: 5, mp: 5 });
+  });
+});
+
+describe('Fountain heals the whole party (LIV-19)', () => {
+  function makeSpringPartyApp() {
+    const app = Object.create(LokartaApp.prototype);
+    app.player = createPartyPlayer('magician');
+    const fighter = createPartyMember('fighter');
+    const archer = createPartyMember('archer');
+    app.player.party.push(fighter, archer);
+    for (const member of app.player.party) {
+      member.hp = 10;
+      member.mana = 10;
+      member.x = 1;
+      member.y = 1;
+    }
+    app.player.hp = 10;
+    app.player.mana = 10;
+    app.addFloatingText = () => {};
+    app.updateHUD = () => {};
+    return { app, fighter, archer };
+  }
+
+  it('heals the whole party by catalog rule, not just the active member', () => {
+    assert.equal(ECONOMY_CATALOG.springs.healsParty, true, 'catalog enables party-wide springs');
+    assert.equal(EconomySystem.springHealsParty(), true);
+
+    const { app, fighter, archer } = makeSpringPartyApp();
+    const healed = app.applySpringRegenToParty();
+    assert.equal(healed, 3, 'active member plus both allies recover');
+    assert.equal(app.player.hp, 15, 'active member heals');
+    assert.equal(fighter.hp, 15, 'ally 1 heals');
+    assert.equal(archer.hp, 15, 'ally 2 heals');
+    assert.equal(app.player.mana, 15);
+    assert.equal(fighter.mana, 15);
+    assert.equal(archer.mana, 15);
+  });
+
+  it('caps each member at its own max and skips downed members', () => {
+    const { app, fighter, archer } = makeSpringPartyApp();
+    fighter.max_hp = 12;
+    fighter.hp = 11; // only +1 HP is missing
+    archer.hp = 0; // downed allies are not revived by a fountain
+    const healed = app.applySpringRegenToParty();
+    assert.equal(healed, 2, 'active member + injured ally; downed ally skipped');
+    assert.equal(fighter.hp, 12, 'never overheals past max_hp');
+    assert.equal(archer.hp, 0, 'downed member stays down');
+    assert.equal(app.player.hp, 15);
   });
 });
 
