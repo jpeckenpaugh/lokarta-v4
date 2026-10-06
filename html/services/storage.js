@@ -10,8 +10,10 @@ import {
   SAVE_FORMAT_VERSION,
   saveFormatVersion,
   normalizeSlotToTower,
+  normalizeSlotPartyProgress,
   migratePlayerToTower,
 } from './save-slots.js';
+import { migratePlayerParty } from '../engine/party.js';
 import { LOKARTA_DATABASE_NAMES } from './build-version.js';
 
 /** Single source of truth is the flush guard's database-name list. */
@@ -35,6 +37,15 @@ export const MIGRATION_GUARD_KEY = 'migration_slot_v2';
  * dropped so the generator rebuilds them with the current template.
  */
 export const TOWER_MIGRATION_GUARD_KEY = 'migration_tower_v3';
+
+/**
+ * One-time guard for the party migration (LIV-9). When absent, every persisted
+ * character is moved onto the party data model: a legacy single-character save
+ * is wrapped into a one-member party and `towerProgress` is initialized with
+ * only the first tower unlocked. Non-destructive: progression, inventory, keys,
+ * and spring charges are preserved and floor caches are left alone.
+ */
+export const PARTY_MIGRATION_GUARD_KEY = 'migration_party_v4';
 
 let dbInstance = null;
 
@@ -331,8 +342,9 @@ export async function readSlots() {
   for (const record of records || []) {
     if (record && typeof record.slotIndex === 'number' && record.slotIndex >= 1) {
       // Clamp any pre-tower save onto the 5-level tower so it renders and loads
-      // without the caller having to special-case a floor beyond the max.
-      byIndex.set(record.slotIndex, normalizeSlotToTower(record));
+      // without the caller having to special-case a floor beyond the max, and
+      // fill campaign progress for records written before the party model.
+      byIndex.set(record.slotIndex, normalizeSlotPartyProgress(normalizeSlotToTower(record)));
     }
   }
   const slots = [];
@@ -464,4 +476,63 @@ export async function migrateTowerSave() {
   });
 
   return { floorsReset, recordsNormalized, recovered: floorsReset > 0 };
+}
+
+/**
+ * One-time migration onto the party data model (LIV-9 WS1). Wraps every legacy
+ * single-character save into a one-member party, initializes `towerProgress`
+ * with only the first tower unlocked, and fills party progress onto slot
+ * metadata. Non-destructive: progression, inventory, level keys, and spring
+ * charges are preserved and no floor cache is dropped.
+ *
+ * Idempotent via `PARTY_MIGRATION_GUARD_KEY`: reruns are no-ops. If an older run
+ * wrote party records but not the guard, records are already normalized so the
+ * migration re-runs as a no-op and only stamps the guard.
+ *
+ * @returns {Promise<{ recordsMigrated: number, recovered: boolean }>}
+ */
+export async function migratePartySave() {
+  await openStorage();
+
+  const guard = await read(STORES.GAME_SETTINGS, PARTY_MIGRATION_GUARD_KEY);
+  if (guard && guard.done) {
+    return { recordsMigrated: 0, recovered: false };
+  }
+
+  let recordsMigrated = 0;
+  const progressByCharacterId = new Map();
+  const characters = await getAll(STORES.CHARACTERS);
+  for (const character of characters || []) {
+    const migrated = migratePlayerParty(character);
+    if (migrated !== character) {
+      await put(STORES.CHARACTERS, migrated);
+      recordsMigrated += 1;
+    }
+    if (migrated && migrated.id) {
+      progressByCharacterId.set(migrated.id, migrated.towerProgress);
+    }
+  }
+
+  const slots = await getAll(STORES.SAVE_SLOTS);
+  for (const slot of slots || []) {
+    if (!slot || typeof slot !== 'object') continue;
+    let next = normalizeSlotPartyProgress(slot);
+    const characterProgress = slot.characterId ? progressByCharacterId.get(slot.characterId) : null;
+    if (characterProgress && next.towerProgress !== characterProgress) {
+      next = { ...next, towerProgress: characterProgress };
+    }
+    if (next !== slot) {
+      await put(STORES.SAVE_SLOTS, next);
+      recordsMigrated += 1;
+    }
+  }
+
+  await put(STORES.GAME_SETTINGS, {
+    key: PARTY_MIGRATION_GUARD_KEY,
+    done: true,
+    doneAt: now(),
+    recordsMigrated,
+  });
+
+  return { recordsMigrated, recovered: false };
 }

@@ -14,10 +14,12 @@ import {
   readSlots,
   migrateLegacySave,
   migrateTowerSave,
+  migratePartySave,
   now,
   STORES,
   MIGRATION_GUARD_KEY,
   TOWER_MIGRATION_GUARD_KEY,
+  PARTY_MIGRATION_GUARD_KEY,
 } from '../services/storage.js';
 import {
   slotId,
@@ -36,7 +38,12 @@ import {
   SAVE_SLOT_COUNT,
 } from '../services/save-slots.js';
 import { generateFloor, resolveArrivalCoords, FLOOR_TEMPLATE_VERSION } from '../services/floor-generator.js';
-import { createPlayer } from '../engine/index.js';
+import {
+  createPlayer,
+  migratePlayerParty,
+  captureActiveMember,
+  normalizeTowerProgress,
+} from '../engine/index.js';
 import { DEFAULT_TOWER_ID, getTowerDefinition } from '../data/index.js';
 
 const OPTIONS_KEY = 'options';
@@ -153,7 +160,9 @@ function makeSlotPlayer(vocation, slotIndex) {
   player.createdAt = timestamp;
   player.updatedAt = timestamp;
   player.lastPlayedAt = timestamp;
-  return player;
+  // Every save is a party save: one member at character creation, with only the
+  // first tower unlocked. Capturing the active member keeps `party` in sync.
+  return migratePlayerParty(player);
 }
 
 /**
@@ -197,6 +206,15 @@ async function handleBootstrap() {
     await migrateTowerSave();
   } catch (err) {
     console.warn('game-worker: tower save migration failed; saves will clamp on load.', err);
+  }
+
+  // One-time party migration (LIV-9): wrap legacy single-character saves into a
+  // one-member party and initialize towerProgress. Runs after the tower
+  // migration so a freshly normalized save is also party-migrated.
+  try {
+    await migratePartySave();
+  } catch (err) {
+    console.warn('game-worker: party save migration failed; saves will party-migrate on load.', err);
   }
 
   const options = await readOptionsRecord();
@@ -243,6 +261,7 @@ async function handleCreateSlot(payload = {}) {
   }
   player.current_floor = 1;
   player.floorEntry = snapshotFloorEntry(player);
+  captureActiveMember(player);
 
   await put(STORES.CHARACTERS, player);
   await put(STORES.SLOT_FLOORS, floor);
@@ -277,14 +296,14 @@ async function handleSelectTower(payload = {}) {
     throw new Error(`Could not load Slot ${slotIndex}. Try again.`);
   }
 
-  const player = {
+  const player = migratePlayerParty({
     ...stored,
     towerId,
     current_floor: 1,
     levelKeys: {},
     springCharges: {},
     saveVersion: SAVE_FORMAT_VERSION,
-  };
+  });
   const floor = generateFloor(1, null, towerId);
   floor.slotIndex = slotIndex;
   const start = floor.spawn_coords || floor.entrance;
@@ -298,6 +317,7 @@ async function handleSelectTower(payload = {}) {
   const timestamp = now();
   player.updatedAt = timestamp;
   player.lastPlayedAt = timestamp;
+  captureActiveMember(player);
 
   await put(STORES.CHARACTERS, player);
   await put(STORES.SLOT_FLOORS, floor);
@@ -330,11 +350,11 @@ async function handleLoadSlot(payload = {}) {
   // the selected tower and stamp the current save format before any floor is
   // generated or cached.
   const towerId = resolveTowerId(stored.towerId || slot.towerId);
-  const player = {
+  const player = migratePlayerParty({
     ...migratePlayerToTower(stored, towerId),
     towerId,
     saveVersion: SAVE_FORMAT_VERSION,
-  };
+  });
 
   const floor = await loadOrGenerateSlotFloor(slotIndex, player.current_floor || 1, towerId);
   // Continuing a save always starts at the level's start position,
@@ -350,6 +370,7 @@ async function handleLoadSlot(payload = {}) {
   const timestamp = now();
   player.updatedAt = timestamp;
   player.lastPlayedAt = timestamp;
+  captureActiveMember(player);
 
   await put(STORES.CHARACTERS, player);
   const updatedSlot = await refreshSlot(slotIndex, player, floor.biome_name, timestamp);
@@ -402,10 +423,11 @@ async function handleRestartFloor(payload = {}) {
   if (!slot || slot.status !== 'occupied' || !slot.characterId) {
     throw new Error(`Slot ${slotIndex} is empty.`);
   }
-  const player = await read(STORES.CHARACTERS, slot.characterId);
+  let player = await read(STORES.CHARACTERS, slot.characterId);
   if (!player) {
     throw new Error(`Could not load Slot ${slotIndex}. Try again.`);
   }
+  player = migratePlayerParty(player);
 
   const towerId = resolveTowerId(player.towerId || slot.towerId);
   player.towerId = towerId;
@@ -430,6 +452,7 @@ async function handleRestartFloor(payload = {}) {
     player.y = player.y ?? floor.spawn_coords.y;
   }
   player.floorEntry = snapshotFloorEntry(player);
+  captureActiveMember(player);
 
   await put(STORES.CHARACTERS, player);
   await refreshSlot(slotIndex, player, floor.biome_name, timestamp);
@@ -452,10 +475,11 @@ async function handleRespawnAfterDeath(payload = {}) {
   if (!slot || slot.status !== 'occupied' || !slot.characterId) {
     throw new Error(`Slot ${slotIndex} is empty.`);
   }
-  const player = await read(STORES.CHARACTERS, slot.characterId);
+  let player = await read(STORES.CHARACTERS, slot.characterId);
   if (!player) {
     throw new Error(`Could not load Slot ${slotIndex}. Try again.`);
   }
+  player = migratePlayerParty(player);
 
   player.towerId = resolveTowerId(player.towerId || slot.towerId);
   const respawnFloor = descendOnDeath(player);
@@ -477,6 +501,7 @@ async function handleRespawnAfterDeath(payload = {}) {
   const timestamp = now();
   player.updatedAt = timestamp;
   player.lastPlayedAt = timestamp;
+  captureActiveMember(player);
 
   await put(STORES.CHARACTERS, player);
   await refreshSlot(slotIndex, player, floor.biome_name, timestamp);
@@ -495,7 +520,7 @@ async function handleNewGame(payload = {}) {
   await openStorage();
 
   const towerId = resolveTowerId(payload.towerId);
-  const player = createPlayer(vocation);
+  const player = migratePlayerParty(createPlayer(vocation));
   player.towerId = towerId;
   const currentTime = now();
   player.createdAt = currentTime;
@@ -508,6 +533,7 @@ async function handleNewGame(payload = {}) {
     player.y = floor.spawn_coords.y;
   }
   player.current_floor = 1;
+  captureActiveMember(player);
 
   await put(STORES.CHARACTERS, player);
   await put(STORES.DUNGEON_FLOORS, floor);
@@ -521,17 +547,22 @@ async function handleNewGame(payload = {}) {
  * @returns {Promise<{ success: boolean, savedAt: string }>}
  */
 async function handleSaveCharacter(payload = {}) {
-  const { player } = payload;
-  if (!player) {
+  const { player: incoming } = payload;
+  if (!incoming) {
     throw new Error('Missing player object in saveCharacter payload.');
   }
 
   await openStorage();
   const savedAt = now();
+  // Guarantee the party model exists even if the main thread sent a legacy
+  // single-character object, then sync the live active state into `party`.
+  const player = migratePlayerParty(incoming);
   player.updatedAt = savedAt;
   // Never persist a floor outside the player's tower, whatever the caller sent.
   player.current_floor = clampTowerFloor(player.current_floor, player.towerId);
+  player.towerProgress = normalizeTowerProgress(player.towerProgress);
   player.saveVersion = SAVE_FORMAT_VERSION;
+  captureActiveMember(player);
 
   await put(STORES.CHARACTERS, player);
 
@@ -577,10 +608,12 @@ async function handleGetFloor(payload = {}) {
  * @returns {Promise<{ player: object, floor: object }>}
  */
 async function handleAdvanceFloor(payload = {}) {
-  const { player, nextFloorNumber } = payload;
+  const { nextFloorNumber } = payload;
+  let player = payload.player;
   if (!player) {
     throw new Error('Missing player object in advanceFloor payload.');
   }
+  player = migratePlayerParty(player);
 
   await openStorage();
 
@@ -615,6 +648,7 @@ async function handleAdvanceFloor(payload = {}) {
   const timestamp = now();
   player.updatedAt = timestamp;
   player.lastPlayedAt = timestamp;
+  captureActiveMember(player);
 
   await put(STORES.CHARACTERS, player);
   if (slotIndex) {
@@ -676,6 +710,7 @@ async function handleResetProgress() {
   await clearStore(STORES.SLOT_FLOORS);
   await deleteRecord(STORES.GAME_SETTINGS, MIGRATION_GUARD_KEY);
   await deleteRecord(STORES.GAME_SETTINGS, TOWER_MIGRATION_GUARD_KEY);
+  await deleteRecord(STORES.GAME_SETTINGS, PARTY_MIGRATION_GUARD_KEY);
   await deleteRecord(STORES.GAME_SETTINGS, LAST_PLAYED_KEY);
 
   return { success: true };

@@ -3,6 +3,7 @@
  */
 
 export * from './config.js';
+export * from './party.js';
 export * from './grid-map.js';
 export * from './lighting-system.js';
 export * from './progression-system.js';

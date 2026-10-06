@@ -7,7 +7,7 @@ import {
   GridMap,
   GestureEngine,
   EconomySystem,
-  createPlayer,
+  createPartyPlayer,
 } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
 import { CanvasRenderer } from './canvas-renderer.js';
@@ -29,7 +29,7 @@ import { createAnimState } from './animation-state.js';
 export class LokartaApp {
   constructor() {
     this.gameClient = new GameClient();
-    this.player = createPlayer('magician');
+    this.player = createPartyPlayer('magician');
     this.gridMap = new GridMap();
     this.monsters = [];
     this.chests = [];

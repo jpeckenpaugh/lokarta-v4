@@ -11,6 +11,7 @@ import {
   DEFAULT_TOWER_ID,
   towerLevelCount,
 } from '../data/index.js';
+import { normalizeTowerProgress } from '../engine/party.js';
 
 /** Number of independent save slots (from the ui.json presentation catalog). */
 export const SAVE_SLOT_COUNT = (UI_CATALOG && UI_CATALOG.saveSlots && UI_CATALOG.saveSlots.count) || 5;
@@ -74,6 +75,7 @@ export function emptySlotRecord(slotIndex) {
     towerId: null,
     playtimeMs: 0,
     floorEntry: null,
+    towerProgress: null,
     createdAt: null,
     updatedAt: null,
     lastPlayedAt: null,
@@ -142,10 +144,25 @@ export function deriveSlotMeta(player, slotIndex, biome = null) {
     towerId: player?.towerId || null,
     playtimeMs: Number(player?.playtimeMs) || 0,
     floorEntry: snapshotFloorEntry(player),
+    towerProgress: normalizeTowerProgress(player?.towerProgress),
     createdAt: player?.createdAt || existing,
     updatedAt: existing,
     lastPlayedAt: player?.lastPlayedAt || existing,
   };
+}
+
+/**
+ * Fills a slot record's campaign progress for legacy records that predate the
+ * party model. Returns the original reference when no field needs changing.
+ * @param {object|null} slot
+ * @returns {object|null}
+ */
+export function normalizeSlotPartyProgress(slot) {
+  if (!slot || typeof slot !== 'object') return slot;
+  if (slot.status !== 'occupied') return slot;
+  const normalized = normalizeTowerProgress(slot.towerProgress);
+  if (normalized === slot.towerProgress) return slot;
+  return { ...slot, towerProgress: normalized };
 }
 
 /**
