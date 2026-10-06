@@ -8,6 +8,7 @@ export * from './campaign.js';
 export * from './grid-map.js';
 export * from './lighting-system.js';
 export * from './progression-system.js';
+export * from './party-progression.js';
 export * from './combat-system.js';
 export * from './projectile-collision.js';
 export * from './entity-ai.js';

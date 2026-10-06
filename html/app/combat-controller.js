@@ -10,6 +10,9 @@ import {
   InventorySystem,
   EconomySystem,
   DoorSystem,
+  awardPartyXp,
+  applyAutoFateGrant,
+  partyMemberName,
 } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
 import { ITEMS_CATALOG, UI_CATALOG } from '../data/index.js';
@@ -391,12 +394,16 @@ export const combatControllerMethods = {
 
         this.spawnDeathEffect(deadMonster);
         const xpEarned = ProgressionSystem.getMonsterXp(deadMonster.type, this.player.current_floor || 1, isBoss);
-        const lvlRes = ProgressionSystem.awardXP(this.player, xpEarned);
+        // Shared party XP (LIV-20): the active member and every living ally bank
+        // the same amount. Only the active member's level-up pauses for the
+        // interactive draft; allies auto-draft with a subtle cue (below).
+        const partyXp = awardPartyXp(this.player, xpEarned);
+        const lvlRes = partyXp.active;
 
         this.logCombat(`Gained +${xpEarned} XP from defeating ${deadMonster.name}.`, 'loot');
         this.addFloatingText(`+${xpEarned} XP`, deadMonster.x, deadMonster.y, '#fbbf24');
 
-        if (lvlRes.leveledUp) {
+        if (lvlRes && lvlRes.leveledUp) {
           soundFX.play('levelUp');
           this.logCombat(
             `⭐ LEVEL UP! You reached Level ${lvlRes.newLevel}! (+${lvlRes.hpGained} Max HP, +${lvlRes.manaGained} Max MP)`,
@@ -406,6 +413,8 @@ export const combatControllerMethods = {
           this.persistSave();
           this.showFateGrantModal(lvlRes.newLevel);
         }
+
+        this.handleAllyLevelUps(partyXp.allies);
 
         this.monsters.splice(index, 1);
         if (this.selectedMonsterId === res.defeatedMonsterId) {
@@ -426,6 +435,29 @@ export const combatControllerMethods = {
         }
       }
     }
+  },
+  /**
+   * Auto-progresses allies that banked a level from shared XP (LIV-20 / FIX-5):
+   * applies a deterministic Fate Grant with no modal or pause and shows a subtle
+   * in-world cue. The interactive draft is never opened for a non-active ally.
+   */
+  handleAllyLevelUps(levelUps) {
+    if (!Array.isArray(levelUps) || levelUps.length === 0) return;
+    for (const { member, result } of levelUps) {
+      if (!member || !result) continue;
+      // `this.player` holds the shared party backpack (LIV-22), so auto-granted
+      // overflow lands in the party stash rather than a per-member grid.
+      applyAutoFateGrant(member, result.newLevel, this.gridMap, this.player);
+      this.addFloatingText(
+        `${partyMemberName(member)} Lv.${result.newLevel}`,
+        member.x,
+        member.y,
+        '#e2e8f0',
+        { durationMs: 1500 }
+      );
+      this.logCombat(`${partyMemberName(member)} reached Level ${result.newLevel}.`, 'spell');
+    }
+    this.persistSave();
   },
   /** Trigger a hit reaction on the monster occupying a tile (if any). */
   triggerMonsterHit(gridX, gridY) {

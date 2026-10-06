@@ -166,6 +166,69 @@ export class FateGrantSystem {
     injectForSlot('off_hand');
   }
 
+  /**
+   * Rarity display ordering used only as an auto-draft tie-breaker. Rarity is a
+   * cosmetic label in `cards.json`; this rank never gates eligibility.
+   */
+  static AUTO_DRAFT_RARITY = Object.freeze({ common: 0, rare: 1, epic: 2, legendary: 3 });
+
+  /**
+   * Named auto-draft tie-breakers keyed by the catalog policy's `priority`
+   * tokens (LIV-20 / FIX-5). Each returns a number where higher wins. A new
+   * policy token needs a ranker here plus a `party_ai.json` entry.
+   */
+  static AUTO_DRAFT_RANKERS = {
+    upgrade: (card) => (card && card.isUpgrade ? 1 : 0),
+    main_hand: (card) => (FateGrantSystem.resolveCardSlot(card) === 'main_hand' ? 1 : 0),
+    off_hand: (card) => (FateGrantSystem.resolveCardSlot(card) === 'off_hand' ? 1 : 0),
+    affinity: (card, actor) => {
+      const aff = card && card.vocationAffinity;
+      if (!aff || aff === 'neutral') return 1;
+      const vocation = actor && actor.vocation;
+      if (Array.isArray(aff)) return aff.includes(vocation) ? 2 : 0;
+      return aff === vocation ? 2 : 0;
+    },
+    rarity: (card) => FateGrantSystem.AUTO_DRAFT_RARITY[(card && card.rarity) || 'common'] || 0,
+    // Earlier offer positions win; the negative index makes that a descending sort.
+    offer_order: (card, actor, index) => -index,
+  };
+
+  /**
+   * Deterministic, non-interactive draft selection used by auto allies. The
+   * policy comes from `party_ai.json` → `autoFateGrant` (Game Designer, LIV-26);
+   * `priority` is an ordered list of rule tokens applied as tie-breakers. An
+   * unknown token is skipped and an empty policy falls back to offer order, so a
+   * selection is always produced. Returns exactly the offer's required count
+   * (clamped to what was offered).
+   *
+   * @param {{cards: object[], requiredSelections: {min:number, max:number}}} offer
+   * @param {object} actor member-shaped object (its `vocation` drives affinity)
+   * @param {{picks?: number, priority?: string[]}} [policy]
+   * @returns {object[]}
+   */
+  static selectAutoDraft(offer, actor, policy = {}) {
+    const cards = Array.isArray(offer && offer.cards) ? offer.cards : [];
+    if (cards.length === 0) return [];
+
+    const required = Math.max(1, Math.floor(Number(offer && offer.requiredSelections && offer.requiredSelections.min) || 1));
+    const picks = Math.max(1, Math.floor(Number(policy.picks) || required));
+    const count = Math.min(picks, required, cards.length);
+    const priority = Array.isArray(policy.priority) && policy.priority.length ? policy.priority : ['offer_order'];
+
+    const ranking = cards.map((card, index) => ({ card, index }));
+    ranking.sort((a, b) => {
+      for (const token of priority) {
+        const ranker = FateGrantSystem.AUTO_DRAFT_RANKERS[token];
+        if (!ranker) continue;
+        const diff = ranker(b.card, actor, b.index) - ranker(a.card, actor, a.index);
+        if (diff !== 0) return diff;
+      }
+      return a.index - b.index;
+    });
+
+    return ranking.slice(0, count).map((entry) => entry.card);
+  }
+
   static applyDraftedCards(player, cards, gridMap) {
     const result = {
       addedToHotbar: [],
