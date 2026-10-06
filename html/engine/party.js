@@ -176,6 +176,20 @@ export function partyVocationIds(player) {
 }
 
 /**
+ * Number of members currently on the party, at least 1. Legacy/absent party
+ * data resolves to a single-member party so the campaign balance curve is a
+ * no-op for pre-party saves.
+ * @param {object} player
+ * @returns {number}
+ */
+export function partySize(player) {
+  if (player && Array.isArray(player.party) && player.party.length > 0) {
+    return player.party.length;
+  }
+  return 1;
+}
+
+/**
  * Copies the authoritative top-level active state into the active member entry.
  * No-op when there is no active member. Mutates and returns the member.
  * @param {object} player

@@ -22,6 +22,7 @@ import {
   listTowerDefinitions,
   towerLevelCount,
   towerLevelSpec,
+  TOWER_CATALOG_ROOT,
 } from '../data/index.js';
 import { PROP_MANIFEST } from '../assets/sprites/index.js';
 
@@ -683,15 +684,84 @@ function round(n) {
   return Math.round(n);
 }
 
+/** Smallest authored party size for the campaign balance curve. */
+const PARTY_SCALE_MIN = 1;
+
+/**
+ * Authored party-size multiplier table from the campaign block of
+ * `tower_levels.json` (`campaign.partyScale`). This is the single source of
+ * truth for the balance curve; nothing here hardcodes a multiplier.
+ * @returns {{ hp?: object, atk?: object }}
+ */
+function partyScaleTable() {
+  const scale = TOWER_CATALOG_ROOT && TOWER_CATALOG_ROOT.campaign && TOWER_CATALOG_ROOT.campaign.partyScale;
+  return scale && typeof scale === 'object' ? scale : {};
+}
+
+/** Authored party-size keys, ascending, for the hp axis (the reference axis). */
+function authoredPartySizes() {
+  const table = partyScaleTable().hp || {};
+  const sizes = Object.keys(table)
+    .map((key) => Math.floor(Number(key)))
+    .filter((n) => Number.isFinite(n) && n >= PARTY_SCALE_MIN);
+  return sizes.length ? sizes.sort((a, b) => a - b) : [PARTY_SCALE_MIN];
+}
+
+/**
+ * Clamps a live party size onto the authored campaign party-scale range.
+ * Sizes below the minimum clamp up; sizes above the maximum clamp down; a
+ * non-numeric size falls back to the largest authored entry so a malformed
+ * count can never silently disable the balance curve.
+ *
+ * @param {number} [partySize=1]
+ * @returns {number} an authored party size
+ */
+export function resolvePartySize(partySize = PARTY_SCALE_MIN) {
+  const sizes = authoredPartySizes();
+  const maxSize = sizes[sizes.length - 1];
+  const n = Math.floor(Number(partySize));
+  if (!Number.isFinite(n)) return maxSize;
+  return Math.max(PARTY_SCALE_MIN, Math.min(maxSize, n));
+}
+
+/**
+ * Resolves the hp/atk multipliers for a live party size from the campaign
+ * catalog. A size within the authored range uses its authored entry; a size
+ * missing from an axis falls back to that axis's largest authored entry.
+ *
+ * @param {number} [partySize=1]
+ * @returns {{ size: number, hp: number, atk: number }}
+ */
+export function resolvePartyScale(partySize = PARTY_SCALE_MIN) {
+  const table = partyScaleTable();
+  const size = resolvePartySize(partySize);
+  const factor = (axis) => {
+    const axisTable = table[axis] || {};
+    const authored = Number(axisTable[String(size)]);
+    if (Number.isFinite(authored) && authored > 0) return authored;
+    // Fall back to the largest authored entry on this axis.
+    const keys = Object.keys(axisTable)
+      .map((key) => Math.floor(Number(key)))
+      .filter((n) => Number.isFinite(n) && n >= PARTY_SCALE_MIN)
+      .sort((a, b) => b - a);
+    const fallback = Number(axisTable[String(keys[0])]);
+    return Number.isFinite(fallback) && fallback > 0 ? fallback : 1;
+  };
+  return { size, hp: factor('hp'), atk: factor('atk') };
+}
+
 /**
  * Generates a complete 40x40 tower floor for levels 1 to 5.
  *
  * @param {number} floorNumber - Level index (clamped to 1..5)
  * @param {number|string} [seed] - Optional custom PRNG seed
+ * @param {string} [towerId] - Authored tower id (defaults to the default tower)
+ * @param {number} [partySize=1] - Live party size, scaled by `campaign.partyScale`
  * @returns {object} floor payload (tiles + structural metadata + entities)
  */
-export function generateFloor(floorNumber = 1, seed = null, towerId = DEFAULT_TOWER_ID) {
+export function generateFloor(floorNumber = 1, seed = null, towerId = DEFAULT_TOWER_ID, partySize = PARTY_SCALE_MIN) {
   const tower = getTowerDefinition(towerId);
+  const party = resolvePartyScale(partySize);
   const resolvedTowerId = tower.id;
   const levelCount = towerLevelCount(resolvedTowerId);
   const levelId = clampLevel(floorNumber, resolvedTowerId);
@@ -885,6 +955,11 @@ export function generateFloor(floorNumber = 1, seed = null, towerId = DEFAULT_TO
   const groupSize = tower.monsterGroups.groupSize[String(levelId)];
   const pool = tower.monsterGroups.pool[String(levelId)];
   const statScale = tower.monsterGroups.statScale[String(levelId)];
+  // Campaign party-size multipliers stack on top of the tower's per-floor curve
+  // so a larger party faces proportionally tougher monsters. `partySize = 1`
+  // resolves to exactly 1.0, keeping the migration balance-neutral.
+  const partyHpScale = statScale.hp * party.hp;
+  const partyAtkScale = statScale.atk * party.atk;
   const keyHolderType = tower.monsterGroups.keyHolderType[String(levelId)];
   const keyHolderMod = tower.monsterGroups.keyHolderModifier;
   const keyRoomTier = tier => {
@@ -926,8 +1001,8 @@ export function generateFloor(floorNumber = 1, seed = null, towerId = DEFAULT_TO
 
   const buildMonster = (type, room, tier, isKeyHolder) => {
     const base = MONSTERS_CATALOG[type] || MONSTERS_CATALOG.giant_rat;
-    const hpScale = statScale.hp * (isKeyHolder ? keyHolderMod.hp : 1);
-    const atkScale = statScale.atk * (isKeyHolder ? keyHolderMod.atk : 1);
+    const hpScale = partyHpScale * (isKeyHolder ? keyHolderMod.hp : 1);
+    const atkScale = partyAtkScale * (isKeyHolder ? keyHolderMod.atk : 1);
     const hp = round(base.baseHp * hpScale);
     return {
       id: `f${levelId}_m_${monsterId++}`,
@@ -994,10 +1069,10 @@ export function generateFloor(floorNumber = 1, seed = null, towerId = DEFAULT_TO
       room: bossSpec.room,
       x: bossSpec.tile[0],
       y: bossSpec.tile[1],
-      hp: bossSpec.hp,
-      max_hp: bossSpec.max_hp,
-      attack: bossSpec.attack,
-      damageScale: statScale.atk,
+      hp: round(bossSpec.hp * party.hp),
+      max_hp: round((bossSpec.max_hp ?? bossSpec.hp) * party.hp),
+      attack: round(bossSpec.attack * party.atk),
+      damageScale: partyAtkScale,
       defense: bossSpec.defense,
       facing: 'down',
       isAggroed: true,
@@ -1018,7 +1093,7 @@ export function generateFloor(floorNumber = 1, seed = null, towerId = DEFAULT_TO
     for (let g = 0; g < (bossSpec.guardCount || 0); g++) {
       const tile = flank[g] || flank[flank.length - 1];
       if (matrix[tile.y] && matrix[tile.y][tile.x] === TILE_TYPES.WALL) continue;
-      const hp = round(guardBase.baseHp * statScale.hp);
+      const hp = round(guardBase.baseHp * partyHpScale);
       monsters.push({
         id: `f${levelId}_guard_${g + 1}`,
         type: bossSpec.guardType,
@@ -1028,8 +1103,8 @@ export function generateFloor(floorNumber = 1, seed = null, towerId = DEFAULT_TO
         y: tile.y,
         hp,
         max_hp: hp,
-        attack: round(guardBase.baseAttack * statScale.atk),
-        damageScale: statScale.atk,
+        attack: round(guardBase.baseAttack * partyAtkScale),
+        damageScale: partyAtkScale,
         defense: guardBase.baseDefense,
         facing: 'down',
         isAggroed: true,
@@ -1240,6 +1315,9 @@ export function generateFloor(floorNumber = 1, seed = null, towerId = DEFAULT_TO
     tower_name: tower.name || null,
     level_count: levelCount,
     template_version: FLOOR_TEMPLATE_VERSION,
+    // Cache identity: only stamped when the party curve is active so a
+    // single-member floor stays byte-identical to the pre-campaign migration.
+    ...(party.size > PARTY_SCALE_MIN ? { party_size: party.size } : {}),
     name: levelName,
     biome: biomeName,
     biome_id: levelSpec.tierId,

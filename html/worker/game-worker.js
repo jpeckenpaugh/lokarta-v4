@@ -37,7 +37,7 @@ import {
   OPTION_DEFAULTS,
   SAVE_SLOT_COUNT,
 } from '../services/save-slots.js';
-import { generateFloor, resolveArrivalCoords, FLOOR_TEMPLATE_VERSION } from '../services/floor-generator.js';
+import { generateFloor, resolveArrivalCoords, FLOOR_TEMPLATE_VERSION, resolvePartySize } from '../services/floor-generator.js';
 import {
   createPlayer,
   migratePlayerParty,
@@ -47,6 +47,7 @@ import {
   recruitMember,
   recruitableVocations,
   isTowerUnlocked,
+  partySize as partySizeOf,
 } from '../engine/index.js';
 import { DEFAULT_TOWER_ID, getTowerDefinition } from '../data/index.js';
 
@@ -58,15 +59,26 @@ const LAST_PLAYED_KEY = 'last_played_slot';
  * false for floors baked by older templates (e.g. the legacy thick-walled
  * layout) that must be regenerated instead of replayed from IndexedDB.
  * @param {object|null} floor
+ * @param {string|null} [towerId]
+ * @param {number|null} [partySize] - live party size; when supplied, a floor
+ *   scaled for a different size is stale (campaign.partyScale identity)
  * @returns {boolean}
  */
-export function isStaleFloor(floor, towerId = null) {
+export function isStaleFloor(floor, towerId = null, partySize = null) {
   if (!floor) return true;
   if (floor.template_version !== FLOOR_TEMPLATE_VERSION) return true;
   // A cached floor belongs to exactly one tower: switching towers regenerates
   // and overwrites the slot's floor cache without an IndexedDB schema change.
   // A legacy record with no tower id is treated as the default tower.
   if (towerId && (floor.tower_id || DEFAULT_TOWER_ID) !== towerId) return true;
+  // The campaign party curve is baked into each monster's hp/atk at generation
+  // time, so the resolved party size is part of the floor's cache identity. A
+  // missing `party_size` is a single-member floor; a freshly recruited member
+  // (or a smaller party) must not replay a floor scaled for another size.
+  if (partySize != null) {
+    const cached = Math.floor(Number(floor.party_size)) || 1;
+    if (cached !== Math.floor(Number(partySize))) return true;
+  }
   return false;
 }
 
@@ -132,22 +144,41 @@ async function readLastPlayed() {
 }
 
 /**
+ * Resolves a slot's live party size from its persisted character, clamped to
+ * the authored campaign curve. Empty slots resolve to a single-member party.
+ * @param {number} slotIndex
+ * @returns {Promise<number>}
+ */
+async function readSlotPartySize(slotIndex) {
+  const slot = await read(STORES.SAVE_SLOTS, slotId(slotIndex));
+  if (!slot || !slot.characterId) return 1;
+  const stored = await read(STORES.CHARACTERS, slot.characterId);
+  return resolvePartySize(partySizeOf(stored));
+}
+
+/**
  * Loads a slot-scoped cached floor or generates and caches a fresh one.
+ * The floor cache identity includes the resolved party size (via `party_size`
+ * on the record), so recruiting never replays a pre-recruit floor.
  * @param {number} slotIndex
  * @param {number} floorNumber
+ * @param {string} [towerId]
  * @param {boolean} [forceRegenerate=false]
+ * @param {number|null} [partySize=null] - live party size; resolved from the
+ *   slot's character when omitted
  * @returns {Promise<object>}
  */
-async function loadOrGenerateSlotFloor(slotIndex, floorNumber, towerId = DEFAULT_TOWER_ID, forceRegenerate = false) {
+async function loadOrGenerateSlotFloor(slotIndex, floorNumber, towerId = DEFAULT_TOWER_ID, forceRegenerate = false, partySize = null) {
   const resolvedTowerId = resolveTowerId(towerId);
   const fn = clampFloor(floorNumber, resolvedTowerId);
+  const size = resolvePartySize(partySize == null ? await readSlotPartySize(slotIndex) : partySize);
   let floor = null;
   if (!forceRegenerate) {
     floor = await read(STORES.SLOT_FLOORS, slotFloorKey(slotIndex, fn));
-    if (isStaleFloor(floor, resolvedTowerId)) floor = null;
+    if (isStaleFloor(floor, resolvedTowerId, size)) floor = null;
   }
   if (!floor) {
-    floor = generateFloor(fn, null, resolvedTowerId);
+    floor = generateFloor(fn, null, resolvedTowerId, size);
     floor.slotIndex = slotIndex;
     await put(STORES.SLOT_FLOORS, floor);
   }
@@ -257,7 +288,7 @@ async function handleCreateSlot(payload = {}) {
 
   const player = makeSlotPlayer(vocation, slotIndex);
   player.towerId = towerId;
-  const floor = generateFloor(1, null, towerId);
+  const floor = generateFloor(1, null, towerId, partySizeOf(player));
   floor.slotIndex = slotIndex;
   if (floor.spawn_coords) {
     player.x = floor.spawn_coords.x;
@@ -314,7 +345,7 @@ async function handleSelectTower(payload = {}) {
   if (!isTowerUnlocked(player.towerProgress, towerId)) {
     throw new Error(`Tower '${towerId}' is locked — clear the previous tower first.`);
   }
-  const floor = generateFloor(1, null, towerId);
+  const floor = generateFloor(1, null, towerId, partySizeOf(player));
   floor.slotIndex = slotIndex;
   const start = floor.spawn_coords || floor.entrance;
   if (start) {
@@ -457,7 +488,7 @@ async function handleLoadSlot(payload = {}) {
     saveVersion: SAVE_FORMAT_VERSION,
   });
 
-  const floor = await loadOrGenerateSlotFloor(slotIndex, player.current_floor || 1, towerId);
+  const floor = await loadOrGenerateSlotFloor(slotIndex, player.current_floor || 1, towerId, false, partySizeOf(player));
   // Continuing a save always starts at the level's start position,
   // regardless of where the player stood when last saved.
   const start = floor.spawn_coords || floor.entrance;
@@ -547,7 +578,7 @@ async function handleRestartFloor(payload = {}) {
   player.updatedAt = timestamp;
   player.lastPlayedAt = timestamp;
 
-  const floor = await loadOrGenerateSlotFloor(slotIndex, player.current_floor || 1, towerId);
+  const floor = await loadOrGenerateSlotFloor(slotIndex, player.current_floor || 1, towerId, false, partySizeOf(player));
   if (floor.spawn_coords) {
     player.x = player.x ?? floor.spawn_coords.x;
     player.y = player.y ?? floor.spawn_coords.y;
@@ -587,7 +618,7 @@ async function handleRespawnAfterDeath(payload = {}) {
   player.current_floor = respawnFloor;
   applyFullRestore(player);
 
-  const floor = await loadOrGenerateSlotFloor(slotIndex, respawnFloor, player.towerId);
+  const floor = await loadOrGenerateSlotFloor(slotIndex, respawnFloor, player.towerId, false, partySizeOf(player));
   // Land at the level's start position (its entrance spawn / arrival from below).
   const start = resolveArrivalCoords(floor, respawnFloor - 1) || floor.spawn_coords || floor.entrance;
   if (start) {
@@ -628,7 +659,7 @@ async function handleNewGame(payload = {}) {
   player.updatedAt = currentTime;
   player.playtimeMs = 0;
 
-  const floor = generateFloor(1, null, towerId);
+  const floor = generateFloor(1, null, towerId, partySizeOf(player));
   if (floor.spawn_coords) {
     player.x = floor.spawn_coords.x;
     player.y = floor.spawn_coords.y;
@@ -677,26 +708,27 @@ async function handleSaveCharacter(payload = {}) {
 /**
  * Retrieves a cached floor (slot-scoped when slotIndex is provided) or
  * generates one with generateFloor.
- * @param {{ floorNumber?: number, slotIndex?: number, forceRegenerate?: boolean }} payload
+ * @param {{ floorNumber?: number, slotIndex?: number, forceRegenerate?: boolean, partySize?: number }} payload
  * @returns {Promise<object>}
  */
 async function handleGetFloor(payload = {}) {
-  const { floorNumber = 1, slotIndex = null, forceRegenerate = false } = payload;
+  const { floorNumber = 1, slotIndex = null, forceRegenerate = false, partySize = null } = payload;
   const towerId = resolveTowerId(payload.towerId);
   await openStorage();
 
   if (slotIndex) {
-    return loadOrGenerateSlotFloor(clampSlotIndex(slotIndex), floorNumber, towerId, forceRegenerate);
+    return loadOrGenerateSlotFloor(clampSlotIndex(slotIndex), floorNumber, towerId, forceRegenerate, partySize);
   }
 
   const fn = clampFloor(floorNumber, towerId);
+  const size = resolvePartySize(partySize == null ? 1 : partySize);
   let floor = null;
   if (!forceRegenerate) {
     floor = await read(STORES.DUNGEON_FLOORS, fn);
-    if (isStaleFloor(floor, towerId)) floor = null;
+    if (isStaleFloor(floor, towerId, size)) floor = null;
   }
   if (!floor) {
-    floor = generateFloor(fn, null, towerId);
+    floor = generateFloor(fn, null, towerId, size);
     await put(STORES.DUNGEON_FLOORS, floor);
   }
   return floor;
@@ -723,14 +755,15 @@ async function handleAdvanceFloor(payload = {}) {
   const currentFloor = Number(player.current_floor) || 1;
   const nextFloor = clampFloor(nextFloorNumber !== undefined ? nextFloorNumber : currentFloor + 1, towerId);
   const slotIndex = player.slotIndex || null;
+  const livePartySize = resolvePartySize(partySizeOf(player));
 
   let floor;
   if (slotIndex) {
-    floor = await loadOrGenerateSlotFloor(slotIndex, nextFloor, towerId);
+    floor = await loadOrGenerateSlotFloor(slotIndex, nextFloor, towerId, false, livePartySize);
   } else {
     floor = await read(STORES.DUNGEON_FLOORS, nextFloor);
-    if (isStaleFloor(floor, towerId)) {
-      floor = generateFloor(nextFloor, null, towerId);
+    if (isStaleFloor(floor, towerId, livePartySize)) {
+      floor = generateFloor(nextFloor, null, towerId, livePartySize);
       await put(STORES.DUNGEON_FLOORS, floor);
     }
   }
