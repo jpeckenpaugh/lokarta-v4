@@ -89,6 +89,19 @@ export function canRecruit(player) {
 }
 
 /**
+ * The vocation a debug recruit should add next: the first catalog vocation not
+ * already on the party, or null when there is no room or nothing left. Catalog
+ * order makes the Options debug tool deterministic and repeatable (LIV-29/FIX-14).
+ * @param {object} player
+ * @returns {string|null}
+ */
+export function nextRecruitVocation(player) {
+  if (!player || !Array.isArray(player.party)) return null;
+  if (player.party.length >= MAX_PARTY_SIZE) return null;
+  return recruitableVocations(player)[0] || null;
+}
+
+/**
  * Aligns a member's stats to `level`: catalog base stats plus per-level growth,
  * full HP/MP, refreshed skill boosts. Mutates and returns the member.
  * @param {object} member

@@ -2,7 +2,7 @@
  * Lokarta: Come Into The Light - Save & App Flow Controller
  */
 
-import { ChestSystem, CombatSystem } from '../engine/index.js';
+import { ChestSystem, CombatSystem, canRecruit, nextRecruitVocation } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
 import { UI_CATALOG } from '../data/index.js';
 import { normalizeOptions, resolveReducedMotion, slotSummary } from '../services/save-slots.js';
@@ -164,7 +164,50 @@ export const saveControllerMethods = {
       onReset: () => this.confirmResetOptions(),
       onSaveData: () => this.openSlotSelect('manage'),
       onBack: () => this.returnFromOptions(),
+      onRecruitCharacter: () => this.recruitCharacterDebug(),
+    }, {
+      canRecruitCharacter: this.canDebugRecruit(),
     });
+  },
+  /**
+   * Whether the Options → Recruit Character debug action is offered. Only a
+   * live game (pause/town, not the title screen) with room and a missing
+   * vocation qualifies (LIV-29/FIX-14). Options can open from the title screen
+   * with a stale player, so `isInGameplay` is required too.
+   * @returns {boolean}
+   */
+  canDebugRecruit() {
+    return Boolean(this.isInGameplay) && Boolean(this.player) && canRecruit(this.player);
+  },
+  /**
+   * Debug action (Options → Recruit Character, FIX-14/LIV-29): auto-picks the
+   * next catalog vocation not on the party, recruits it as the active member at
+   * level 1 through the worker, then offers the Level-1 Fate Grant. Repeatable
+   * until the party cap is reached; a full party is a guarded no-op.
+   * @returns {Promise<void>}
+   */
+  async recruitCharacterDebug() {
+    if (!this.canDebugRecruit()) return;
+    const vocation = nextRecruitVocation(this.player);
+    if (!vocation) return;
+
+    let data;
+    try {
+      data = await this.gameClient.recruitMember(this.player.slotIndex, vocation);
+    } catch (err) {
+      console.error('Debug recruit error:', err);
+      this.logCombat('Debug recruit failed — could not add a companion.', 'warning');
+      return;
+    }
+
+    this.player = data.player || this.player;
+    this.updateHUD();
+    await this.persistSave(true);
+
+    const name = String((data.member && data.member.vocation) || vocation).toUpperCase();
+    this.logCombat(`Debug: ${name} joins the party at Level 1.`, 'victory');
+    // Mirrors tower entry: the recruit's first Fate Grant is the Level-1 draft.
+    this.showFateGrantModal(1);
   },
   returnFromOptions() {
     if (this.optionsReturnTo === 'pause') {

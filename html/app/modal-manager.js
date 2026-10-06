@@ -244,6 +244,11 @@ export class ModalManager {
       });
     });
 
+    modalOverlayEl.querySelector('#options-recruit-character')?.addEventListener('click', () => {
+      soundFX.play('click');
+      callbacks.onRecruitCharacter?.();
+    });
+
     modalOverlayEl.querySelectorAll('[data-seg]').forEach(btn => {
       btn.addEventListener('click', () => {
         const key = btn.dataset.seg;
