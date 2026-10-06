@@ -59,11 +59,11 @@ All client application code resides under `html/` and is structured as native ES
 | Directory | Layer | Key Submodules & Responsibilities |
 | :--- | :--- | :--- |
 | [`html/app/`](../html/app/) | UI & Controllers | `app-controller.js` (orchestrator), `game-loop.js` (10 Hz ticker & swept projectile physics), `save-controller.js` (slots/flow), `combat-controller.js`, `inventory-controller.js`, `floor-controller.js`, `shop-controller.js`, `canvas-renderer.js`, `sprite-renderer.js`, `hud-manager.js`, `modal-manager.js`, `input-controller.js`, `ability-bar.js`, `autofire.js`, `animation-state.js`, `hud-fx.js`, `splash-screen.js`, `title-ambient.js`, `transition-controller.js`. |
-| [`html/engine/`](../html/engine/) | Core Simulation | `config.js`, `grid-map.js`, `lighting-system.js`, `progression-system.js`, `combat-system.js`, `inventory-system.js`, `entity-ai.js`, `fate-grant-system.js`, `economy-system.js`, `item-progression.js`, `item-stats.js`, `gesture-engine.js`, `projectile-collision.js`, `chest-system.js`, `door-system.js`, `stair-system.js`. |
+| [`html/engine/`](../html/engine/) | Core Simulation | `config.js`, `party.js`, `grid-map.js`, `lighting-system.js`, `progression-system.js`, `combat-system.js`, `inventory-system.js`, `entity-ai.js`, `fate-grant-system.js`, `economy-system.js`, `item-progression.js`, `item-stats.js`, `gesture-engine.js`, `projectile-collision.js`, `chest-system.js`, `door-system.js`, `stair-system.js`. |
 | [`html/services/`](../html/services/) | Services | `floor-generator.js` (procedural generation), `storage.js` (IndexedDB layer), `save-slots.js` (multi-slot persistence & migration), `build-version.js` (cache-busting guard). |
 | [`html/worker/`](../html/worker/) | Worker RPC | `game-worker.js` (stateless RPC dispatcher) and `game-client.js` (Promise-based client wrapper). |
 | [`html/audio/`](../html/audio/) | Audio Engine | `audio-system.js` (Web Audio procedural synthesizer driven by `sounds.json`). |
-| [`html/data/`](../html/data/) | Data Catalogs | 16 decoupled JSON catalogs (`cards`, `monsters`, `items`, `vocations`, `sounds`, `abilities`, `biomes`, `encounters`, `dungeons`, `tower_levels`, `doors`, `chests`, `tile_themes`, `keybindings`, `ui`, `economy`). |
+| [`html/data/`](../html/data/) | Data Catalogs | 17 decoupled JSON catalogs (`cards`, `monsters`, `items`, `vocations`, `sounds`, `abilities`, `biomes`, `encounters`, `dungeons`, `tower_levels`, `doors`, `chests`, `tile_themes`, `keybindings`, `ui`, `economy`, `party_ai`). |
 | [`html/styles/`](../html/styles/) | Presentation | `styles.css` root bundle and modular sheets (`base.css`, `hud.css`, `modals.css`). |
 | [`html/assets/`](../html/assets/) | Assets | JSON sprite matrices (`sprites/`), OpenMoji SVG icons, and brand graphics. |
 
@@ -74,10 +74,10 @@ All client application code resides under `html/` and is structured as native ES
 Persistent storage is managed by `html/services/storage.js` and `html/services/save-slots.js` inside the IndexedDB database **`lokarta_browser_db`** (schema version `2`):
 
 * **Object Stores:**
-  1. `save_slots` (keyPath: `'id'`): Metadata records for up to 5 save slots (`slotIndex: 1..5`, `vocation`, `level`, `currentFloor`, `playtimeMs`, `saveVersion: 2`).
-  2. `characters` (keyPath: `'id'`): Full player state snapshots (vitals, stats, equipment paperdoll, backpack, gold, location: `'town' | 'tower'`).
+  1. `save_slots` (keyPath: `'id'`): Metadata records for up to 5 save slots (`slotIndex: 1..5`, `vocation`, `level`, `currentFloor`, `towerProgress`, `playtimeMs`, `saveVersion: 2`).
+  2. `characters` (keyPath: `'id'`): Full player state snapshots (vitals, stats, equipment paperdoll, backpack, gold, location: `'town' | 'tower'`, and the campaign `party` / `activeMemberId` / `towerProgress` model described in [`party-data-model.md`](party-data-model.md)).
   3. `slot_floors` (keyPath: `['slotIndex', 'floor_number']`): Per-slot cached floor tile matrices, entity states, and chest interactions.
-  4. `game_settings` (keyPath: `'key'`): Persisted options and migration guards (`migration_slot_v2`, `migration_tower_v3`, `last_played_slot`).
+  4. `game_settings` (keyPath: `'key'`): Persisted options and migration guards (`migration_slot_v2`, `migration_tower_v3`, `migration_party_v4`, `last_played_slot`).
   5. `profile` (keyPath: `'id'`): Global user settings (`soundEnabled`, `volume`, timestamps).
   6. `dungeon_floors` (keyPath: `'floor_number'`): Legacy floor cache store.
 

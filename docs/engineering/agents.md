@@ -33,8 +33,8 @@ The **board** owns product direction, priorities, final approvals, and browser/g
 
 ### Specific Rules:
 1. **Catalog Ground Truth:**
-   All stats, spell radii, weapon types, damage steps, drop tables, sound frequencies, keybindings, monster AI types, presentation tunables, and room coordinates **must** originate in the 16 JSON catalogs:
-   - `cards.json`, `monsters.json`, `items.json`, `vocations.json`, `sounds.json`, `abilities.json`, `biomes.json`, `encounters.json`, `dungeons.json`, `tower_levels.json`, `doors.json`, `chests.json`, `tile_themes.json`, `keybindings.json`, `ui.json`, `economy.json`.
+   All stats, spell radii, weapon types, damage steps, drop tables, sound frequencies, keybindings, monster AI types, party AI profiles, presentation tunables, and room coordinates **must** originate in the 17 JSON catalogs:
+   - `cards.json`, `monsters.json`, `items.json`, `vocations.json`, `sounds.json`, `abilities.json`, `biomes.json`, `encounters.json`, `dungeons.json`, `tower_levels.json`, `doors.json`, `chests.json`, `tile_themes.json`, `keybindings.json`, `ui.json`, `economy.json`, `party_ai.json`.
 2. **No String Heuristics:**
    Never write heuristics like `itemId.includes('bow')`, `name.includes('cultist')`, or `vocation === 'fighter'` in game logic.
    - If an item needs a specific combat handler: declare `"actionKey": "bow_shot"` in `items.json`.
