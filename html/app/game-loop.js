@@ -248,8 +248,9 @@ export const gameLoopMethods = {
     if (equippedArmor && equippedArmor.item_id === 'apprentice_cape') {
       if (!this.powerPulseAccumulator) this.powerPulseAccumulator = 0;
       this.powerPulseAccumulator += deltaSec;
-      const rank = Math.min(5, Math.max(1, equippedArmor.itemLevel || 1));
-      const intervalSec = Math.max(12, 22 - 2 * rank); // Rank 1: 20s, Rank 2: 18s, Rank 3: 16s, Rank 4: 14s, Rank 5: 12s
+      const rankCap = EconomySystem.maxRankForParty(this.player);
+      const rank = Math.min(rankCap, Math.max(1, equippedArmor.itemLevel || 1));
+      const intervalSec = Math.max(12, 22 - 2 * rank); // Rank 1: 20s, Rank 2: 18s, ... floors at 12s from Rank 5
 
       if (this.powerPulseAccumulator >= intervalSec) {
         this.powerPulseAccumulator -= intervalSec;

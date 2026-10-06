@@ -24,14 +24,15 @@ export const shopControllerMethods = {
   /** Banked/equipped items the shop can rank up (all four equipment slots). */
   collectUpgradableItems() {
     const out = [];
+    const player = this.player;
     const push = (item, source, index) => {
-      if (!item || !EconomySystem.canUpgrade(item)) return;
-      out.push({ item, source, index, rank: item.itemLevel || 1, cost: EconomySystem.upgradeCost(item) });
+      if (!item || !EconomySystem.canUpgrade(item, player)) return;
+      out.push({ item, source, index, rank: item.itemLevel || 1, cost: EconomySystem.upgradeCost(item, player) });
     };
     // Paperdoll first so the four wearable slots are always offered.
     Object.entries(this.player.paperdoll || {}).forEach(([slot, item]) => {
-      if (item && EconomySystem.canUpgrade(item)) {
-        out.push({ item, source: 'equipment', index: slot, rank: item.itemLevel || 1, cost: EconomySystem.upgradeCost(item) });
+      if (item && EconomySystem.canUpgrade(item, player)) {
+        out.push({ item, source: 'equipment', index: slot, rank: item.itemLevel || 1, cost: EconomySystem.upgradeCost(item, player) });
       }
     });
     (this.player.backpack || []).forEach((item, i) => push(item, 'backpack', i));

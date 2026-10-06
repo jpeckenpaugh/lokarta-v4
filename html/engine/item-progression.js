@@ -16,22 +16,34 @@
  */
 
 import { ITEMS_CATALOG } from '../data/index.js';
+import { EconomySystem } from './economy-system.js';
 
-/** Maximum rank any item can reach (matches the fate-grant LEVEL UP cap). */
+/**
+ * Solo/legacy maximum item rank. The live cap scales with the party size
+ * (FIX-13 / LIV-28) via `EconomySystem.maxRankForParty`; this constant remains
+ * the fallback when no player/party is supplied.
+ */
 export const MAX_ITEM_RANK = 5;
+
+/** Party-scaled rank cap for an optional owner, or the solo fallback. */
+function rankCapFor(player) {
+  return player ? EconomySystem.maxRankForParty(player) : MAX_ITEM_RANK;
+}
 
 /** Every slot an owned item may occupy. Paperdoll slots are visited first. */
 const OWNED_SLOTS = ['main_hand', 'off_hand', 'armor', 'relic'];
 
 /**
  * True when an item instance can be ranked up (owns an upgrade rule and is
- * below the rank cap).
+ * below the rank cap). The cap scales with the party size of `player` when
+ * supplied, otherwise it uses the solo `MAX_ITEM_RANK`.
  * @param {object|null} item
+ * @param {object|number} [player] owner (or live party size) for the cap
  * @returns {boolean}
  */
-export function canUpgradeItem(item) {
+export function canUpgradeItem(item, player) {
   if (!item || !item.item_id) return false;
-  if (item.itemLevel >= MAX_ITEM_RANK) return false;
+  if (item.itemLevel >= rankCapFor(player)) return false;
   const spec = ITEMS_CATALOG[item.item_id]?.upgradeSpec || item.upgradeSpec;
   return Boolean(spec && Object.keys(spec).length > 0);
 }
@@ -86,7 +98,7 @@ export function findOwnedItem(player, item) {
  * @returns {{ item: object, rank: number, notes: string[] }|null}
  */
 export function applyItemRankUp(player, item, opts = {}) {
-  if (!player || !canUpgradeItem(item)) return null;
+  if (!player || !canUpgradeItem(item, player)) return null;
 
   const catalogEntry = ITEMS_CATALOG[item.item_id] || {};
   const spec = catalogEntry.upgradeSpec || item.upgradeSpec || {};
@@ -99,7 +111,7 @@ export function applyItemRankUp(player, item, opts = {}) {
   };
 
   const prevRank = item.itemLevel || 1;
-  item.itemLevel = Math.min(MAX_ITEM_RANK, prevRank + 1);
+  item.itemLevel = Math.min(rankCapFor(player), prevRank + 1);
   const rank = item.itemLevel;
   const notes = [];
 

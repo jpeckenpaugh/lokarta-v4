@@ -7,7 +7,7 @@
  * `#sidebar-hud` drives both drag and click-to-swap.
  */
 
-import { InventorySystem, LightingSystem, DoorSystem, CombatSystem } from '../engine/index.js';
+import { InventorySystem, LightingSystem, DoorSystem, CombatSystem, EconomySystem } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
 import { ITEMS_CATALOG, DOORS_CATALOG, UI_CATALOG, VOCATIONS_CATALOG } from '../data/index.js';
 import { EQUIPMENT_KEY_MAP, ACTIVE_SLOT_KEYS, INVENTORY_CONFIG } from '../engine/config.js';
@@ -540,7 +540,7 @@ export class HUDManager {
       if (qtyEl.textContent !== qty) qtyEl.textContent = qty;
     }
 
-    el.title = HUDManager._tooltip(item);
+    el.title = HUDManager._tooltip(item, app);
     HUDManager._paintCooldown(el, item, app);
   }
 
@@ -605,14 +605,17 @@ export class HUDManager {
     return map[slotName] || String(slotName || '').replace('_', ' ');
   }
 
-  static _tooltip(item) {
+  static _tooltip(item, app = null) {
     if (!item) return 'Empty';
     const catalog = ITEMS_CATALOG[item.item_id] || {};
     const lines = [item.name];
     const classInfo = HUDManager._classInfo(item);
     if (classInfo.key !== 'neutral') lines.push(`Class: ${classInfo.key}`);
     lines.push(`Slot: ${HUDManager.slotLabel(item.slot || catalog.slot || catalog.type || '')}`);
-    if (item.itemLevel > 1) lines.push(`Rank ${item.itemLevel}/5`);
+    if (item.itemLevel > 1) {
+      const cap = EconomySystem.maxRankForParty(app?.player);
+      lines.push(`Rank ${item.itemLevel}/${cap}`);
+    }
     if (item.damageMin || item.damageMax) lines.push(`Damage: ${item.damageMin || 0}–${item.damageMax || 0}`);
     if (item.stat_bonus) lines.push(`Power: +${item.stat_bonus}`);
     if (item.manaCost) lines.push(`Mana: ${item.manaCost}`);

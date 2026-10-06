@@ -34,8 +34,9 @@
     "upgradeBaseCost": 40,
     "upgradeCostPerRank": 35,
     "maxRank": 5,
+    "maxRankByParty": { "1": 5, "2": 10, "3": 15, "4": 20 },
     "pawnFallbackValuePerStat": 8,
-    "description": "Pawn sells backpack items for 50% of purchase price; un-priced loot falls back to stat_bonus * pawnFallbackValuePerStat."
+    "description": "Pawn sells backpack items for 50% of purchase price; un-priced loot falls back to stat_bonus * pawnFallbackValuePerStat. Upgrade max rank scales with the live party size (FIX-13 / LIV-28): `maxRankByParty` is keyed by member count (5/10/15/20), and `maxRank` is the solo/legacy fallback."
   },
   "monsterGold": {
     "giant_rat": { "min": 3, "max": 8 },

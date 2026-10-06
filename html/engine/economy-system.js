@@ -190,8 +190,45 @@ export class EconomySystem {
       upgradeBaseCost: Number(s.upgradeBaseCost) || 0,
       upgradeCostPerRank: Number(s.upgradeCostPerRank) || 0,
       maxRank: Number(s.maxRank) || 5,
+      maxRankByParty: s.maxRankByParty && typeof s.maxRankByParty === 'object' ? s.maxRankByParty : null,
       pawnFallbackValuePerStat: Number(s.pawnFallbackValuePerStat) || 0,
     };
+  }
+
+  /**
+   * Resolves a live member/vocation count from a player object, a party-size
+   * number, or nothing. An absent party resolves to 1 (the legacy solo save).
+   */
+  static partySizeOf(input) {
+    if (input && typeof input === 'object' && Array.isArray(input.party) && input.party.length > 0) {
+      return input.party.length;
+    }
+    const n = Math.floor(Number(input));
+    return Number.isFinite(n) && n >= 1 ? n : 1;
+  }
+
+  /**
+   * Max equipment rank for the current party (FIX-13 / LIV-28). Reads the
+   * authored `shop.maxRankByParty` table keyed by member/vocation count, so a
+   * solo save stays at 5 while a full four-vocation team unlocks 20. Sizes
+   * above the authored range clamp to the largest entry; a missing/malformed
+   * party falls back to the catalog `shop.maxRank`.
+   *
+   * @param {object|number} [input] player object or live party size
+   * @returns {number}
+   */
+  static maxRankForParty(input) {
+    const { maxRank, maxRankByParty } = EconomySystem.shopConfig();
+    if (!maxRankByParty) return maxRank;
+    const sizes = Object.keys(maxRankByParty)
+      .map(key => Math.floor(Number(key)))
+      .filter(n => Number.isFinite(n) && n >= 1)
+      .sort((a, b) => a - b);
+    if (sizes.length === 0) return maxRank;
+    const maxSize = sizes[sizes.length - 1];
+    const size = Math.max(1, Math.min(maxSize, EconomySystem.partySizeOf(input)));
+    const authored = Number(maxRankByParty[String(size)]);
+    return Number.isFinite(authored) && authored > 0 ? Math.floor(authored) : maxRank;
   }
 
   /**
@@ -244,22 +281,32 @@ export class EconomySystem {
     };
   }
 
-  /** The gold cost to upgrade an owned item to its next rank. */
-  static upgradeCost(item) {
-    const { upgradeBaseCost, upgradeCostPerRank, maxRank } = EconomySystem.shopConfig();
-    const rank = Math.max(1, Math.min(maxRank, Number(item?.itemLevel) || 1));
+  /**
+   * The gold cost to upgrade an owned item to its next rank. The rank is
+   * clamped to the party-scaled cap so an authored high-rank item still prices
+   * against the current party size.
+   * @param {object} item
+   * @param {object|number} [player] player object or live party size
+   */
+  static upgradeCost(item, player) {
+    const { upgradeBaseCost, upgradeCostPerRank } = EconomySystem.shopConfig();
+    const cap = EconomySystem.maxRankForParty(player);
+    const rank = Math.max(1, Math.min(cap, Number(item?.itemLevel) || 1));
     return upgradeBaseCost + upgradeCostPerRank * (rank - 1);
   }
 
   /**
    * True when an item can still be upgraded in the shop. Falls back to the
    * catalog `upgradeSpec` so looted/banked gear (which never carries the spec
-   * on its instance) is treated the same as crafted stock.
+   * on its instance) is treated the same as crafted stock. The rank cap scales
+   * with the live party size (`maxRankForParty`).
+   * @param {object} item
+   * @param {object|number} [player] player object or live party size
    */
-  static canUpgrade(item) {
+  static canUpgrade(item, player) {
     if (!item || !item.item_id) return false;
-    const { maxRank } = EconomySystem.shopConfig();
-    if ((Number(item?.itemLevel) || 1) >= maxRank) return false;
+    const cap = EconomySystem.maxRankForParty(player);
+    if ((Number(item?.itemLevel) || 1) >= cap) return false;
     const spec = item.upgradeSpec || ITEMS_CATALOG[item.item_id]?.upgradeSpec;
     return Boolean(spec && Object.keys(spec).length > 0);
   }
