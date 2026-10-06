@@ -1,5 +1,12 @@
 {
   "defaultTowerId": "spire_of_light",
+  "campaign": {
+    "_comment": "WS5 auto-mode balance. Multipliers keyed by active party size, applied on top of each tower's monsterGroups.statScale (and to bosses/guards) so a 4-member run stays challenging without becoming a damage sponge. floor-generator reads this via the live party size passed by the worker. Rationale: docs/design/game-design.md 8.2.",
+    "partyScale": {
+      "hp": { "1": 1.0, "2": 1.25, "3": 1.45, "4": 1.6 },
+      "atk": { "1": 1.0, "2": 1.08, "3": 1.14, "4": 1.2 }
+    }
+  },
   "towers": [
     {
       "id": "spire_of_light",

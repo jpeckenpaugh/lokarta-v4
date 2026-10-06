@@ -1,5 +1,15 @@
 {
-  "_comment": "Per-vocation auto-AI profiles for non-active party members (LIV-9 WS1 schema; LIV-8 WS5 owns balance/copy). Every non-active ally reads its profile here; no vocation names are hardcoded in JS.",
+  "_comment": "Per-vocation auto-AI profiles for non-active party members (LIV-9 schema; LIV-8 WS5 content). Every non-active ally reads its profile here; no vocation names are hardcoded in JS.",
+  "_semantics": {
+    "preferredAbilities": "Ordered ability ids; the first usable one (off cooldown, in range, resources available) wins.",
+    "followDistance": "Tiles the member trails the active member while no target is acquired.",
+    "engageRadius": "Distance (tiles, from the member) at which it acquires the nearest hostile and closes to fight.",
+    "castRange": "Preferred combat distance; the member closes to / retreats to this while engaged.",
+    "retreatHpPct": "HP fraction (0-1) below which the member disengages and returns to formation.",
+    "retargetSec": "Minimum seconds the member commits to a target before switching.",
+    "healAlliesWhenHurt": "Support flag: prefer a heal when any party member is below the hurt threshold."
+  },
+  "_design": "Roles stay distinct: Fighter/Paladin hold the line (follow 1, melee), Archer/Magician fight from the back (follow 3). Retreat thresholds track fragility - Magician (60 HP) disengages earliest at 0.35, Fighter (140 HP) holds latest at 0.20. Paladin is the only healing profile. Rationale: docs/design/game-design.md 8.1.",
   "default": {
     "preferredAbilities": [],
     "followDistance": 2,
@@ -14,10 +24,11 @@
       "preferredAbilities": ["magician_beam", "magician_spark"],
       "followDistance": 3,
       "engageRadius": 6,
-      "retreatHpPct": 0.3,
+      "retreatHpPct": 0.35,
       "castRange": 5,
       "retargetSec": 1.5,
-      "healAlliesWhenHurt": false
+      "healAlliesWhenHurt": false,
+      "_note": "Squishiest backline (60 HP): disengages earliest so an artillery telegraph cannot one-shot it. Opens with Beam (4-tile, 20 dmg), fills with Spark, and takes the longest to retarget because it commits to a cast."
     },
     "archer": {
       "preferredAbilities": ["archer_power_shot", "archer_bow_shot"],
@@ -26,25 +37,28 @@
       "retreatHpPct": 0.3,
       "castRange": 6,
       "retargetSec": 1.2,
-      "healAlliesWhenHurt": false
+      "healAlliesWhenHurt": false,
+      "_note": "Longest reach (6). Opens with Power Shot (4s cooldown) before Bow Shot so the auto-AI does not drain the party's arrow stock; that ordering is the ammo-economy guard rail."
     },
     "fighter": {
       "preferredAbilities": ["fighter_cleave", "fighter_slash"],
       "followDistance": 1,
-      "engageRadius": 2,
+      "engageRadius": 3,
       "retreatHpPct": 0.2,
       "castRange": 1,
       "retargetSec": 1.0,
-      "healAlliesWhenHurt": false
+      "healAlliesWhenHurt": false,
+      "_note": "Frontline anchor (140 HP): intercepts out to 3 tiles, holds to 20% HP, and retargets fastest so Cleave lands on clusters rather than a single body."
     },
     "paladin": {
       "preferredAbilities": ["paladin_heal", "paladin_holy_strike"],
       "followDistance": 1,
-      "engageRadius": 2,
+      "engageRadius": 3,
       "retreatHpPct": 0.25,
       "castRange": 1,
       "retargetSec": 1.2,
-      "healAlliesWhenHurt": true
+      "healAlliesWhenHurt": true,
+      "_note": "Melee anchor and the party's only healer: Holy Prayer (healRadius 6) finds the most-injured ally, otherwise Holy Strike. Retarget 1.2 keeps it responsive to a dropping ally."
     }
   }
 }

@@ -8,11 +8,12 @@ A high-level design canon for *Lokarta: Come Into The Light*.
 
 1. **Title & Save Slot Selection:** Choose from 5 persistent save slots stored in browser IndexedDB (`lokarta_browser_db`).
 2. **Havenreach Town Hub:** Access the Merchant's Stall (Shop), Temple of the Dawn (Temple healing), or embark into the tower.
-3. **5-Tier Tower Ascent:** Ascend through 5 deterministic procedural levels on a $40 \times 40$ tile grid ($3 \times 3$ macro rooms).
+3. **Sequential Tower Campaign:** Climb one of four themed towers at a time, in unlock order, through its deterministic procedural levels on a $40 \times 40$ tile grid ($3 \times 3$ macro rooms). Only the Spire of Light is available at campaign start; each conquered tower unlocks the next (§8).
 4. **Gated Progression & Keys:** Defeat tier key holders to obtain Copper, Silver, and Gold keys to unlock gates leading to the ascent stairs.
-5. **Combat & Tactical Abilities:** 10 Hz real-time simulation tick (`TICK_INTERVAL_MS = 100`) using vocation-specific abilities, cooldowns, and range mechanics.
+5. **Combat & Tactical Abilities:** 10 Hz real-time simulation tick (`TICK_INTERVAL_MS = 100`) using vocation-specific abilities, cooldowns, and range mechanics. Party members fight alongside the active hero in auto mode (§8.1).
 6. **Fate Grants (Drafting System):** At Level 1 and upon every level-up (up to Level 20 cap), players are offered a 5-card draft and **must select exactly 2 cards** granting vocation skills, stat upgrades, or gear rank upgrades (Ranks 1–5).
-7. **The Spire Warden:** Defeat the final boss on Level 5 and its Spire Sentinels to achieve ultimate victory.
+7. **Recruit a Companion:** Clearing a tower's final floor is no longer a game-over. It shows the **Tower Complete** modal, then a **Recruit** choice that adds one not-yet-recruited vocation to the party (max 4, one per vocation). The new recruit becomes player-controlled for the next tower; prior members fight in auto mode.
+8. **Ultimate Victory:** After all four towers are complete, "ULTIMATE VICTORY" fires once, as the campaign's terminal beat — not per-tower.
 
 ---
 
@@ -29,9 +30,11 @@ Class balance and distinct identity are enforced through **vocation-locked equip
 
 ---
 
-## 3. The 5-Tier Tower Structure
+## 3. The Spire of Light (launch tower, 5 tiers)
 
-The tower layout and monster pools are catalog-driven via [`html/data/tower_levels.json`](../html/data/tower_levels.json):
+The Spire is the first tower of the four-tower campaign (§7) and the template every
+other tower follows. Its layout and monster pools are catalog-driven via
+[`html/data/tower_levels.json`](../html/data/tower_levels.json):
 
 * **Level 1 — The Gatehouse (`crypt`):** Warm amber glow (`#ff8800`). Enemies: Giant Rats, Crypt Skeletons.
 * **Level 2 — The Hall of Banners (`catacombs`):** Cyan glow (`#00d4ff`). Enemies: Giant Rats, Crypt Skeletons, Shadow Cultists.
@@ -292,3 +295,167 @@ engagement mechanics are introduced.
 * Two content-count assertions were made expansion-aware alongside the new
   palettes/tiers (`data-catalogs.test.mjs` biomes, `sprite-assets.test.mjs`
   tile-theme levels) — see the Tech Lead handoff for review. **T0: 557/557 green.**
+
+---
+
+## 8. Party Campaign: Auto-AI, Tower Order & Balance (LIV-9 / WS5)
+
+Content section for the four-member party campaign. The Game Designer owns the
+catalog values below; the schemas are locked by the Tech Lead in
+[`docs/engineering/party-data-model.md`](../engineering/party-data-model.md).
+The active member is player-controlled exactly as today; every other member is
+driven by the profile in `party_ai.json` and resolves through the existing
+catalog dispatch tables. No vocation name is hardcoded in engine logic.
+
+### 8.1 Party auto-AI profiles (`party_ai.json`)
+
+`PARTY_AI_CATALOG.profiles[vocation]` is read for every non-active member.
+`default` is the safe fallback for any vocation without a profile (and for
+hand-built units).
+
+Field semantics (the contract WS4 implements against):
+
+| Field | Meaning |
+| :--- | :--- |
+| `preferredAbilities` | Ordered ability ids; the first usable one (off cooldown, in range, resources available) wins. |
+| `followDistance` | Tiles the member trails the active member while no target is acquired. |
+| `engageRadius` | Distance (tiles, from the member) at which it acquires the nearest hostile and closes to fight. |
+| `castRange` | Preferred combat distance; the member closes to / retreats to this while engaged. |
+| `retreatHpPct` | HP fraction (0–1) below which the member disengages and returns to formation. |
+| `retargetSec` | Minimum seconds the member commits to a target before switching. |
+| `healAlliesWhenHurt` | Support flag: prefer a heal when any party member is below the hurt threshold. |
+
+Authored profiles:
+
+| Vocation | Preferred abilities | Follow | Engage | Cast | Retreat | Retarget | Heals allies |
+| :--- | :--- | ---: | ---: | ---: | ---: | ---: | :--- |
+| **Magician** | `magician_beam` → `magician_spark` | 3 | 6 | 5 | 0.35 | 1.5s | no |
+| **Archer** | `archer_power_shot` → `archer_bow_shot` | 3 | 7 | 6 | 0.30 | 1.2s | no |
+| **Fighter** | `fighter_cleave` → `fighter_slash` | 1 | 3 | 1 | 0.20 | 1.0s | no |
+| **Paladin** | `paladin_heal` → `paladin_holy_strike` | 1 | 3 | 1 | 0.25 | 1.2s | yes |
+
+* **Two postures, one line.** Fighter/Paladin (`followDistance 1`, `castRange 1`)
+  hold the line; Archer/Magician (`followDistance 3`) fight from behind. A player
+  reading the party on screen can tell each member's job from where it stands.
+  *Lenses: readability & legibility, enemy role taxonomy (mirrored for allies).*
+* **Retreat thresholds track fragility, not role.** Magician (60 HP) disengages
+  at 35%, Archer (90 HP) at 30%, Paladin (120 HP) at 25%, Fighter (140 HP) at
+  20%. The squishiest member leaves first so an artillery telegraph cannot
+  one-shot it. *Lenses: balance levers (one lever per problem), game feel.*
+* **Ability order encodes intent, not just power.** The Archer opens with the
+  4s-cooldown Power Shot before the free Bow Shot so the auto-AI does not drain
+  the party's arrow stock; the Magician opens with Beam (burst) and fills with
+  Spark. *Lenses: economy & reward pacing, MDA.*
+* **Paladin is the only healer.** With `healAlliesWhenHurt: true` and
+  `paladin_heal.healRadius: 6` / `targetsAllies: true`, it finds the most-injured
+  ally, else fights with Holy Strike. This makes recruitment order matter: an
+  early Paladin is a sustain delighter. *Lenses: Kano model, replayability.*
+* **`preferredAbilities` only lists combat-castable abilities.** The Magician's
+  `magician_light` vision buff is intentionally excluded: auto-casting a long
+  buff needs buff-cast handling in WS4 and is not worth a one-off code path.
+  *Lenses: reach for what exists first; no bespoke branch without a contract.*
+
+### 8.2 Auto-mode balance: `campaign.partyScale` (`tower_levels.json`)
+
+Allies add damage and bodies, so each tower's monster stats scale with the live
+party size on top of the tower's own `monsterGroups.statScale`:
+
+| Party size | `hp` | `atk` |
+| ---: | ---: | ---: |
+| 1 | 1.00 | 1.00 |
+| 2 | 1.25 | 1.08 |
+| 3 | 1.45 | 1.14 |
+| 4 | 1.60 | 1.20 |
+
+* **Sub-linear HP, gentle ATK.** Auto allies are less efficient than a skilled
+  hand on the controls, so effective party power is nearer `1 + 0.35·(n−1)` than
+  `n`. HP rises to match sustained damage (+25%/+20%/+15%); ATK rises only
+  +20% at a full party so four bodies are not deleted by one AoE.
+  *Lenses: balance levers, difficulty curve & flow.*
+* **Applies to the whole floor, boss included.** `partyScale` multiplies the
+  regular and key-holder stats, the boss (`hp`/`attack`) and its guards, so the
+  climactic duel stays the tower's thesis rather than a speed bump for a full
+  party. *Lenses: core loop & fantasy, MDA.*
+* **Party size 1 is identity.** A solo legacy save sees exactly the pre-sprint
+  numbers, so the migration path is balance-neutral. *Lenses: replayability,
+  save compatibility.*
+
+**Tech Lead implementation contract (floor-generator):**
+
+1. Read `TOWER_CATALOG.campaign.partyScale` (clamp `partySize` to 1–4; unknown
+   sizes fall back to the largest authored entry).
+2. Multiply the resolved per-floor `statScale.hp` / `statScale.atk` by the
+   party-size factor before `buildMonster`, the boss push, and the guard push
+   (existing lines around `floor-generator.js:929`, `:1000`, `:1021`, `:1031`).
+3. Thread the live party size in: extend `generateFloor(floorNumber, seed,
+   towerId, partySize = 1)`; update the `game-worker` call sites
+   (`:146`, `:256`, `:307`, `:530`, `:598`, `:632`) to pass the active party size.
+4. Include party size in any floor cache identity so a freshly recruited member
+   does not reuse a pre-recruit floor.
+5. Acceptance: same seed + tower + floor + party size is byte-identical; party
+   size 1 output is unchanged; party size 4 monsters have `hp`/`attack` scaled by
+   exactly 1.60/1.20 on top of the tower curve.
+
+### 8.3 Tower order & unlocks (`tower_levels.json`)
+
+Linear campaign chain, keyed by `order` and gated by `unlockRequires`:
+
+| Order | Tower | Unlocks when |
+| ---: | :--- | :--- |
+| 1 | The Spire of Light (`spire_of_light`) | Campaign start (always unlocked) |
+| 2 | The Sunken Catacombs (`sunken_catacombs`) | `spire_of_light` complete |
+| 3 | The Emberforge (`emberforge`) | `sunken_catacombs` complete |
+| 4 | The Rime Aerie (`rime_aerie`) | `emberforge` complete |
+
+* The order is the novice-to-expert teaching sequence: Spire teaches the rules,
+  Catacombs tests sustain, Emberforge tests movement, Rime tests target
+  prioritization (§7.1). *Lenses: difficulty curve & flow, theme coherence.*
+* The chain is strictly linear by design (WS1's T0 test locks "each tower
+  requires the previous"); branching unlocks are a deliberate non-goal for the
+  campaign's first pass. *Lenses: clarity, scope discipline.*
+* `firstTowerId()` is the always-unlocked entry; `towersUnlockedBy(id)` drives
+  the unlock event on completion. Recruiting the new vocation and unlocking the
+  next tower happen on the same completion (§8.4). *Lenses: core loop.*
+
+### 8.4 Campaign copy (`ui.json` → `campaign`)
+
+| Key | Copy | Shown |
+| :--- | :--- | :--- |
+| `towerCompleteTitle` | `Tower Complete` | Final-floor clear, before recruit |
+| `towerCompleteBody` | `The {tower} has fallen. A new companion will join your party.` | Tower Complete modal |
+| `recruitTitle` | `Recruit a Companion` | Recruit modal |
+| `recruitPrompt` | `Choose the vocation that joins your party.` | Recruit modal |
+| `recruitConfirmLabel` | `Recruit` | Recruit confirm button |
+| `ultimateVictoryTitle` | `ULTIMATE VICTORY` | Only after all four towers |
+| `ultimateVictoryBody` | `Every tower has fallen. Lokarta comes into the light.` | Terminal campaign beat |
+| `towerUnlockedLabel` | `Unlocked` | Tower picker |
+| `towerLockedLabel` | `Locked` | Tower picker |
+| `towerLockedHint` | `Complete {required} to unlock.` | Locked tower tooltip |
+| `towerContinueLabel` | `Continue` | Post-recruit flow |
+| `towerReturnToTownLabel` | `Return to Havenreach` | Post-recruit flow |
+
+* **Placeholders are display names, not ids.** `{tower}` and `{required}` are
+  substituted with the tower's `name` (e.g. "The Spire of Light"), never its
+  catalog id. *Lenses: readability.*
+* **The ending is a thematic button.** "Lokarta comes into the light" pays off
+  the game's title and the vision-control fantasy instead of a generic "you
+  win". *Lenses: core loop & fantasy, Kano delighter.*
+* **No dark patterns.** No streak/login/energy copy, no loss-framed prompts.
+
+### 8.5 Handoffs & verification
+
+* **Tech Lead (WS4 / LIV-13):** consume `PARTY_AI_CATALOG` with the §8.1
+  semantics; gate heals on `healAlliesWhenHurt`; have an out-of-ammo archer fall
+  back rather than stall. Acceptance: an auto party follows at
+  `followDistance`, engages within `engageRadius`, retreats below
+  `retreatHpPct`, and retargets no faster than `retargetSec`.
+* **Tech Lead (floor-generator):** the §8.2 `partyScale` contract above.
+* **Tech Lead (WS6 / LIV-14):** T0 assertions for the content — every vocation
+  has a profile; `preferredAbilities` resolve; profiles are pairwise distinct;
+  `partyScale` is monotonic, clamped 1–4, and identity at 1; tower order is a
+  gapless 1..N chain; campaign copy covers every key. Verified locally against
+  the current catalogs (`liv9-party-model`, `multi-tower`, `data-catalogs`,
+  `tower-progression` suites green at authoring time).
+* **No new monsters, abilities, towers, or bespoke code paths** are introduced by
+  this section. It is content plus one catalog field (`partyScale`) with an
+  existing-handler integration.
