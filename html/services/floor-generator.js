@@ -25,6 +25,7 @@ import {
   TOWER_CATALOG_ROOT,
 } from '../data/index.js';
 import { PROP_MANIFEST } from '../assets/sprites/index.js';
+import { MONSTER_FACTION } from '../engine/faction.js';
 
 export const TILE_TYPES = {
   FLOOR: 0,
@@ -1008,6 +1009,7 @@ export function generateFloor(floorNumber = 1, seed = null, towerId = DEFAULT_TO
       id: `f${levelId}_m_${monsterId++}`,
       type,
       name: base.name,
+      faction: base.faction || MONSTER_FACTION,
       room,
       hp,
       max_hp: hp,
@@ -1066,6 +1068,7 @@ export function generateFloor(floorNumber = 1, seed = null, towerId = DEFAULT_TO
       id: `f${levelId}_boss_${bossSpec.type}`,
       type: bossSpec.type,
       name: bossSpec.name,
+      faction: MONSTER_FACTION,
       room: bossSpec.room,
       x: bossSpec.tile[0],
       y: bossSpec.tile[1],
@@ -1098,6 +1101,7 @@ export function generateFloor(floorNumber = 1, seed = null, towerId = DEFAULT_TO
         id: `f${levelId}_guard_${g + 1}`,
         type: bossSpec.guardType,
         name: bossSpec.guardName || guardBase.name,
+        faction: guardBase.faction || MONSTER_FACTION,
         room: bossSpec.room,
         x: tile.x,
         y: tile.y,
