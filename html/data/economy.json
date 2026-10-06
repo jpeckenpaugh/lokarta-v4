@@ -41,7 +41,15 @@
     "crypt_skeleton": { "min": 6, "max": 14 },
     "shadow_cultist": { "min": 8, "max": 18 },
     "elite_cultist": { "min": 14, "max": 28 },
-    "abyssal_overlord": { "min": 150, "max": 250 }
+    "abyssal_overlord": { "min": 150, "max": 250 },
+    "mire_hound": { "min": 5, "max": 11 },
+    "rime_acolyte": { "min": 9, "max": 19 },
+    "sepulcher_mortar": { "min": 11, "max": 23 },
+    "chime_wraith": { "min": 10, "max": 21 },
+    "barrow_knight": { "min": 16, "max": 32 },
+    "ossuary_priest": { "min": 10, "max": 22 },
+    "brine_witch": { "min": 10, "max": 21 },
+    "tidebound_king": { "min": 140, "max": 230 }
   },
   "chestGold": {
     "copper": { "min": 5, "max": 12 },

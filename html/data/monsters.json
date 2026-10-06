@@ -338,5 +338,438 @@
         "stat_bonus": 40
       }
     ]
+  },
+  "mire_hound": {
+    "type": "mire_hound",
+    "name": "Mire Hound",
+    "baseHp": 34,
+    "baseAttack": 8,
+    "baseDefense": 1,
+    "moveCadence": 0.55,
+    "attackCadence": 1.1,
+    "damageMin": 6,
+    "damageMax": 10,
+    "damageType": "physical",
+    "aiType": "charger",
+    "spriteId": "giant_rat",
+    "baseXp": 24,
+    "xpFloorScale": 5,
+    "svgCode": "1F407",
+    "attacks": [
+      {
+        "key": "rending_bite",
+        "kind": "melee",
+        "label": "Rending Bite",
+        "cooldownSec": 1.1,
+        "range": 1,
+        "minRange": 1,
+        "requiresLOS": true,
+        "damageMin": 6,
+        "damageMax": 10,
+        "damageType": "physical",
+        "onHit": { "status": "slow", "durationSec": 2.5, "factor": 0.5 }
+      }
+    ],
+    "lootTable": [
+      {
+        "minRoll": 0.0,
+        "maxRoll": 0.4,
+        "item_id": "health_potion",
+        "name": "Health Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 30
+      }
+    ]
+  },
+  "rime_acolyte": {
+    "type": "rime_acolyte",
+    "name": "Rime Acolyte",
+    "baseHp": 42,
+    "baseAttack": 11,
+    "baseDefense": 2,
+    "moveCadence": 1.0,
+    "attackCadence": 2.2,
+    "damageMin": 7,
+    "damageMax": 11,
+    "damageType": "frost",
+    "aiType": "ranged",
+    "standoffMin": 3,
+    "standoffMax": 5,
+    "spriteId": "shadow_cultist",
+    "baseXp": 52,
+    "xpFloorScale": 11,
+    "svgCode": "1F52E",
+    "attacks": [
+      {
+        "key": "frost_shard",
+        "kind": "projectile",
+        "label": "Frost Shard",
+        "cooldownSec": 2.2,
+        "range": 6,
+        "minRange": 1,
+        "requiresLOS": true,
+        "damageMin": 7,
+        "damageMax": 11,
+        "damageType": "frost",
+        "projectile": {
+          "type": "frost_shard",
+          "speedTilesPerSec": 8,
+          "color": "#7dd3fc",
+          "visual": { "trailType": "solid", "headRadius": 5, "glowColor": "#bae6fd" }
+        },
+        "onHit": { "status": "slow", "durationSec": 3, "factor": 0.45 }
+      }
+    ],
+    "lootTable": [
+      {
+        "minRoll": 0.0,
+        "maxRoll": 1.0,
+        "item_id": "mana_potion",
+        "name": "Mana Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 40
+      }
+    ]
+  },
+  "sepulcher_mortar": {
+    "type": "sepulcher_mortar",
+    "name": "Sepulcher Mortar",
+    "baseHp": 46,
+    "baseAttack": 14,
+    "baseDefense": 2,
+    "moveCadence": 1.4,
+    "attackCadence": 4.0,
+    "damageMin": 14,
+    "damageMax": 20,
+    "damageType": "fire",
+    "aiType": "bomber",
+    "standoffMin": 4,
+    "standoffMax": 7,
+    "spriteId": "elite_cultist",
+    "baseXp": 66,
+    "xpFloorScale": 13,
+    "svgCode": "1F32A",
+    "attacks": [
+      {
+        "key": "cinder_shell",
+        "kind": "aoe",
+        "label": "Cinder Shell",
+        "cooldownSec": 4.0,
+        "range": 8,
+        "minRange": 3,
+        "requiresLOS": true,
+        "telegraphSec": 1.1,
+        "radius": 2,
+        "burstDurationMs": 340,
+        "telegraphColor": "#fb923c",
+        "damageMin": 14,
+        "damageMax": 20,
+        "damageType": "fire",
+        "projectile": { "type": "cinder_shell", "color": "#fb923c" },
+        "onHit": { "status": "burn", "durationSec": 3, "dps": 3 }
+      }
+    ],
+    "lootTable": [
+      {
+        "minRoll": 0.0,
+        "maxRoll": 1.0,
+        "item_id": "health_potion",
+        "name": "Health Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 30
+      }
+    ]
+  },
+  "chime_wraith": {
+    "type": "chime_wraith",
+    "name": "Chime Wraith",
+    "baseHp": 44,
+    "baseAttack": 9,
+    "baseDefense": 2,
+    "moveCadence": 1.0,
+    "attackCadence": 3.5,
+    "damageMin": 4,
+    "damageMax": 7,
+    "damageType": "shadow",
+    "aiType": "bomber",
+    "standoffMin": 2,
+    "standoffMax": 4,
+    "spriteId": "shadow_cultist",
+    "baseXp": 58,
+    "xpFloorScale": 12,
+    "svgCode": "1F539",
+    "attacks": [
+      {
+        "key": "toll_of_bells",
+        "kind": "aoe",
+        "label": "Toll of Bells",
+        "cooldownSec": 3.5,
+        "range": 5,
+        "minRange": 1,
+        "requiresLOS": true,
+        "telegraphSec": 0.7,
+        "radius": 2,
+        "burstDurationMs": 300,
+        "telegraphColor": "#a855f7",
+        "damageMin": 4,
+        "damageMax": 7,
+        "damageType": "shadow",
+        "projectile": { "type": "bell_toll", "color": "#a855f7" },
+        "onHit": { "status": "stun", "durationSec": 1.2 }
+      }
+    ],
+    "lootTable": [
+      {
+        "minRoll": 0.0,
+        "maxRoll": 1.0,
+        "item_id": "mana_potion",
+        "name": "Mana Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 40
+      }
+    ]
+  },
+  "barrow_knight": {
+    "type": "barrow_knight",
+    "name": "Barrow Knight",
+    "baseHp": 92,
+    "baseAttack": 18,
+    "baseDefense": 5,
+    "moveCadence": 0.85,
+    "attackCadence": 2.0,
+    "damageMin": 15,
+    "damageMax": 22,
+    "damageType": "physical",
+    "aiType": "charger",
+    "spriteId": "elite_cultist",
+    "baseXp": 78,
+    "xpFloorScale": 14,
+    "svgCode": "2694",
+    "attacks": [
+      {
+        "key": "graveblade",
+        "kind": "melee",
+        "label": "Graveblade",
+        "cooldownSec": 1.8,
+        "range": 1,
+        "minRange": 1,
+        "requiresLOS": true,
+        "damageMin": 15,
+        "damageMax": 22,
+        "damageType": "physical"
+      },
+      {
+        "key": "earth_shudder",
+        "kind": "aoe",
+        "label": "Earth Shudder",
+        "cooldownSec": 5.0,
+        "range": 2,
+        "minRange": 1,
+        "requiresLOS": false,
+        "telegraphSec": 0.6,
+        "radius": 2,
+        "burstDurationMs": 300,
+        "telegraphColor": "#f59e0b",
+        "damageMin": 8,
+        "damageMax": 12,
+        "damageType": "physical",
+        "projectile": { "type": "earth_shudder", "color": "#f59e0b" },
+        "onHit": { "status": "slow", "durationSec": 2, "factor": 0.5 }
+      }
+    ],
+    "lootTable": [
+      {
+        "minRoll": 0.0,
+        "maxRoll": 1.0,
+        "item_id": "health_potion",
+        "name": "Health Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 30
+      }
+    ]
+  },
+  "ossuary_priest": {
+    "type": "ossuary_priest",
+    "name": "Ossuary Priest",
+    "baseHp": 52,
+    "baseAttack": 10,
+    "baseDefense": 3,
+    "moveCadence": 1.2,
+    "attackCadence": 3.0,
+    "damageMin": 6,
+    "damageMax": 10,
+    "damageType": "shadow",
+    "aiType": "summoner",
+    "standoffMin": 3,
+    "standoffMax": 6,
+    "spriteId": "shadow_cultist",
+    "baseXp": 60,
+    "xpFloorScale": 12,
+    "svgCode": "1F4D6",
+    "attacks": [
+      {
+        "key": "raise_bones",
+        "kind": "summon",
+        "label": "Raise Bones",
+        "cooldownSec": 6.0,
+        "range": 7,
+        "minRange": 1,
+        "requiresLOS": true,
+        "summon": { "type": "crypt_skeleton", "maxActive": 2 }
+      },
+      {
+        "key": "bone_shard",
+        "kind": "projectile",
+        "label": "Bone Shard",
+        "cooldownSec": 2.4,
+        "range": 6,
+        "minRange": 1,
+        "requiresLOS": true,
+        "damageMin": 6,
+        "damageMax": 10,
+        "damageType": "physical",
+        "projectile": {
+          "type": "bone_shard",
+          "speedTilesPerSec": 9,
+          "color": "#e5e7eb",
+          "visual": { "trailType": "solid", "headRadius": 4, "glowColor": "#f8fafc" }
+        }
+      }
+    ],
+    "lootTable": [
+      {
+        "minRoll": 0.0,
+        "maxRoll": 1.0,
+        "item_id": "mana_potion",
+        "name": "Mana Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 40
+      }
+    ]
+  },
+  "brine_witch": {
+    "type": "brine_witch",
+    "name": "Brine Witch",
+    "baseHp": 50,
+    "baseAttack": 12,
+    "baseDefense": 3,
+    "moveCadence": 1.1,
+    "attackCadence": 2.6,
+    "damageMin": 5,
+    "damageMax": 9,
+    "damageType": "poison",
+    "aiType": "ranged",
+    "standoffMin": 2,
+    "standoffMax": 4,
+    "spriteId": "shadow_cultist",
+    "baseXp": 56,
+    "xpFloorScale": 12,
+    "svgCode": "1F9E5",
+    "attacks": [
+      {
+        "key": "brine_hex",
+        "kind": "projectile",
+        "label": "Brine Hex",
+        "cooldownSec": 2.6,
+        "range": 5,
+        "minRange": 1,
+        "requiresLOS": true,
+        "damageMin": 5,
+        "damageMax": 9,
+        "damageType": "poison",
+        "projectile": {
+          "type": "brine_hex",
+          "speedTilesPerSec": 7,
+          "color": "#65a30d",
+          "visual": { "trailType": "bubbling", "headRadius": 6, "glowColor": "#a3e635" }
+        },
+        "onHit": { "status": "poison", "durationSec": 6, "dps": 4 }
+      }
+    ],
+    "lootTable": [
+      {
+        "minRoll": 0.0,
+        "maxRoll": 1.0,
+        "item_id": "mana_potion",
+        "name": "Mana Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 40
+      }
+    ]
+  },
+  "tidebound_king": {
+    "type": "tidebound_king",
+    "name": "The Tidebound King",
+    "isBoss": true,
+    "baseHp": 540,
+    "baseAttack": 19,
+    "baseDefense": 6,
+    "moveCadence": 0.75,
+    "attackCadence": 1.6,
+    "damageMin": 16,
+    "damageMax": 23,
+    "damageType": "physical",
+    "aiType": "ranged",
+    "standoffMin": 2,
+    "standoffMax": 5,
+    "spriteId": "abyssal_overlord",
+    "baseXp": 520,
+    "xpFloorScale": 0,
+    "svgCode": "1F451",
+    "attacks": [
+      {
+        "key": "tidal_slam",
+        "kind": "aoe",
+        "label": "Tidal Slam",
+        "cooldownSec": 3.2,
+        "range": 4,
+        "minRange": 1,
+        "requiresLOS": true,
+        "telegraphSec": 0.7,
+        "radius": 2,
+        "burstDurationMs": 340,
+        "telegraphColor": "#38bdf8",
+        "damageMin": 16,
+        "damageMax": 23,
+        "damageType": "physical",
+        "projectile": { "type": "tidal_slam", "color": "#38bdf8" },
+        "onHit": { "status": "slow", "durationSec": 2, "factor": 0.5 }
+      },
+      {
+        "key": "drown_the_ranks",
+        "kind": "summon",
+        "label": "Drown the Ranks",
+        "cooldownSec": 9.0,
+        "range": 7,
+        "minRange": 1,
+        "requiresLOS": true,
+        "summon": { "type": "mire_hound", "maxActive": 2 }
+      }
+    ],
+    "lootTable": [
+      {
+        "always": true,
+        "item_id": "mana_potion",
+        "name": "Greater Mana Potion",
+        "type": "consumable",
+        "quantity": 3,
+        "stat_bonus": 60
+      },
+      {
+        "always": true,
+        "item_id": "health_potion",
+        "name": "Greater Health Potion",
+        "type": "consumable",
+        "quantity": 3,
+        "stat_bonus": 50
+      }
+    ]
   }
 }
