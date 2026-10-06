@@ -1,0 +1,392 @@
+[
+  {
+    "id": "card_apprentice_wand",
+    "name": "Spark Wand",
+    "rarity": "common",
+    "icon": "🪄",
+    "description": "Carved hazel wand shooting radiant sparks (12–16 damage).",
+    "statBonusText": "12–16 Dmg (1 MP)",
+    "vocationAffinity": "magician",
+    "item": {
+      "item_id": "apprentice_wand",
+      "name": "Spark Wand",
+      "type": "weapon",
+      "quantity": 1,
+      "stat_bonus": 3,
+      "icon": "🪄"
+    }
+  },
+  {
+    "id": "card_astral_scepter",
+    "name": "Beam Staff",
+    "rarity": "epic",
+    "icon": "🦯",
+    "description": "Ancient staff unleashing an expanding wave of arcane energy.",
+    "statBonusText": "20-5 Wave Dmg (5 MP)",
+    "vocationAffinity": "magician",
+    "item": {
+      "item_id": "astral_scepter",
+      "name": "Beam Staff",
+      "type": "weapon",
+      "quantity": 1,
+      "stat_bonus": 8,
+      "icon": "🦯"
+    }
+  },
+  {
+    "id": "card_apprentice_cape",
+    "name": "Apprentice's Cape",
+    "rarity": "rare",
+    "icon": "🧥",
+    "description": "Woven silk cloak. Shock Shield (2 MP) deflects one hit and stuns the attacker for 5s; Power Pulse restores +1 MP / 20s.",
+    "statBonusText": "Shock Shield 5s Stun (10s CD), +1 MP/20s",
+    "vocationAffinity": "magician",
+    "item": {
+      "item_id": "apprentice_cape",
+      "name": "Apprentice's Cape",
+      "type": "armor",
+      "quantity": 1,
+      "stat_bonus": 2,
+      "itemLevel": 1,
+      "icon": "🧥"
+    }
+  },
+  {
+    "id": "card_quiver_arrows",
+    "name": "Quiver of Arrows",
+    "rarity": "common",
+    "icon": "📦",
+    "description": "Bundle of 15 fletched iron-tipped dungeon arrows.",
+    "statBonusText": "15 Arrows",
+    "vocationAffinity": "archer",
+    "item": {
+      "item_id": "arrows",
+      "name": "Arrows",
+      "type": "ammo",
+      "quantity": 15,
+      "stat_bonus": 0,
+      "icon": "🏹"
+    }
+  },
+  {
+    "id": "card_composite_bow",
+    "name": "Composite Longbow",
+    "rarity": "epic",
+    "icon": "🏹",
+    "description": "High-draw recurve bow extending attack range and piercing through armor.",
+    "statBonusText": "+6 Ranged Power",
+    "vocationAffinity": "archer",
+    "item": {
+      "item_id": "composite_bow",
+      "name": "Composite Longbow",
+      "type": "weapon",
+      "quantity": 1,
+      "stat_bonus": 6,
+      "icon": "🏹",
+      "grantedAmmo": { "item_id": "arrows", "quantity": 20 }
+    }
+  },
+  {
+    "id": "card_grey_stalker_quiver",
+    "name": "Grey Stalker Quiver",
+    "rarity": "rare",
+    "icon": "🏹",
+    "description": "A hunting quiver that regenerates arrows over time: starts full (25/25) and regrows 1 arrow every 5 seconds. Poison Tip (2 MP) coats your next 5 arrows so hits poison for 3s (8s cooldown).",
+    "statBonusText": "25 Arrows, Regen 1/5s, Poison Tip (2 MP)",
+    "vocationAffinity": "archer",
+    "item": {
+      "item_id": "grey_stalker_quiver",
+      "name": "Grey Stalker Quiver",
+      "type": "offhand",
+      "quantity": 1,
+      "stat_bonus": 3,
+      "icon": "🏹"
+    }
+  },
+  {
+    "id": "card_hunter_leathers",
+    "name": "Vampiric Cloak",
+    "rarity": "rare",
+    "icon": "🧥",
+    "description": "Supple cured-hide cloak that drinks the life of nearby foes. Life Siphon (1 MP) drains 5 HP from each enemy within 2 tiles and heals you (8s cooldown).",
+    "statBonusText": "+5 Armor, Life Siphon (1 MP)",
+    "vocationAffinity": "archer",
+    "item": {
+      "item_id": "hunter_leathers",
+      "name": "Vampiric Cloak",
+      "type": "armor",
+      "quantity": 1,
+      "stat_bonus": 5,
+      "icon": "🧥"
+    }
+  },
+  {
+    "id": "card_ranger_talisman",
+    "name": "Ranger's Talisman",
+    "rarity": "rare",
+    "icon": "📿",
+    "description": "A hunter's charm sharpening every shot. Grants +4 ranged damage and +10% crit; Hunter's Mark (3 MP) marks foes in line of sight for 6s so arrows deal bonus damage (15s cooldown).",
+    "statBonusText": "+4 Ranged, +10% Crit, Hunter's Mark (3 MP)",
+    "vocationAffinity": "archer",
+    "item": {
+      "item_id": "ranger_talisman",
+      "name": "Ranger's Talisman",
+      "type": "relic",
+      "quantity": 1,
+      "stat_bonus": 4,
+      "icon": "📿"
+    }
+  },
+  {
+    "id": "card_broadsword",
+    "name": "Tempered Broadsword",
+    "rarity": "epic",
+    "icon": "🗡️",
+    "description": "Heavy double-edged steel broadsword delivering bone-crushing melee swings.",
+    "statBonusText": "+7 Melee Power",
+    "vocationAffinity": "fighter",
+    "item": {
+      "item_id": "tempered_broadsword",
+      "name": "Tempered Broadsword",
+      "type": "weapon",
+      "quantity": 1,
+      "stat_bonus": 7,
+      "icon": "🗡️"
+    }
+  },
+  {
+    "id": "card_iron_helm",
+    "name": "Iron Helm",
+    "rarity": "rare",
+    "icon": "🪖",
+    "description": "A forged iron helm guarding the Legion fighter's head through heavy melee.",
+    "statBonusText": "+6 Armor",
+    "vocationAffinity": "fighter",
+    "item": {
+      "item_id": "iron_helm",
+      "name": "Iron Helm",
+      "type": "relic",
+      "quantity": 1,
+      "stat_bonus": 6,
+      "icon": "🪖"
+    }
+  },
+  {
+    "id": "card_radiant_warhammer",
+    "name": "Consecrated Warhammer",
+    "rarity": "epic",
+    "icon": "⚒️",
+    "description": "Heavy gilded maul blessed by the High Templars.",
+    "statBonusText": "+6 Holy Power, +3 Armor",
+    "vocationAffinity": "paladin",
+    "item": {
+      "item_id": "consecrated_warhammer",
+      "name": "Consecrated Warhammer",
+      "type": "weapon",
+      "quantity": 1,
+      "stat_bonus": 6,
+      "icon": "⚒️"
+    }
+  },
+  {
+    "id": "card_holy_crown",
+    "name": "Holy Crown",
+    "rarity": "rare",
+    "icon": "👑",
+    "description": "A consecrated crown radiating the Paladin's sacred devotion and protection.",
+    "statBonusText": "+7 Armor",
+    "vocationAffinity": "paladin",
+    "item": {
+      "item_id": "holy_crown",
+      "name": "Holy Crown",
+      "type": "relic",
+      "quantity": 1,
+      "stat_bonus": 7,
+      "icon": "👑"
+    }
+  },
+  {
+    "id": "card_vanguard_battleplate",
+    "name": "Vanguard Battleplate",
+    "rarity": "epic",
+    "icon": "🦺",
+    "description": "Interlocking vanguard steel built to brace for the charge. Fortify Stance (12 MP) halves all incoming damage for 10s (14s cooldown).",
+    "statBonusText": "+8 Armor, Fortify: -50% Dmg 10s (12 MP)",
+    "vocationAffinity": "fighter",
+    "item": {
+      "item_id": "vanguard_battleplate",
+      "name": "Vanguard Battleplate",
+      "type": "armor",
+      "quantity": 1,
+      "stat_bonus": 8,
+      "icon": "🦺"
+    }
+  },
+  {
+    "id": "card_relic_berserkers_sigil",
+    "name": "Berserker's Sigil",
+    "rarity": "rare",
+    "icon": "🩸",
+    "description": "A blood-bound sigil that sharpens every strike. Grants +8% crit and Whirlwind Cleave (10 MP): a 2.5-tile sweep that hits every nearby foe (3s cooldown).",
+    "statBonusText": "+5 Armor, +8% Crit, Whirlwind Cleave (10 MP)",
+    "vocationAffinity": "fighter",
+    "item": {
+      "item_id": "relic_berserkers_sigil",
+      "name": "Berserker's Sigil",
+      "type": "relic",
+      "quantity": 1,
+      "stat_bonus": 5,
+      "icon": "🩸"
+    }
+  },
+  {
+    "id": "card_sanctuary_plate",
+    "name": "Sanctuary Plate",
+    "rarity": "epic",
+    "icon": "🦺",
+    "description": "Consecrated plate that answers a prayer. Sanctuary (12 MP) wraps you in a holy force-field that absorbs 15 damage for 20s (16s cooldown).",
+    "statBonusText": "+8 Armor, Sanctuary: Absorb 15 / 20s (12 MP)",
+    "vocationAffinity": "paladin",
+    "item": {
+      "item_id": "sanctuary_plate",
+      "name": "Sanctuary Plate",
+      "type": "armor",
+      "quantity": 1,
+      "stat_bonus": 8,
+      "icon": "🦺"
+    }
+  },
+  {
+    "id": "card_relic_dawnlight",
+    "name": "Dawnlight Reliquary",
+    "rarity": "rare",
+    "icon": "📿",
+    "description": "A reliquary holding the first light of dawn. Grants +15 Max MP and Dawnlight Benediction (20 MP): restores 25-35 HP and 15 MP (18s cooldown).",
+    "statBonusText": "+6 Armor, +15 MP, Benediction: Heal + MP (20 MP)",
+    "vocationAffinity": "paladin",
+    "item": {
+      "item_id": "relic_dawnlight",
+      "name": "Dawnlight Reliquary",
+      "type": "relic",
+      "quantity": 1,
+      "stat_bonus": 6,
+      "icon": "📿"
+    }
+  },
+  {
+    "id": "card_health_potion_x3",
+    "name": "Health Potion Stash",
+    "rarity": "common",
+    "icon": "🧪",
+    "description": "A set of 3 crimson restorative draughts (restores +30 HP each).",
+    "statBonusText": "+30 HP x 3",
+    "item": {
+      "item_id": "health_potion",
+      "name": "Health Potion",
+      "type": "consumable",
+      "quantity": 3,
+      "stat_bonus": 30,
+      "icon": "🧪"
+    }
+  },
+  {
+    "id": "card_mana_potion_x3",
+    "name": "Mana Potion Stash",
+    "rarity": "common",
+    "icon": "🔷",
+    "description": "A set of 3 cobalt ether draughts (restores +40 Mana each).",
+    "statBonusText": "+40 MP x 3",
+    "item": {
+      "item_id": "mana_potion",
+      "name": "Mana Potion",
+      "type": "consumable",
+      "quantity": 3,
+      "stat_bonus": 40,
+      "icon": "🔷"
+    }
+  },
+  {
+    "id": "card_vanguard_shield",
+    "name": "Vanguard Shield",
+    "rarity": "rare",
+    "icon": "🛡️",
+    "description": "An active iron-tipped war shield. Shield Bash shoves adjacent monsters back and stuns them for 1 second (10s cooldown).",
+    "statBonusText": "Shield Bash: Push + Stun 1s (10s CD)",
+    "vocationAffinity": "fighter",
+    "item": {
+      "item_id": "vanguard_shield",
+      "name": "Vanguard Shield",
+      "type": "offhand",
+      "quantity": 1,
+      "stat_bonus": 4,
+      "icon": "🛡️"
+    }
+  },
+  {
+    "id": "card_aegis_shield",
+    "name": "Aegis Shield",
+    "rarity": "rare",
+    "icon": "🛡️",
+    "description": "A consecrated shield channeling a protective bubble. Holy Shield absorbs 10 damage for 30 seconds (15 MP).",
+    "statBonusText": "Holy Shield: Absorb 10 / 30s (15 MP)",
+    "vocationAffinity": "paladin",
+    "item": {
+      "item_id": "aegis_shield",
+      "name": "Aegis Shield",
+      "type": "offhand",
+      "quantity": 1,
+      "stat_bonus": 4,
+      "icon": "🛡️"
+    }
+  },
+  {
+    "id": "card_plate_armor",
+    "name": "Knight Plate Body",
+    "rarity": "rare",
+    "icon": "🦺",
+    "description": "Heavy interlocking steel cuirass protecting vital organs from lethal damage.",
+    "statBonusText": "+8 Armor",
+    "vocationAffinity": ["fighter", "paladin"],
+    "item": {
+      "item_id": "plate_armor",
+      "name": "Knight Plate Armor",
+      "type": "armor",
+      "quantity": 1,
+      "stat_bonus": 8,
+      "icon": "🦺"
+    }
+  },
+  {
+    "id": "card_relic_luminous_amulet",
+    "name": "Luminous Relic Amulet",
+    "rarity": "epic",
+    "icon": "📿",
+    "description": "Sacred charm granting +5 Max HP/MP and auto-restoring 2 combined HP/MP every 10 seconds. Use (R) for Luminous Prayer.",
+    "statBonusText": "+5 HP/MP, Auto-Prayer, Luminous Prayer",
+    "item": {
+      "item_id": "relic_luminous_amulet",
+      "name": "Luminous Amulet",
+      "type": "relic",
+      "quantity": 1,
+      "stat_bonus": 5,
+      "icon": "📿"
+    }
+  },
+  {
+    "id": "card_relic_champions_crest",
+    "name": "Champion's Crest",
+    "rarity": "legendary",
+    "icon": "👑",
+    "description": "Ancient artifact of legend that enhances all combat damage by +20%.",
+    "statBonusText": "+20% Damage, +15 Max HP",
+    "vocationAffinity": ["fighter", "paladin"],
+    "item": {
+      "item_id": "relic_champions_crest",
+      "name": "Champion's Crest",
+      "type": "relic",
+      "quantity": 1,
+      "stat_bonus": 15,
+      "icon": "👑"
+    }
+  }
+]

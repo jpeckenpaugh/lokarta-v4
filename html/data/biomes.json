@@ -1,0 +1,31 @@
+{
+  "crypt": { "id": "crypt", "name": "The Gatehouse", "minLevel": 1, "maxLevel": 1, "lightColor": "#ff8800" },
+  "catacombs": {
+    "id": "catacombs",
+    "name": "The Hall of Banners",
+    "minLevel": 2,
+    "maxLevel": 2,
+    "lightColor": "#00d4ff"
+  },
+  "shadow_vaults": {
+    "id": "shadow_vaults",
+    "name": "The Bell Keep",
+    "minLevel": 3,
+    "maxLevel": 3,
+    "lightColor": "#a855f7"
+  },
+  "abyssal_sanctum": {
+    "id": "abyssal_sanctum",
+    "name": "The Solar Gallery",
+    "minLevel": 4,
+    "maxLevel": 4,
+    "lightColor": "#ef4444"
+  },
+  "crown_spire": {
+    "id": "crown_spire",
+    "name": "The Crown Spire",
+    "minLevel": 5,
+    "maxLevel": 5,
+    "lightColor": "#ffd700"
+  }
+}

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Livive.net Studios — primary lockup (emblem + wordmark).
+  Self-contained: no scripts, no external references, no embedded raster.
+  The wordmark uses a font stack so that, when this file is inlined into the
+  document (see docs/packaging-design.md §1), the page's Cinzel webfont applies;
+  rendered standalone it falls back to Georgia.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" role="img" aria-labelledby="livive-lockup-title">
+  <title id="livive-lockup-title">Livive.net Studios</title>
+
+  <defs>
+    <linearGradient id="lv-flame" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#e5b95c"/>
+      <stop offset="0.55" stop-color="#f59e0b"/>
+      <stop offset="1" stop-color="#fff3c4"/>
+    </linearGradient>
+    <radialGradient id="lv-glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#e5b95c" stop-opacity="0.55"/>
+      <stop offset="0.55" stop-color="#e5b95c" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#e5b95c" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="lv-arch" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a1e2e"/>
+      <stop offset="1" stop-color="#0a0b10"/>
+    </linearGradient>
+    <linearGradient id="lv-wax" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4ecd8"/>
+      <stop offset="1" stop-color="#b9b0a0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Emblem: gothic pointed arch cradling a single candle flame -->
+  <g id="lv-emblem">
+    <circle cx="320" cy="126" r="128" fill="url(#lv-glow)"/>
+
+    <!-- outer arch -->
+    <path d="M320 20 C268 60 214 96 214 150 L214 236 L426 236 L426 150 C426 96 372 60 320 20 Z"
+          fill="url(#lv-arch)" stroke="#e5b95c" stroke-width="6" stroke-linejoin="round"/>
+    <!-- inner arch -->
+    <path d="M320 50 C282 80 232 110 232 156 L232 222 L408 222 L408 156 C408 110 358 80 320 50 Z"
+          fill="none" stroke="#4c5680" stroke-width="2.5"/>
+
+    <!-- radial light rays -->
+    <g stroke="#e5b95c" stroke-width="3" stroke-linecap="round" opacity="0.85">
+      <line x1="320" y1="4" x2="320" y2="18"/>
+      <line x1="262" y1="16" x2="272" y2="30"/>
+      <line x1="378" y1="16" x2="368" y2="30"/>
+      <line x1="222" y1="58" x2="236" y2="68"/>
+      <line x1="418" y1="58" x2="404" y2="68"/>
+    </g>
+
+    <!-- candle -->
+    <rect x="302" y="146" width="36" height="76" rx="5" fill="url(#lv-wax)"/>
+    <rect x="302" y="146" width="36" height="10" rx="5" fill="#fff8e1"/>
+    <line x1="320" y1="146" x2="320" y2="134" stroke="#3a3223" stroke-width="3" stroke-linecap="round"/>
+
+    <!-- flame -->
+    <path d="M320 88 C298 118 296 138 320 148 C344 138 342 118 320 88 Z" fill="url(#lv-flame)"/>
+    <path d="M320 112 C310 126 310 136 320 142 C330 136 330 126 320 112 Z" fill="#fff8e1" opacity="0.95"/>
+
+    <!-- plinth -->
+    <rect x="286" y="236" width="68" height="12" rx="3" fill="#0a0b10" stroke="#e5b95c" stroke-width="3"/>
+    <rect x="256" y="248" width="128" height="12" rx="3" fill="#0a0b10" stroke="#e5b95c" stroke-width="3"/>
+  </g>
+
+  <!-- Wordmark -->
+  <g fill="#e5b95c" text-anchor="middle" font-family="Cinzel, 'Trajan Pro', Georgia, serif">
+    <text x="320" y="312" font-size="60" font-weight="700" letter-spacing="7">LIVIVE.NET</text>
+  </g>
+  <g fill="#94a3b8" text-anchor="middle" font-family="Cinzel, 'Trajan Pro', Georgia, serif">
+    <text x="320" y="352" font-size="22" font-weight="500" letter-spacing="14">STUDIOS</text>
+  </g>
+</svg>

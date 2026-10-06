@@ -1,0 +1,222 @@
+{
+  "footstep": {
+    "type": "sweep",
+    "oscType": "triangle",
+    "startFreq": 90,
+    "freqRandom": 30,
+    "endFreq": 30,
+    "duration": 0.05,
+    "gain": 0.08,
+    "filter": { "type": "lowpass", "freq": 400 }
+  },
+  "wandSpark": {
+    "type": "sweep",
+    "oscType": "sawtooth",
+    "startFreq": 800,
+    "freqRandom": 100,
+    "endFreq": 150,
+    "duration": 0.12,
+    "gain": 0.2
+  },
+  "lightSpell": {
+    "type": "sequence",
+    "oscType": "sine",
+    "gain": 0.12,
+    "notes": [
+      { "freq": 523.25, "time": 0.00, "duration": 0.6 },
+      { "freq": 659.25, "time": 0.04, "duration": 0.6 },
+      { "freq": 783.99, "time": 0.08, "duration": 0.6 },
+      { "freq": 1046.5, "time": 0.12, "duration": 0.6 }
+    ]
+  },
+  "energyBeam": {
+    "type": "composite",
+    "oscType": "sawtooth",
+    "startFreq": 450,
+    "endFreq": 120,
+    "duration": 0.35,
+    "gain": 0.25,
+    "lfo": { "oscType": "sine", "freq": 40, "gain": 80 },
+    "filter": { "type": "bandpass", "startFreq": 1200, "endFreq": 300, "Q": 3 }
+  },
+  "bowShot": {
+    "type": "sweep",
+    "oscType": "triangle",
+    "startFreq": 360,
+    "endFreq": 110,
+    "duration": 0.09,
+    "gain": 0.22
+  },
+  "powerShot": {
+    "type": "composite",
+    "duration": 0.2,
+    "gain": 0.28,
+    "oscillators": [
+      { "type": "square", "startFreq": 500, "endFreq": 80 },
+      { "type": "sine", "startFreq": 120, "endFreq": 40 }
+    ]
+  },
+  "hit": {
+    "type": "sweep",
+    "oscType": "square",
+    "startFreq": 180,
+    "endFreq": 40,
+    "duration": 0.1,
+    "gain": 0.25
+  },
+  "monsterAttack": {
+    "type": "sweep",
+    "oscType": "sawtooth",
+    "startFreq": 220,
+    "endFreq": 70,
+    "duration": 0.15,
+    "gain": 0.18
+  },
+  "monsterDeath": {
+    "type": "sweep",
+    "oscType": "sawtooth",
+    "startFreq": 150,
+    "endFreq": 25,
+    "duration": 0.3,
+    "gain": 0.2
+  },
+  "playerHurt": {
+    "type": "sweep",
+    "oscType": "triangle",
+    "startFreq": 110,
+    "endFreq": 30,
+    "duration": 0.18,
+    "gain": 0.3
+  },
+  "itemPickup": {
+    "type": "sequence",
+    "oscType": "sine",
+    "gain": 0.18,
+    "notes": [
+      { "freq": 587.33, "time": 0.00, "duration": 0.1 },
+      { "freq": 880.00, "time": 0.05, "duration": 0.1 }
+    ]
+  },
+  "potionDrink": {
+    "type": "sequence",
+    "oscType": "triangle",
+    "gain": 0.15,
+    "notes": [
+      { "freq": 330, "time": 0.00, "duration": 0.12 },
+      { "freq": 440, "time": 0.06, "duration": 0.12 },
+      { "freq": 550, "time": 0.12, "duration": 0.12 },
+      { "freq": 660, "time": 0.18, "duration": 0.12 }
+    ]
+  },
+  "equip": {
+    "type": "sweep",
+    "oscType": "triangle",
+    "startFreq": 280,
+    "endFreq": 560,
+    "duration": 0.06,
+    "stopTime": 0.07,
+    "gain": 0.15
+  },
+  "unequip": {
+    "type": "sweep",
+    "oscType": "triangle",
+    "startFreq": 450,
+    "endFreq": 220,
+    "duration": 0.06,
+    "gain": 0.12
+  },
+  "stairs": {
+    "type": "sequence",
+    "oscType": "sine",
+    "gain": 0.18,
+    "notes": [
+      { "freq": 330, "time": 0.00, "duration": 0.4 },
+      { "freq": 440, "time": 0.08, "duration": 0.4 },
+      { "freq": 554, "time": 0.16, "duration": 0.4 },
+      { "freq": 659, "time": 0.24, "duration": 0.4 },
+      { "freq": 880, "time": 0.32, "duration": 0.4 }
+    ]
+  },
+  "levelUp": {
+    "type": "sequence",
+    "oscType": "sine",
+    "gain": 0.2,
+    "notes": [
+      { "freq": 440.0, "time": 0.00, "duration": 0.45 },
+      { "freq": 554.37, "time": 0.08, "duration": 0.45 },
+      { "freq": 659.25, "time": 0.16, "duration": 0.45 },
+      { "freq": 880.0, "time": 0.24, "duration": 0.45 },
+      { "freq": 1108.73, "time": 0.36, "duration": 0.45 },
+      { "freq": 1318.51, "time": 0.48, "duration": 0.45 }
+    ]
+  },
+  "victory": {
+    "type": "sequence",
+    "oscType": "triangle",
+    "gain": 0.25,
+    "notes": [
+      { "freq": 523.25, "time": 0.00, "duration": 0.25 },
+      { "freq": 659.25, "time": 0.12, "duration": 0.25 },
+      { "freq": 783.99, "time": 0.24, "duration": 0.25 },
+      { "freq": 1046.5, "time": 0.36, "duration": 0.25 },
+      { "freq": 1318.5, "time": 0.60, "duration": 1.00 }
+    ]
+  },
+  "defeat": {
+    "type": "sequence",
+    "oscType": "sawtooth",
+    "gain": 0.2,
+    "notes": [
+      { "freq": 220.00, "time": 0.00, "duration": 0.4 },
+      { "freq": 207.65, "time": 0.25, "duration": 0.4 },
+      { "freq": 196.00, "time": 0.50, "duration": 0.4 },
+      { "freq": 174.61, "time": 0.75, "duration": 0.4 }
+    ]
+  },
+  "click": {
+    "type": "sweep",
+    "oscType": "sine",
+    "startFreq": 600,
+    "endFreq": 300,
+    "duration": 0.03,
+    "gain": 0.12
+  },
+  "uiMove": {
+    "type": "sweep",
+    "oscType": "triangle",
+    "startFreq": 520,
+    "endFreq": 620,
+    "duration": 0.04,
+    "gain": 0.08
+  },
+  "uiBack": {
+    "type": "sweep",
+    "oscType": "triangle",
+    "startFreq": 420,
+    "endFreq": 260,
+    "duration": 0.07,
+    "gain": 0.1
+  },
+  "keyJangle": {
+    "type": "sequence",
+    "oscType": "square",
+    "gain": 0.12,
+    "notes": [
+      { "freq": 1760.0, "time": 0.00, "duration": 0.06 },
+      { "freq": 2093.0, "time": 0.04, "duration": 0.06 },
+      { "freq": 1567.98, "time": 0.08, "duration": 0.07 },
+      { "freq": 2349.32, "time": 0.13, "duration": 0.06 }
+    ]
+  },
+  "coins": {
+    "type": "sequence",
+    "oscType": "triangle",
+    "gain": 0.16,
+    "notes": [
+      { "freq": 1318.51, "time": 0.00, "duration": 0.05 },
+      { "freq": 1760.0, "time": 0.03, "duration": 0.05 },
+      { "freq": 1567.98, "time": 0.06, "duration": 0.05 },
+      { "freq": 2093.0, "time": 0.09, "duration": 0.06 }
+    ]
+  }
+}

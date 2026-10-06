@@ -1,0 +1,153 @@
+{
+  "giant_rat": {
+    "type": "giant_rat",
+    "name": "Giant Rat",
+    "baseHp": 30,
+    "baseAttack": 6,
+    "baseDefense": 1,
+    "moveCadence": 0.6,
+    "attackCadence": 1.2,
+    "damageMin": 5,
+    "damageMax": 9,
+    "aiType": "chase",
+    "baseXp": 20,
+    "xpFloorScale": 4,
+    "svgCode": "1F407",
+    "lootTable": [
+      {
+        "minRoll": 0.0,
+        "maxRoll": 0.4,
+        "item_id": "health_potion",
+        "name": "Health Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 30
+      }
+    ]
+  },
+  "crypt_skeleton": {
+    "type": "crypt_skeleton",
+    "name": "Bone Sentry",
+    "baseHp": 50,
+    "baseAttack": 12,
+    "baseDefense": 3,
+    "moveCadence": 0.8,
+    "attackCadence": 1.5,
+    "damageMin": 9,
+    "damageMax": 15,
+    "aiType": "chase",
+    "baseXp": 35,
+    "xpFloorScale": 8,
+    "svgCode": "1F480",
+    "lootTable": [
+      {
+        "minRoll": 0.0,
+        "maxRoll": 0.5,
+        "item_id": "health_potion",
+        "name": "Health Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 30
+      },
+      {
+        "minRoll": 0.5,
+        "maxRoll": 1.0,
+        "item_id": "arrows",
+        "name": "Arrows",
+        "type": "ammo",
+        "quantity": 10,
+        "stat_bonus": 0
+      }
+    ]
+  },
+  "shadow_cultist": {
+    "type": "shadow_cultist",
+    "name": "Shadow Cultist",
+    "baseHp": 40,
+    "baseAttack": 10,
+    "baseDefense": 2,
+    "moveCadence": 1.0,
+    "attackCadence": 2.0,
+    "damageMin": 11,
+    "damageMax": 17,
+    "aiType": "standoff",
+    "standoffMin": 3,
+    "standoffMax": 4,
+    "baseXp": 45,
+    "xpFloorScale": 10,
+    "svgCode": "1F9D9",
+    "lootTable": [
+      {
+        "minRoll": 0.0,
+        "maxRoll": 1.0,
+        "item_id": "mana_potion",
+        "name": "Mana Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 40
+      }
+    ]
+  },
+  "elite_cultist": {
+    "type": "elite_cultist",
+    "name": "Elite Cultist",
+    "baseHp": 80,
+    "baseAttack": 18,
+    "baseDefense": 5,
+    "moveCadence": 0.9,
+    "attackCadence": 1.8,
+    "damageMin": 14,
+    "damageMax": 22,
+    "aiType": "standoff",
+    "standoffMin": 2,
+    "standoffMax": 4,
+    "baseXp": 65,
+    "xpFloorScale": 12,
+    "svgCode": "1F9D9",
+    "lootTable": [
+      {
+        "minRoll": 0.0,
+        "maxRoll": 1.0,
+        "item_id": "mana_potion",
+        "name": "Mana Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 40
+      }
+    ]
+  },
+  "abyssal_overlord": {
+    "type": "abyssal_overlord",
+    "name": "The Spire Warden",
+    "isBoss": true,
+    "baseHp": 600,
+    "baseAttack": 20,
+    "baseDefense": 6,
+    "moveCadence": 0.7,
+    "attackCadence": 1.4,
+    "damageMin": 18,
+    "damageMax": 26,
+    "aiType": "chase",
+    "baseXp": 500,
+    "xpFloorScale": 0,
+    "svgCode": "1F451",
+    "lootTable": [
+      {
+        "always": true,
+        "item_id": "mana_potion",
+        "name": "Greater Mana Potion",
+        "type": "consumable",
+        "quantity": 3,
+        "stat_bonus": 60
+      },
+      {
+        "always": true,
+        "item_id": "health_potion",
+        "name": "Greater Health Potion",
+        "type": "consumable",
+        "quantity": 3,
+        "stat_bonus": 50
+      }
+    ]
+  }
+}

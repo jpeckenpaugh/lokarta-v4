@@ -1,0 +1,5 @@
+{
+  "copper": { "tier": "copper", "keyItemId": "key_copper", "shape": "circle", "accent": "#b87333" },
+  "silver": { "tier": "silver", "keyItemId": "key_silver", "shape": "square", "accent": "#c0c0c8" },
+  "gold": { "tier": "gold", "keyItemId": "key_gold", "shape": "crown", "accent": "#facc15" }
+}

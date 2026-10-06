@@ -1,0 +1,60 @@
+{
+  "id": "prop_throne",
+  "kind": "prop",
+  "class": "wall",
+  "native": {
+    "w": 32,
+    "h": 32
+  },
+  "anchor": {
+    "x": 16,
+    "y": 29
+  },
+  "palette": {
+    "0": "#0b0d12",
+    ".": null,
+    "d": "#3f2817",
+    "e": "#6b4423",
+    "f": "#8a5a2b",
+    "p": "#e0a82e",
+    "q": "#ffe08a",
+    "r": "#c0392b",
+    "t": "#fff2d6"
+  },
+  "frames": {
+    "idle": [
+      "................................",
+      "................................",
+      "................................",
+      "........dddddddddddddddd........",
+      "........dddddddddddddddd........",
+      "........ddeqqeeppeeqqedd........",
+      "........ddeqqerrrreqqedd........",
+      "........ddeqqerttreqqedd........",
+      "........ddeqqerrrreqqedd........",
+      "........ddeqqeeeeeeqqedd........",
+      "........ddeqqeeeeeeqqedd........",
+      "........ddeqqeeeeeeqqedd........",
+      "........ddeqqeeeeeeqqedd........",
+      "........ddeqqeeeeeeqqedd........",
+      "........ddeqqeeeeeeqqedd........",
+      "........ddeqqeeeeeeqqedd........",
+      "........ddeqqeeeeeeqqedd........",
+      "........ddeqqeeeeeeqqedd........",
+      "........ffeqqeeeeeeqqeff........",
+      "........ffeeeeeeeeeeeeff........",
+      "........ffeeeeeeeeeeeeff........",
+      "........ffeeeeeeeeeeeeff........",
+      "........ffeeeeeeeeeeeeff........",
+      "........ffeeeeeeeeeeeeff........",
+      "........ffeeeeeeeeeeeeff........",
+      "........ffeeeeeeeeeeeeff........",
+      "........ffeeeeeeeeeeeeff........",
+      "................................",
+      "................................",
+      "................................",
+      "................................",
+      "................................"
+    ]
+  }
+}

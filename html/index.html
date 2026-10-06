@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Lokarta: Come Into The Light</title>
+  <link rel="icon" type="image/x-icon" href="./favicon.ico" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Top Global App Header -->
+    <header class="app-header">
+      <div class="logo-group">
+        <span class="game-icon"><img class="openmoji-icon header-icon" src="./assets/openmoji/1F56F.svg" alt="Candle" /></span>
+        <h1 class="game-title">LOKARTA</h1>
+        <span class="tagline">Come Into The Light</span>
+      </div>
+      <div class="system-controls">
+        <span class="engine-badge" id="engine-badge">v2.3</span>
+        <button id="header-guide-btn" class="header-btn" title="Open the in-game menu">
+          <img class="openmoji-icon btn-emoji" src="./assets/openmoji/1F4D6.svg" alt="Menu" /> Menu
+        </button>
+        <button id="audio-toggle-btn" class="audio-btn" title="Toggle Sound FX">
+          🔊 Sound: ON
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Game Frame -->
+    <div class="main-frame">
+      <!-- Center Stage: Canvas Viewport & Bottom Combat Log -->
+      <main class="center-stage">
+        <section class="viewport-panel" id="viewport-panel">
+          <div class="canvas-wrapper">
+            <canvas id="game-canvas"></canvas>
+            <!-- Mobile / Touch Controls Overlay -->
+            <div class="touch-controls" id="touch-controls">
+              <div></div>
+              <button class="touch-btn" data-key="ArrowUp" data-dir="up">▲</button>
+              <div></div>
+              <button class="touch-btn" data-key="ArrowLeft" data-dir="left">◀</button>
+              <div></div>
+              <button class="touch-btn" data-key="ArrowRight" data-dir="right">▶</button>
+              <div></div>
+              <button class="touch-btn" data-key="ArrowDown" data-dir="down">▼</button>
+              <div></div>
+            </div>
+            <!-- Mobile ability bar: q/w/e/r + 1/2/3/4. Built from the
+                 loadout catalog at runtime; shown with .touch-controls. -->
+            <div class="ability-bar" id="ability-bar" role="group" aria-label="Ability bar"></div>
+          </div>
+        </section>
+
+        <!-- Combat & Event Log Panel -->
+        <section class="combat-log-panel" id="combat-log-container">
+          <div class="panel-header">COMBAT & EVENT LOG</div>
+          <div class="log-entries-scroll" id="log-entries-container"></div>
+        </section>
+      </main>
+
+      <!-- Sidebar HUD: Status, Keyed Slots, Backpack -->
+      <aside class="sidebar-hud" id="sidebar-hud">
+        <!-- Status, Level/Vocation, Gold, HP/MP/XP Bars -->
+        <div class="hud-panel status-panel" id="status-bars-container"></div>
+
+        <!-- Loadout (D1 §2): 1 2 3 4 active items above q w e r equipment -->
+        <div class="hud-panel loadout-panel" id="loadout-container"></div>
+
+        <!-- Single Backpack Grid: 36 slots (6x6) -->
+        <div class="hud-panel backpack-panel" id="backpack-container"></div>
+      </aside>
+    </div>
+
+    <!-- Modals & Overlays (Title Screen, Character Select, Fate Grant, Guide, Victory, Defeat) -->
+    <div id="modal-overlay" class="modal-overlay"></div>
+
+    <!-- Persistent Town screen (D1 §0.4): sibling of the modal overlay, not a dismissible modal -->
+    <div id="town-screen" class="town-screen" role="dialog" aria-modal="true" aria-labelledby="town-title" hidden></div>
+
+    <!-- Title ambient background ("Emberfall Parallax") -->
+    <canvas id="title-ambient-canvas" class="title-ambient-canvas" aria-hidden="true"></canvas>
+
+    <!-- Screen transition overlay (fades / wipes) -->
+    <div id="screen-transition" class="screen-transition" aria-hidden="true"></div>
+
+    <!-- Studio splash (launch only) -->
+    <div id="splash-overlay" class="splash-overlay" aria-label="Livive.net Studios" role="img"></div>
+  </div>
+
+  <script type="module" src="./boot.js"></script>
+</body>
+</html>

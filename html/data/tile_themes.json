@@ -1,0 +1,299 @@
+{
+  "version": 3,
+  "wall": {
+    "fill": "#2a2f3b",
+    "topHighlight": "#444d61",
+    "gridLine": "#1a1d24",
+    "border": "#0d0f14",
+    "shades": ["#2a2f3b", "#2c3140", "#282d38", "#2b303d"]
+  },
+  "floor": {
+    "fill": "#1a1c23",
+    "gridLine": "#12141a",
+    "accentSquare": "#222530",
+    "shades": ["#1a1c23", "#1c1e26", "#181a20", "#1b1d25"]
+  },
+  "outside": {
+    "grass": ["#1b2e1c", "#1f3420", "#172817", "#1d311e"],
+    "grassBlade": "#243d24",
+    "bush": "#2c4a2c",
+    "bushLight": "#3a5f3a",
+    "treeTrunk": "#33261a",
+    "treeCanopy": "#1f3a22",
+    "treeCanopyLight": "#2c5230"
+  },
+  "stairs": {
+    "bg": "#152b3c",
+    "stepEven": "#3878a8",
+    "stepOdd": "#254e70",
+    "orb": "#88eeff",
+    "border": "#66ccff"
+  },
+  "door": {
+    "fill": "#4a2f1b",
+    "border": "#2d1c10"
+  },
+  "items": {
+    "health_potion": {
+      "liquid": "#e63946",
+      "neck": "#f1faee",
+      "cork": "#d4a373"
+    },
+    "mana_potion": {
+      "liquid": "#3a86ff",
+      "neck": "#f1faee",
+      "cork": "#d4a373"
+    },
+    "torch": {
+      "handle": "#8b5a2b",
+      "flameOuter": "#ffaa00",
+      "flameInner": "#ff4400"
+    },
+    "arrows": {
+      "shaft": "#d4a373",
+      "fletching": "#e9d8a6"
+    }
+  },
+  "levels": {
+    "1": {
+      "id": "tier_1",
+      "name": "The Gatehouse",
+      "wall": {
+        "fill": "#38332b",
+        "topHighlight": "#524a3d",
+        "gridLine": "#131210",
+        "border": "#0b0a08",
+        "shades": ["#38332b", "#3b362d", "#352f28", "#39342c"]
+      },
+      "floor": {
+        "fill": "#1c1a17",
+        "gridLine": "#131210",
+        "accentSquare": "#2a2620",
+        "shades": ["#1c1a17", "#1e1c19", "#1a1815", "#1d1b18"]
+      },
+      "stairs": {
+        "bg": "#2b2418",
+        "stepEven": "#b07a2e",
+        "stepOdd": "#7a5320",
+        "orb": "#ffcf7a",
+        "border": "#e0a82e"
+      },
+      "door": {
+        "fill": "#4a3320",
+        "border": "#2a1c10"
+      },
+      "features": {
+        "banner": "#b23a2e",
+        "bannerTrim": "#e0a82e",
+        "sconce": "#8b5a2b",
+        "flame": "#ffb347",
+        "window": "#c98a4a"
+      },
+      "decor": {
+        "banner": 0.0,
+        "sconce": 0.12,
+        "window": 0.0
+      },
+      "props": {
+        "set": ["candelabra", "crate", "barrel", "sarcophagus"],
+        "decor": [],
+        "focal": "sarcophagus",
+        "density": 2,
+        "maxPerRoom": 3,
+        "wallBias": 0.5
+      }
+    },
+    "2": {
+      "id": "tier_2",
+      "name": "The Hall of Banners",
+      "wall": {
+        "fill": "#43342b",
+        "topHighlight": "#5e493b",
+        "gridLine": "#17110e",
+        "border": "#0d0906",
+        "shades": ["#43342b", "#46362d", "#403128", "#44362c"]
+      },
+      "floor": {
+        "fill": "#201a17",
+        "gridLine": "#17110e",
+        "accentSquare": "#2e2420",
+        "shades": ["#201a17", "#221c19", "#1e1815", "#211b18"]
+      },
+      "stairs": {
+        "bg": "#33241a",
+        "stepEven": "#c98a4a",
+        "stepOdd": "#8a5a2e",
+        "orb": "#ffd9a0",
+        "border": "#e0a82e"
+      },
+      "door": {
+        "fill": "#4f331d",
+        "border": "#2a1c10"
+      },
+      "features": {
+        "banner": "#c0392b",
+        "bannerTrim": "#e0a82e",
+        "sconce": "#8b5a2b",
+        "flame": "#ffb347",
+        "window": "#d9a15a"
+      },
+      "decor": {
+        "banner": 0.18,
+        "sconce": 0.08,
+        "window": 0.0
+      },
+      "props": {
+        "set": ["candelabra", "table", "crate", "bookshelf"],
+        "decor": ["rug"],
+        "focal": "table",
+        "density": 3,
+        "maxPerRoom": 4,
+        "wallBias": 0.4
+      }
+    },
+    "3": {
+      "id": "tier_3",
+      "name": "The Bell Keep",
+      "wall": {
+        "fill": "#333d4a",
+        "topHighlight": "#4c5a6b",
+        "gridLine": "#0f1216",
+        "border": "#080a0d",
+        "shades": ["#333d4a", "#36414f", "#303944", "#35404d"]
+      },
+      "floor": {
+        "fill": "#171a20",
+        "gridLine": "#0f1216",
+        "accentSquare": "#232a34",
+        "shades": ["#171a20", "#191c22", "#15181e", "#181b21"]
+      },
+      "stairs": {
+        "bg": "#14283a",
+        "stepEven": "#4a90c0",
+        "stepOdd": "#2e5f88",
+        "orb": "#9be8ff",
+        "border": "#66ccff"
+      },
+      "door": {
+        "fill": "#3a3f4a",
+        "border": "#1c2027"
+      },
+      "features": {
+        "banner": "#2e86c1",
+        "bannerTrim": "#a9d6f5",
+        "sconce": "#5a6b7a",
+        "flame": "#8fe3ff",
+        "window": "#7fd4ff"
+      },
+      "decor": {
+        "banner": 0.0,
+        "sconce": 0.08,
+        "window": 0.16
+      },
+      "props": {
+        "set": ["crate", "barrel", "brazier", "table"],
+        "decor": [],
+        "focal": "brazier",
+        "density": 3,
+        "maxPerRoom": 4,
+        "wallBias": 0.25
+      }
+    },
+    "4": {
+      "id": "tier_4",
+      "name": "The Solar Gallery",
+      "wall": {
+        "fill": "#3d2f4a",
+        "topHighlight": "#57436b",
+        "gridLine": "#120e16",
+        "border": "#0a070d",
+        "shades": ["#3d2f4a", "#40324e", "#3a2d46", "#3e314c"]
+      },
+      "floor": {
+        "fill": "#1b1620",
+        "gridLine": "#120e16",
+        "accentSquare": "#28202f",
+        "shades": ["#1b1620", "#1d1822", "#19141e", "#1c1721"]
+      },
+      "stairs": {
+        "bg": "#2a183a",
+        "stepEven": "#8a5cc0",
+        "stepOdd": "#5a3a88",
+        "orb": "#d9b3ff",
+        "border": "#a855f7"
+      },
+      "door": {
+        "fill": "#3a2b47",
+        "border": "#1c1226"
+      },
+      "features": {
+        "banner": "#8e44ad",
+        "bannerTrim": "#e0c3fc",
+        "sconce": "#4a3a5a",
+        "flame": "#c084fc",
+        "window": "#c9a0ff"
+      },
+      "decor": {
+        "banner": 0.16,
+        "sconce": 0.09,
+        "window": 0.0
+      },
+      "props": {
+        "set": ["bookshelf", "table", "candelabra", "altar"],
+        "decor": ["rug"],
+        "focal": "altar",
+        "density": 3,
+        "maxPerRoom": 4,
+        "wallBias": 0.4
+      }
+    },
+    "5": {
+      "id": "tier_5",
+      "name": "The Crown Spire",
+      "wall": {
+        "fill": "#3a2f22",
+        "topHighlight": "#5a4a34",
+        "gridLine": "#100c08",
+        "border": "#080604",
+        "shades": ["#3a2f22", "#3d3224", "#372c20", "#3b3023"]
+      },
+      "floor": {
+        "fill": "#1a1410",
+        "gridLine": "#100c08",
+        "accentSquare": "#2a2018",
+        "shades": ["#1a1410", "#1c1612", "#18120e", "#1b1511"]
+      },
+      "stairs": {
+        "bg": "#2e1a12",
+        "stepEven": "#d4af37",
+        "stepOdd": "#8a6a1e",
+        "orb": "#ffe9a8",
+        "border": "#ffd700"
+      },
+      "door": {
+        "fill": "#3f2a16",
+        "border": "#1f1408"
+      },
+      "features": {
+        "banner": "#c0392b",
+        "bannerTrim": "#d4af37",
+        "sconce": "#6a4a1e",
+        "flame": "#ff6a00",
+        "window": "#ff9a6a"
+      },
+      "decor": {
+        "banner": 0.14,
+        "sconce": 0.08,
+        "window": 0.12
+      },
+      "props": {
+        "set": ["throne", "altar", "brazier", "candelabra"],
+        "decor": ["rug"],
+        "focal": "altar",
+        "density": 3,
+        "maxPerRoom": 4,
+        "wallBias": 0.5
+      }
+    }
+  }
+}

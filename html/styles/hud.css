@@ -1,0 +1,993 @@
+/* Lokarta: Come Into The Light - Sidebar HUD & Inventory Panel Styles */
+
+.sidebar-hud {
+  width: 440px;
+  min-width: 380px;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-panel);
+  overflow-y: auto;
+  gap: 8px;
+  padding: 8px;
+  flex-shrink: 0;
+}
+
+.hud-panel {
+  background-color: #0e1017;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-header {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  letter-spacing: 1.5px;
+  color: var(--gold-accent);
+  background-color: var(--bg-panel-header);
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 5px 5px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Status Bars Panel */
+.status-panel-inner {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+  border-bottom: 1px solid #1e2230;
+  padding-bottom: 4px;
+}
+
+.vocation-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.level-badge {
+  background-color: #272115;
+  color: var(--gold-accent);
+  border: 1px solid var(--gold-accent);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.floor-tag .label {
+  color: var(--text-muted);
+}
+
+.floor-tag .val {
+  color: var(--blue-accent);
+  font-weight: 600;
+}
+
+/* Gold counter */
+.gold-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0 4px;
+  border-bottom: 1px solid #1e2230;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+.gold-tag .gold-icon {
+  font-size: 0.9rem;
+}
+
+.gold-tag .gold-label {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.gold-tag .gold-val {
+  color: #fbbf24;
+}
+
+/* ==========================================================================
+   Keyed Slots: q w e r equipment, 1 2 3 4 active above
+   ========================================================================== */
+
+.keyed-slots-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+}
+
+.keyed-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.keyed-slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #0b0c12;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  padding: 5px 3px 3px;
+  min-height: 68px;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+}
+
+.keyed-slot:hover {
+  border-color: var(--gold-accent);
+  background-color: #161926;
+}
+
+.keyed-slot.selected {
+  border-color: var(--blue-accent);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.55);
+}
+
+.keyed-slot.active-slot {
+  border-style: dashed;
+}
+
+.keyed-slot .keyed-slot-key {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-size: 0.62rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--gold-accent);
+}
+
+.keyed-slot .keyed-slot-content {
+  font-size: 20px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.keyed-slot .keyed-slot-content .openmoji-icon {
+  width: 1.7rem;
+  height: 1.7rem;
+}
+
+.keyed-slot .keyed-slot-name {
+  font-size: 0.6rem;
+  text-align: center;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.keyed-slot .keyed-slot-qty {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: var(--blue-accent);
+  font-family: var(--font-mono);
+}
+
+.keyed-slot .keyed-slot-cost {
+  font-size: 0.56rem;
+  color: var(--blue-accent);
+  font-family: var(--font-mono);
+}
+
+.level-keys-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0 4px;
+  border-bottom: 1px solid #1e2230;
+}
+
+.level-keys-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.level-keys-icons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.level-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  border: 1px solid #2a2f3b;
+  background-color: #14161c;
+}
+
+.level-key .openmoji-icon,
+.level-key .key-glyph {
+  width: 18px;
+  height: 18px;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+/* Locked: greyed-out silhouette (the locked asset is already a neutral key). */
+.level-key.locked {
+  filter: grayscale(1) brightness(0.55);
+  opacity: 0.35;
+}
+
+/* Active: full-color key sprite + accented border + soft glow. */
+.level-key.active {
+  filter: none;
+  opacity: 1;
+  border-color: var(--key-accent, #facc15);
+  box-shadow: 0 0 6px -1px var(--key-accent, #facc15);
+  background-color: #1c1a12;
+}
+
+/* Acquired key sprite keeps its authored color even if an ancestor rule sets
+   a filter; the sprite itself must render in full color. */
+.level-key.active .openmoji-icon {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6)) saturate(1.2);
+}
+
+.meter-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.meter-info {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+
+.meter-label {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.meter-values {
+  color: var(--text-primary);
+}
+
+.meter-bar-track {
+  height: 10px;
+  background-color: #0b0c12;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.meter-bar-fill {
+  height: 100%;
+  transition: width 0.15s ease-out;
+}
+
+.hp-fill {
+  background: linear-gradient(90deg, #b91c1c, #ef4444);
+  box-shadow: 0 0 6px var(--hp-red-glow);
+}
+
+.mp-fill {
+  background: linear-gradient(90deg, #1d4ed8, #3b82f6);
+  box-shadow: 0 0 6px var(--mp-blue-glow);
+}
+
+.xp-fill {
+  background: linear-gradient(90deg, #d97706, #fbbf24);
+  box-shadow: 0 0 6px var(--xp-gold-glow);
+}
+
+.skill-boosts-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 0.68rem;
+  font-family: var(--font-mono);
+  color: #a78bfa;
+  background-color: #12131e;
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid #23273e;
+}
+
+.active-buff-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: rgba(234, 179, 8, 0.15);
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: #facc15;
+}
+
+/* ==========================================================================
+   Paperdoll Slots (4 Slots: Main Hand, Off Hand, Armor, Relic)
+   ========================================================================== */
+
+.paperdoll-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 8px;
+}
+
+.paperdoll-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #0b0c12;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 6px 3px;
+  position: relative;
+  transition: border-color 0.2s, background-color 0.2s;
+  min-height: 75px;
+}
+
+.paperdoll-slot:hover {
+  border-color: var(--border-highlight);
+  background-color: #121520;
+}
+
+.paperdoll-slot .slot-label {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin-bottom: 2px;
+}
+
+.paperdoll-slot .slot-content {
+  font-size: 22px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.paperdoll-slot .slot-item-name {
+  font-size: 0.65rem;
+  text-align: center;
+  color: var(--gold-accent);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.paperdoll-slot .unequip-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: #2b1115;
+  border: 1px solid #7f1d1d;
+  color: #f87171;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  font-size: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.paperdoll-slot .unequip-btn:hover {
+  background: #7f1d1d;
+  color: #fff;
+}
+
+/* ==========================================================================
+   Backpack Slots (6 Slots)
+   ========================================================================== */
+
+.backpack-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  padding: 8px;
+}
+
+.backpack-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #0b0c12;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 4px 2px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 70px;
+}
+
+.backpack-slot:hover {
+  border-color: var(--gold-accent);
+  background-color: #161926;
+}
+
+.backpack-slot .slot-num {
+  position: absolute;
+  top: 1px;
+  left: 3px;
+  font-size: 0.58rem;
+  color: #64748b;
+  font-family: var(--font-mono);
+}
+
+.backpack-slot .slot-content {
+  font-size: 20px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.backpack-slot .item-qty {
+  position: absolute;
+  top: 1px;
+  right: 3px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: var(--blue-accent);
+  font-family: var(--font-mono);
+}
+
+.backpack-slot .slot-item-name {
+  font-size: 0.62rem;
+  text-align: center;
+  color: var(--text-primary);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.backpack-slot .slot-actions {
+  display: flex;
+  gap: 2px;
+  margin-top: 3px;
+}
+
+.backpack-slot .use-btn, .backpack-slot .drop-btn {
+  font-size: 0.58rem;
+  padding: 1px 4px;
+  border-radius: 2px;
+  border: 1px solid var(--border-color);
+  background-color: #1e2230;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.backpack-slot .use-btn:hover {
+  background-color: #2563eb;
+  border-color: #3b82f6;
+}
+
+.backpack-slot .drop-btn:hover {
+  background-color: #991b1b;
+  border-color: #ef4444;
+}
+
+/* ==========================================================================
+   Action Bar (10 Slots in 2 Rows of 5)
+   ========================================================================== */
+
+.action-slots-container {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.action-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.action-slot-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #0d0f17;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  padding: 5px 3px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s;
+  color: var(--text-primary);
+  min-height: 80px;
+  overflow: hidden;
+}
+
+.action-slot-btn:hover:not(.on-cooldown) {
+  border-color: var(--gold-accent);
+  background-color: #1b1e2c;
+  transform: translateY(-1px);
+  box-shadow: 0 0 8px rgba(229, 185, 92, 0.25);
+}
+
+.action-slot-btn.on-cooldown {
+  opacity: 0.65;
+  filter: grayscale(0.4);
+}
+
+.action-slot-btn .hotkey-badge {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  color: var(--gold-accent);
+  font-weight: 700;
+  z-index: 2;
+}
+
+.action-slot-btn .btn-icon {
+  font-size: 26px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+  z-index: 2;
+}
+
+.action-slot-btn .btn-name {
+  font-size: 0.68rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: center;
+  z-index: 2;
+}
+
+.action-slot-btn .btn-cost {
+  font-size: 0.6rem;
+  color: var(--blue-accent);
+  font-family: var(--font-mono);
+  z-index: 2;
+}
+
+.action-slot-btn .cooldown-overlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f87171;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  z-index: 5;
+}
+
+.action-slot-btn .charge-bar-track {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 4;
+}
+
+.action-slot-btn .charge-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #38bdf8, #e5b95c);
+  transition: width 0.05s linear;
+}
+
+/* ==========================================================================
+   Combat & Event Log
+   ========================================================================== */
+
+.combat-log-panel {
+  height: 130px;
+  min-height: 110px;
+  background-color: var(--bg-panel);
+  border-top: 2px solid var(--border-color);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.log-entries-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background-color: #08090d;
+}
+
+.log-line {
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.log-time {
+  color: #64748b;
+  margin-right: 6px;
+}
+
+.log-combat {
+  color: #f87171;
+}
+
+.log-spell {
+  color: #67e8f9;
+}
+
+.log-loot {
+  color: #4ade80;
+}
+
+.log-system {
+  color: #e2e8f0;
+}
+
+.log-warning {
+  color: #fbbf24;
+}
+
+.log-victory {
+  color: #f472b6;
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   OpenMoji SVG Styling
+   ========================================================================== */
+
+.openmoji-icon {
+  display: inline-block;
+  vertical-align: middle;
+  width: 1.5rem;
+  height: 1.5rem;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+}
+
+.openmoji-icon.header-icon {
+  width: 2rem;
+  height: 2rem;
+  filter: drop-shadow(0 0 8px rgba(229, 185, 92, 0.6));
+}
+
+.openmoji-icon.btn-emoji {
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-right: 4px;
+}
+
+.openmoji-icon.placeholder {
+  opacity: 0.35;
+  filter: grayscale(80%);
+}
+
+.paperdoll-slot .slot-content .openmoji-icon {
+  width: 2.2rem;
+  height: 2.2rem;
+}
+
+.backpack-slot .slot-content .openmoji-icon {
+  width: 2rem;
+  height: 2rem;
+}
+
+.action-slot-btn .btn-icon .openmoji-icon {
+  width: 2rem;
+  height: 2rem;
+}
+
+.vocation-card .card-icon .openmoji-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  filter: drop-shadow(0 0 10px rgba(229, 185, 92, 0.5));
+}
+
+.fate-card .card-icon .openmoji-icon {
+  width: 3rem;
+  height: 3rem;
+  filter: drop-shadow(0 0 8px rgba(229, 185, 92, 0.4));
+}
+
+.title-screen-modal .title-emblem .openmoji-icon {
+  width: 4.5rem;
+  height: 4.5rem;
+  filter: drop-shadow(0 0 15px rgba(229, 185, 92, 0.8));
+}
+
+.title-screen-modal .title-torch .openmoji-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  filter: drop-shadow(0 0 10px rgba(249, 115, 22, 0.8));
+}
+
+/* ==========================================================================
+   D1 §2 Loadout + Backpack presentation
+   ========================================================================== */
+
+.loadout-grid {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+}
+
+.loadout-slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 64px;
+  padding: 6px 3px 3px;
+  background-color: var(--slot-bg);
+  border: 1px solid var(--slot-border);
+  border-radius: var(--slot-radius);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+}
+
+.loadout-slot:hover,
+.loadout-slot:focus-visible {
+  border-color: var(--slot-border-hover);
+  background-color: var(--slot-bg-hover);
+}
+
+.loadout-slot.slot-empty {
+  border-style: dashed;
+  border-color: var(--slot-empty-border);
+}
+
+.loadout-slot.slot-empty .key-badge {
+  opacity: 0.4;
+}
+
+.loadout-slot .key-badge {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--slot-key-badge);
+  z-index: 2;
+}
+
+.loadout-slot .slot-class-badge {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  opacity: 0;
+}
+
+.loadout-slot .slot-class-badge.visible {
+  opacity: 0.9;
+}
+
+.loadout-slot .slot-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  font-size: 20px;
+  margin-top: 6px;
+}
+
+.loadout-slot .slot-content .openmoji-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.loadout-slot .slot-name {
+  max-width: 100%;
+  font-size: 0.62rem;
+  text-align: center;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.loadout-slot .item-qty {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: var(--blue-accent);
+}
+
+/* Loadout cooldown "recharge" (D1 §2.5). The grey scrim sits above
+   the icon/name (z 1) but below the key/class badges (z 2), so the keybinding
+   label stays legible; the scrim wipes top -> bottom as the ability readies. */
+.loadout-slot .cooldown-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  background: var(--slot-cooldown-overlay);
+  pointer-events: none;
+  clip-path: inset(var(--cd-inset, 0%) 0 0 0);
+  transition: clip-path var(--slot-cooldown-step) linear;
+}
+
+.loadout-slot.on-cooldown .cooldown-overlay {
+  display: block;
+}
+
+.loadout-slot.on-cooldown .key-badge {
+  color: var(--gold-accent); /* 5.16:1 on the composited grey */
+}
+
+.loadout-slot.on-cooldown .slot-class-badge {
+  z-index: 2;
+  color: var(--text-primary); /* 7.7:1 */
+}
+
+/* Gold refill front at the grey boundary. */
+.loadout-slot.on-cooldown .cooldown-overlay::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--cd-inset, 0%);
+  height: 2px;
+  background: var(--slot-cooldown-edge);
+  box-shadow: 0 0 6px var(--gold-glow);
+}
+
+/* Named slot states (D1 §2.3) */
+.loadout-slot.slot-dragging,
+.backpack-slot.slot-dragging {
+  opacity: 0.35;
+}
+
+.loadout-slot.drop-valid,
+.backpack-slot.drop-valid {
+  border-color: var(--slot-drop-valid);
+  background-color: #1b1e2c;
+  box-shadow: 0 0 8px var(--gold-glow);
+}
+
+.loadout-slot.drop-invalid,
+.backpack-slot.drop-invalid {
+  border-color: var(--slot-drop-invalid);
+  cursor: no-drop;
+}
+
+.loadout-slot.slot-selected,
+.backpack-slot.slot-selected {
+  border-color: var(--gold-accent);
+  box-shadow: 0 0 0 2px var(--gold-accent-soft);
+}
+
+.loadout-slot.slot-shake,
+.backpack-slot.slot-shake {
+  animation: slot-shake 0.2s;
+}
+
+@keyframes slot-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+/* Class colorways (D1 §6.4): never color alone — the class glyph badge carries it too */
+.loadout-slot.voc-fighter, .backpack-slot.voc-fighter { border-left: 3px solid var(--class-fighter); }
+.loadout-slot.voc-paladin, .backpack-slot.voc-paladin { border-left: 3px solid var(--class-paladin); }
+.loadout-slot.voc-magician, .backpack-slot.voc-magician { border-left: 3px solid var(--class-magician); }
+.loadout-slot.voc-archer, .backpack-slot.voc-archer { border-left: 3px solid var(--class-archer); }
+.loadout-slot.voc-neutral, .backpack-slot.voc-neutral { border-left: 3px solid var(--class-neutral); }
+
+/* One reusable drag ghost (D1 §2.4) */
+.slot-drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.85;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  display: none;
+}
+
+.slot-drag-ghost .openmoji-icon {
+  width: 40px;
+  height: 40px;
+}
+
+/* Compact 6x6 bank per D1 §2.2 */
+.backpack-slot {
+  min-height: 48px;
+  padding: 3px 2px;
+}
+
+.backpack-slot .slot-content {
+  height: 24px;
+  margin-top: 2px;
+}
+
+.backpack-slot .slot-content .openmoji-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.backpack-slot .slot-class-badge {
+  position: absolute;
+  top: 1px;
+  left: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  opacity: 0;
+}
+
+.backpack-slot .slot-class-badge.visible {
+  opacity: 0.85;
+}

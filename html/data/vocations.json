@@ -1,0 +1,137 @@
+{
+  "magician": {
+    "id": "magician",
+    "name": "Magician",
+    "vocation": "magician",
+    "hp": 60,
+    "max_hp": 60,
+    "mana": 150,
+    "max_mana": 150,
+    "hpPerLevel": 8,
+    "manaPerLevel": 16,
+    "damageStep": 0.1,
+    "eyeColor": "#44ccff",
+    "regenResource": "mana",
+    "nativeEquipment": [
+      "apprentice_wand",
+      "astral_scepter",
+      "apprentice_cape"
+    ],
+    "description": "Master of radiant arcane energies and expansive illumination.",
+    "renderTheme": {
+      "primary": "#5c2d91",
+      "accent": "#ffd700",
+      "secondary": "#7a3cb8",
+      "classLabel": "M",
+      "classGlyphSvgCode": "1F9D9"
+    },
+    "solidEquipment": {
+      "main_hand": "astral_scepter",
+      "off_hand": "apprentice_wand",
+      "armor": "apprentice_cape",
+      "relic": "relic_luminous_amulet"
+    }
+  },
+  "archer": {
+    "id": "archer",
+    "name": "Archer",
+    "vocation": "archer",
+    "hp": 90,
+    "max_hp": 90,
+    "mana": 80,
+    "max_mana": 80,
+    "hpPerLevel": 14,
+    "manaPerLevel": 8,
+    "damageStep": 0.12,
+    "eyeColor": "#e9d8a6",
+    "regenResource": "hp",
+    "nativeEquipment": [
+      "composite_bow",
+      "grey_stalker_quiver",
+      "hunter_leathers",
+      "ranger_talisman"
+    ],
+    "description": "Deadly long-range sniper utilizing fletched arrows and precision burst.",
+    "renderTheme": {
+      "primary": "#15803d",
+      "accent": "#854d0e",
+      "secondary": "#166534",
+      "classLabel": "A",
+      "classGlyphSvgCode": "1F3F9"
+    },
+    "solidEquipment": {
+      "main_hand": "composite_bow",
+      "off_hand": "grey_stalker_quiver",
+      "armor": "hunter_leathers",
+      "relic": "ranger_talisman"
+    }
+  },
+  "fighter": {
+    "id": "fighter",
+    "name": "Fighter",
+    "vocation": "fighter",
+    "hp": 140,
+    "max_hp": 140,
+    "mana": 30,
+    "max_mana": 30,
+    "hpPerLevel": 18,
+    "manaPerLevel": 4,
+    "damageStep": 0.15,
+    "eyeColor": "#f87171",
+    "regenResource": "hp",
+    "nativeEquipment": [
+      "tempered_broadsword",
+      "vanguard_shield",
+      "vanguard_battleplate",
+      "relic_berserkers_sigil"
+    ],
+    "description": "Resilient front-line warrior using heavy broadswords, cleaves, and defensive stances.",
+    "renderTheme": {
+      "primary": "#475569",
+      "accent": "#94a3b8",
+      "secondary": "#334155",
+      "classLabel": "F",
+      "classGlyphSvgCode": "2694"
+    },
+    "solidEquipment": {
+      "main_hand": "tempered_broadsword",
+      "off_hand": "vanguard_shield",
+      "armor": "vanguard_battleplate",
+      "relic": "relic_berserkers_sigil"
+    }
+  },
+  "paladin": {
+    "id": "paladin",
+    "name": "Paladin",
+    "vocation": "paladin",
+    "hp": 120,
+    "max_hp": 120,
+    "mana": 90,
+    "max_mana": 90,
+    "hpPerLevel": 15,
+    "manaPerLevel": 10,
+    "damageStep": 0.11,
+    "eyeColor": "#38bdf8",
+    "regenResource": "hp",
+    "nativeEquipment": [
+      "consecrated_warhammer",
+      "aegis_shield",
+      "sanctuary_plate",
+      "relic_dawnlight"
+    ],
+    "description": "Holy champion striking with sacred warhammers, area light, and restorative prayers.",
+    "renderTheme": {
+      "primary": "#0284c7",
+      "accent": "#f59e0b",
+      "secondary": "#0369a1",
+      "classLabel": "P",
+      "classGlyphSvgCode": "1F6E1"
+    },
+    "solidEquipment": {
+      "main_hand": "consecrated_warhammer",
+      "off_hand": "aegis_shield",
+      "armor": "sanctuary_plate",
+      "relic": "relic_dawnlight"
+    }
+  }
+}

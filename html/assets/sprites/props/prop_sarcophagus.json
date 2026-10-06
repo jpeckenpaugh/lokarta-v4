@@ -1,0 +1,57 @@
+{
+  "id": "prop_sarcophagus",
+  "kind": "prop",
+  "class": "wall",
+  "native": {
+    "w": 32,
+    "h": 32
+  },
+  "anchor": {
+    "x": 16,
+    "y": 29
+  },
+  "palette": {
+    "0": "#0b0d12",
+    ".": null,
+    "j": "#33333a",
+    "k": "#55555f",
+    "l": "#6e6e7a",
+    "m": "#aab2bf"
+  },
+  "frames": {
+    "idle": [
+      "................................",
+      "................................",
+      "................................",
+      "................................",
+      "................................",
+      "................................",
+      "................................",
+      "................................",
+      "................................",
+      "................................",
+      ".....jlmmmmmmmmmmmmmmmmmmlj.....",
+      ".....llmmmmmmmmmmmmmmmmmmll.....",
+      ".....llllllllllllllllllllll.....",
+      ".....llllllllllllllllllllll.....",
+      ".....kkkkkkkkkkkkkkkkkkkkkk.....",
+      ".....mmmmmmmmmmmmmmmmmmmmmm.....",
+      ".....mmmmmmmmmmmmmmmmmmmmmm.....",
+      ".....mmmmmmmmmmmmmmmmmmmmmm.....",
+      ".....mmmmmmmmmmmmmmmmmmmmmm.....",
+      ".....kkkkkkkkkkkkkkkkkkkkkk.....",
+      ".....kkkkkkkkkkkkkkkkkkkkkk.....",
+      ".....kkkkkkkkkkkkkkkkkkkkkk.....",
+      ".....kkkkkkkkkkkkkkkkkkkkkk.....",
+      ".....kkkkkkkkkkkkkkkkkkkkkk.....",
+      ".....kkkkkkkkkkkkkkkkkkkkkk.....",
+      ".....kkkkkkkkkkkkkkkkkkkkkk.....",
+      ".....kkkkkkkkkkkkkkkkkkkkkk.....",
+      ".....kkkkkkkkkkkkkkkkkkkkkk.....",
+      ".....jkkkkkkkkkkkkkkkkkkkkj.....",
+      "................................",
+      "................................",
+      "................................"
+    ]
+  }
+}

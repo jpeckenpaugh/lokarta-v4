@@ -1,0 +1,57 @@
+{
+  "id": "prop_crate",
+  "kind": "prop",
+  "class": "free",
+  "native": {
+    "w": 32,
+    "h": 32
+  },
+  "anchor": {
+    "x": 16,
+    "y": 28
+  },
+  "palette": {
+    "0": "#0b0d12",
+    ".": null,
+    "d": "#3f2817",
+    "e": "#6b4423",
+    "f": "#8a5a2b",
+    "o": "#8a9099"
+  },
+  "frames": {
+    "idle": [
+      "................................",
+      "................................",
+      "................................",
+      "................................",
+      "................................",
+      "................................",
+      "................................",
+      "................................",
+      ".......ffffffffffffffffff.......",
+      ".......oooffffffffffffooo.......",
+      ".......oooffffffffffffooo.......",
+      ".......fffeffffffffffefff.......",
+      ".......dddddddddddddddddd.......",
+      ".......fffffeffffffefffff.......",
+      ".......ffffffeffffeffffff.......",
+      ".......fffffffeffefffffff.......",
+      ".......ffffffffeeffffffff.......",
+      ".......ffffffffeeffffffff.......",
+      ".......fffffffeffefffffff.......",
+      ".......ffffffeffffeffffff.......",
+      ".......fffffeffffffefffff.......",
+      ".......ffffeffffffffeffff.......",
+      ".......dddddddddddddddddd.......",
+      ".......ffeffffffffffffeff.......",
+      ".......feffffffffffffffef.......",
+      ".......oooffffffffffffooo.......",
+      ".......oooffffffffffffooo.......",
+      ".......oooffffffffffffooo.......",
+      "................................",
+      "................................",
+      "................................",
+      "................................"
+    ]
+  }
+}

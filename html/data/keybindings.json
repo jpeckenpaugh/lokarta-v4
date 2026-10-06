@@ -1,0 +1,28 @@
+{
+  "movement": {
+    "up": ["ArrowUp"],
+    "left": ["ArrowLeft"],
+    "down": ["ArrowDown"],
+    "right": ["ArrowRight"]
+  },
+  "keySlots": {
+    "equipment": {
+      "q": "main_hand",
+      "w": "off_hand",
+      "e": "armor",
+      "r": "relic"
+    },
+    "active": ["Digit1", "Digit2", "Digit3", "Digit4"]
+  },
+  "gestureTimings": {
+    "tapMaxMs": 250,
+    "holdMinMs": 250,
+    "holdMaxMs": 1200,
+    "doubleTapMaxMs": 300
+  },
+  "autofire": {
+    "holdMs": 2000,
+    "repeatMs": 200,
+    "feedbackMs": 1200
+  }
+}

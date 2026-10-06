@@ -1,0 +1,68 @@
+{
+  "source": "Town and gold economy (board overhaul)",
+  "description": "Catalog for the gold economy, town shop/temple, passive recovery, and healing springs. All tunables live here; JS reads them through the dispatch helpers in engine/economy-system.js.",
+  "gold": {
+    "starting": 0,
+    "cap": 999999,
+    "pickupMagnet": false,
+    "dropLabelColor": "#fbbf24"
+  },
+  "passiveRecovery": {
+    "intervalSec": 10,
+    "hpPerTick": 1,
+    "mpPerTick": 1,
+    "description": "Every player character regenerates ~1 HP and ~1 MP per 10s."
+  },
+  "springs": {
+    "hpPerSec": 5,
+    "mpPerSec": 5,
+    "roomsPerFloor": 1,
+    "rooms": "stairRoom",
+    "description": "Springs are impassable fountains; standing adjacent restores +5 HP and +5 MP per second, capped at max."
+  },
+  "temple": {
+    "healCostPerHp": 1,
+    "healCostPerMp": 1,
+    "freeBelowHpPct": 0,
+    "reviveAt": "town_temple",
+    "reviveCostPct": 0
+  },
+  "shop": {
+    "sellRatePct": 50,
+    "buyMarkupPct": 0,
+    "upgradeBaseCost": 40,
+    "upgradeCostPerRank": 35,
+    "maxRank": 5,
+    "pawnFallbackValuePerStat": 8,
+    "description": "Pawn sells backpack items for 50% of purchase price; un-priced loot falls back to stat_bonus * pawnFallbackValuePerStat."
+  },
+  "monsterGold": {
+    "giant_rat": { "min": 3, "max": 8 },
+    "crypt_skeleton": { "min": 6, "max": 14 },
+    "shadow_cultist": { "min": 8, "max": 18 },
+    "elite_cultist": { "min": 14, "max": 28 },
+    "abyssal_overlord": { "min": 150, "max": 250 }
+  },
+  "chestGold": {
+    "copper": { "min": 5, "max": 12 },
+    "silver": { "min": 15, "max": 34 },
+    "gold": { "min": 40, "max": 90 }
+  },
+  "stock": [
+    { "itemId": "health_potion", "price": 15, "maxPurchases": 0 },
+    { "itemId": "mana_potion", "price": 20, "maxPurchases": 0 },
+    { "itemId": "arrows", "quantity": 20, "price": 12, "maxPurchases": 0 },
+    { "itemId": "apprentice_wand", "price": 120, "maxPurchases": 1, "vocationAffinity": "magician" },
+    { "itemId": "astral_scepter", "price": 220, "maxPurchases": 1, "vocationAffinity": "magician" },
+    { "itemId": "wooden_bow", "price": 120, "maxPurchases": 1, "vocationAffinity": "archer" },
+    { "itemId": "composite_bow", "price": 220, "maxPurchases": 1, "vocationAffinity": "archer" },
+    { "itemId": "tempered_broadsword", "price": 120, "maxPurchases": 1, "vocationAffinity": "fighter" },
+    { "itemId": "vanguard_shield", "price": 200, "maxPurchases": 1, "vocationAffinity": "fighter" },
+    { "itemId": "vanguard_battleplate", "price": 260, "maxPurchases": 1, "vocationAffinity": "fighter" },
+    { "itemId": "relic_berserkers_sigil", "price": 220, "maxPurchases": 1, "vocationAffinity": "fighter" },
+    { "itemId": "consecrated_warhammer", "price": 120, "maxPurchases": 1, "vocationAffinity": "paladin" },
+    { "itemId": "aegis_shield", "price": 200, "maxPurchases": 1, "vocationAffinity": "paladin" },
+    { "itemId": "sanctuary_plate", "price": 260, "maxPurchases": 1, "vocationAffinity": "paladin" },
+    { "itemId": "relic_dawnlight", "price": 220, "maxPurchases": 1, "vocationAffinity": "paladin" }
+  ]
+}

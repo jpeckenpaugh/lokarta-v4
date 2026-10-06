@@ -1,0 +1,57 @@
+{
+  "id": "decor_rug",
+  "kind": "decor",
+  "class": "decor",
+  "native": {
+    "w": 32,
+    "h": 32
+  },
+  "anchor": {
+    "x": 0,
+    "y": 0
+  },
+  "palette": {
+    "0": "#0b0d12",
+    ".": null,
+    "r": "#6b4423",
+    "p": "#e0a82e",
+    "b": "#b87333",
+    "g": "#c98a4a"
+  },
+  "frames": {
+    "idle": [
+      "................................",
+      "................................",
+      "..bppppppppppppppppppppppppppp..",
+      "..brrrrrrrrrrrrrrrrrrrrrrrrrrb..",
+      "..brrrrrrrrrrrrrrrrrrrrrrrrrrb..",
+      "..brrrgrrrrrrrrrrrrrrrrrrgrrrb..",
+      "..brrgggrrrrrrrrrrrrrrrrgggrrb..",
+      "..brrrgrrrrrrrrrrrrrrrrrrgrrrb..",
+      "..brrrrrrrrrrrrrrrrrrrrrrrrrrb..",
+      "..brrrrrrrrrrrrrrrrrrrrrrrrrrb..",
+      "..brrrrrrrrrrrrrrrrrrrrrrrrrrb..",
+      "..brrrrrrrrrrrrrrrrrrrrrrrrrrb..",
+      "..brrrrrrrrrrrrrrrrrrrrrrrrrrb..",
+      "..brrrrrrrrrrrrrrrrrrrrrrrrrrb..",
+      "..brrrrrrrrrrrrrrrrrrrrrrrrrrb..",
+      "..brrrrrrrrrrrrrrrrrrrrrrrrrrb..",
+      "..brrrrrrrrrrrrrrrrrrrrrrrrrrb..",
+      "..brrrrrrrrrrrrrrrrrrrrrrrrrrb..",
+      "..brrrrrrrrrrrrrrrrrrrrrrrrrrb..",
+      "..brrrrrrrrrrrrrrrrrrrrrrrrrrb..",
+      "..brrrrrrrrrrrrrrrrrrrrrrrrrrb..",
+      "..brrrrrrrrrrrrrrrrrrrrrrrrrrb..",
+      "..brrrrrrrrrrrrrrrrrrrrrrrrrrb..",
+      "..brrrrrrrrrrrrrrrrrrrrrrrrrrb..",
+      "..brrrgrrrrrrrrrrrrrrrrrrgrrrb..",
+      "..brrgggrrrrrrrrrrrrrrrrgggrrb..",
+      "..brrrgrrrrrrrrrrrrrrrrrrgrrrb..",
+      "..brrrrrrrrrrrrrrrrrrrrrrrrrrb..",
+      "..brrrrrrrrrrrrrrrrrrrrrrrrrrb..",
+      "..bppppppppppppppppppppppppppb..",
+      "................................",
+      "................................"
+    ]
+  }
+}

@@ -1,0 +1,694 @@
+/* Lokarta: Come Into The Light - Base Theme & Viewport Layout Styles */
+
+:root {
+  --bg-primary: #0a0b10;
+  --bg-panel: #14161f;
+  --bg-panel-header: #1e2130;
+  --bg-card: #0b0d14;
+  --border-color: #2e344d;
+  --border-highlight: #4c5680;
+  --gold-accent: #e5b95c;
+  --gold-glow: rgba(229, 185, 92, 0.35);
+  --blue-accent: #38bdf8;
+  --blue-glow: rgba(56, 189, 248, 0.35);
+  --text-primary: #e2e8f0;
+  --text-muted: #94a3b8;
+  --hp-red: #ef4444;
+  --hp-red-glow: rgba(239, 68, 68, 0.4);
+  --mp-blue: #3b82f6;
+  --mp-blue-glow: rgba(59, 130, 246, 0.4);
+  --xp-gold: #f59e0b;
+  --xp-gold-glow: rgba(245, 158, 11, 0.4);
+  /* D1 §1.2 slot tokens */
+  --slot-bg: #0b0c12;
+  --slot-bg-hover: #161926;
+  --slot-border: var(--border-color);
+  --slot-border-hover: var(--border-highlight);
+  --slot-drop-valid: var(--gold-accent);
+  --slot-drop-invalid: var(--hp-red);
+  --slot-key-badge: var(--gold-accent);
+  --slot-empty-border: #23273e;
+  --slot-radius: 4px;
+  --gold-accent-soft: rgba(229, 185, 92, 0.25);
+  /* D1 §2.5 loadout cooldown recharge */
+  --slot-cooldown-overlay: rgba(100, 116, 139, 0.55); /* --class-neutral #64748b @ 55% */
+  --slot-cooldown-edge: var(--gold-accent);            /* refill leading edge */
+  --slot-cooldown-step: 100ms;                         /* = CONFIG.TICK_INTERVAL_MS */
+  /* D1 §1.2 / §6.4 class colorways (mirror vocations.json renderTheme) */
+  --class-fighter: #475569;
+  --class-fighter-accent: #94a3b8;
+  --class-paladin: #0284c7;
+  --class-paladin-accent: #f59e0b;
+  --class-magician: #5c2d91;
+  --class-magician-accent: #ffd700;
+  --class-archer: #15803d;
+  --class-archer-accent: #854d0e;
+  --class-neutral: #64748b;
+  /* D1 §1.2 town + springs */
+  --town-panel-bg: #0e1017;
+  --spring-water: #7cc9ee;
+  --spring-water-glow: rgba(124, 201, 238, 0.35);
+  --ui-scale: 1;
+  --font-display: 'Cinzel', 'Trajan Pro', 'Palatino', Georgia, serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* Keyboard focus indicator (packaging-design.md §10) */
+  --focus-ring-color: var(--gold-accent);
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+}
+
+html {
+  font-size: calc(16px * var(--ui-scale, 1));
+}
+
+/* Global reduced-motion: opacity changes stay but become instantaneous. */
+html.reduced-motion *,
+html.reduced-motion *::before,
+html.reduced-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+html.input-locked {
+  cursor: progress;
+}
+
+/* Keyboard focus indicator. :focus-visible fires for keyboard/AT users only,
+   so pointer-initiated focus (including the programmatic .focus() that
+   showConfirmModal applies to CANCEL) stays ring-free. outline (not
+   box-shadow) so it composes with the existing hover glows. */
+:where(button, [role='button'], a[href], input, select, textarea, summary, [tabindex]:not([tabindex='-1'])):focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* Visually hidden but exposed to assistive tech (live regions, labels). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background: radial-gradient(circle at center, #11131c, #050609);
+  position: relative;
+}
+
+/* ==========================================================================
+   App Header
+   ========================================================================== */
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background-color: var(--bg-panel-header);
+  border-bottom: 2px solid var(--border-color);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.logo-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.game-icon {
+  font-size: 22px;
+  filter: drop-shadow(0 0 6px var(--gold-accent));
+}
+
+.game-title {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  letter-spacing: 3px;
+  color: var(--gold-accent);
+  text-shadow: 0 0 8px var(--gold-glow);
+}
+
+.tagline {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border-left: 1px solid var(--border-color);
+  padding-left: 10px;
+}
+
+.system-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.engine-badge {
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  background-color: #0b0d14;
+  color: var(--blue-accent);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+}
+
+.audio-btn, .header-btn {
+  cursor: pointer;
+  background-color: #1a1e2e;
+  color: var(--gold-accent);
+  border: 1px solid var(--border-color);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-family: var(--font-sans);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.audio-btn:hover, .header-btn:hover {
+  background-color: #2a3148;
+  border-color: var(--gold-accent);
+  box-shadow: 0 0 8px var(--gold-glow);
+}
+
+.audio-btn.muted {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+/* ==========================================================================
+   Main Game Frame Layout
+   ========================================================================== */
+
+.main-frame {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.center-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-right: 2px solid var(--border-color);
+  position: relative;
+}
+
+.viewport-panel {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #050608;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.canvas-wrapper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  cursor: crosshair;
+}
+
+#game-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* Touch controls overlay for mobile */
+.touch-controls {
+  position: absolute;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  left: calc(12px + env(safe-area-inset-left, 0px));
+  display: none;
+  grid-template-columns: repeat(3, 44px);
+  grid-template-rows: repeat(3, 44px);
+  gap: 4px;
+  z-index: 20;
+  opacity: 0.75;
+}
+
+.touch-btn {
+  background: rgba(20, 24, 38, 0.85);
+  border: 1px solid var(--gold-accent);
+  color: var(--gold-accent);
+  border-radius: 6px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.touch-btn:active {
+  background: var(--gold-accent);
+  color: #050608;
+}
+
+/* ==========================================================================
+   Mobile Ability Bar — q/w/e/r + 1/2/3/4 touch slots
+   Mirrors the sidebar loadout; shown wherever .touch-controls is shown.
+   ========================================================================== */
+
+.ability-bar {
+  position: absolute;
+  right: calc(12px + env(safe-area-inset-right, 0px));
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  display: none;
+  grid-template-columns: repeat(4, 52px);
+  grid-template-rows: repeat(2, 52px);
+  gap: 6px;
+  z-index: 20;
+  /* Gaps pass through so the canvas stays targetable between buttons. */
+  pointer-events: none;
+}
+
+.ability-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  background: rgba(20, 24, 38, 0.85);
+  border: 1px solid var(--gold-accent);
+  border-radius: 8px;
+  color: var(--gold-accent);
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 90ms ease-out, border-color 120ms ease-out, box-shadow 120ms ease-out;
+}
+
+.ability-btn .key-badge {
+  position: absolute;
+  top: 2px;
+  left: 5px;
+  z-index: 3;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--gold-accent);
+}
+
+.ability-btn .slot-class-badge {
+  position: absolute;
+  top: 2px;
+  right: 5px;
+  z-index: 3;
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  opacity: 0;
+}
+
+.ability-btn .slot-class-badge.visible {
+  opacity: 0.9;
+}
+
+.ability-btn .ability-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  /* The button owns all pointer/long-press targeting; the icon must never be
+     the event target or Android Chrome opens its native image context menu. */
+  pointer-events: none;
+  -webkit-touch-callout: none;
+}
+
+.ability-btn .ability-icon,
+.ability-btn .ability-icon *,
+.ability-btn .openmoji-icon {
+  pointer-events: none;
+  -webkit-touch-callout: none;
+}
+
+.ability-btn .ability-icon .openmoji-icon {
+  width: 30px;
+  height: 30px;
+}
+
+.ability-btn .ability-qty {
+  position: absolute;
+  bottom: 2px;
+  right: 5px;
+  z-index: 3;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: var(--blue-accent);
+}
+
+/* The `!` non-color cue for a depleted (no mana / no ammo) button. */
+.ability-btn .ability-flag {
+  display: none;
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  z-index: 4;
+  width: 15px;
+  height: 15px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #b91c1c;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+/* Armed (toggled) auto-fire: a persistent `AUTO` badge that does not depend on
+   the finger being down. Hidden unless the slot is armed. */
+.ability-btn .ability-auto-badge {
+  display: none;
+  position: absolute;
+  bottom: 2px;
+  left: 4px;
+  z-index: 4;
+  padding: 0 3px;
+  border-radius: 3px;
+  background: var(--gold-accent);
+  color: #050608;
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: 0.02em;
+}
+
+.ability-btn--active-fire .ability-auto-badge {
+  display: inline-block;
+}
+
+.ability-btn.slot-empty {
+  border-style: dashed;
+  opacity: 0.55;
+}
+
+.ability-btn.slot-empty .key-badge {
+  opacity: 0.7;
+}
+
+.ability-btn.slot-occupied.voc-fighter { border-left: 3px solid var(--class-fighter); }
+.ability-btn.slot-occupied.voc-paladin { border-left: 3px solid var(--class-paladin); }
+.ability-btn.slot-occupied.voc-magician { border-left: 3px solid var(--class-magician); }
+.ability-btn.slot-occupied.voc-archer { border-left: 3px solid var(--class-archer); }
+.ability-btn.slot-occupied.voc-neutral { border-left: 3px solid var(--class-neutral); }
+
+.ability-btn:active {
+  transform: scale(0.96);
+}
+
+.ability-btn:focus-visible {
+  outline: 2px solid var(--gold-accent);
+  outline-offset: 2px;
+}
+
+/* Cooldown wipe: grey scrim recedes as the ability readies (same vocabulary
+   as the sidebar loadout slots). */
+.ability-btn .cooldown-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  background: var(--slot-cooldown-overlay);
+  pointer-events: none;
+  clip-path: inset(var(--cd-inset, 0%) 0 0 0);
+  transition: clip-path var(--slot-cooldown-step) linear;
+}
+
+.ability-btn.on-cooldown .cooldown-overlay {
+  display: block;
+}
+
+.ability-btn.on-cooldown .key-badge {
+  color: var(--gold-accent);
+}
+
+/* Depleted (no mana / no ammo): desaturate + `!` badge. */
+.ability-btn--depleted .ability-icon {
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+
+.ability-btn--depleted .ability-flag {
+  display: flex;
+}
+
+.ability-btn--depleted .ability-flag::before {
+  content: '!';
+}
+
+/* No valid target / already-active buff: neutral dimmed ring, no error color. */
+.ability-btn--no-target {
+  opacity: 0.6;
+}
+
+.ability-btn--no-target .ability-icon {
+  opacity: 0.7;
+}
+
+/* Charging (< hold threshold): progress underline that fills over the feedback
+   window so the autofire threshold is learnable. */
+.ability-btn--charging {
+  transform: scale(0.94);
+  border-color: #fff2c8;
+}
+
+.ability-btn--charging::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 100%;
+  border-radius: 0 0 7px 7px;
+  background: var(--gold-accent);
+  transform-origin: left center;
+  transform: scaleX(0);
+  animation: abilityChargeFill var(--autofire-feedback-ms, 1200ms) linear forwards;
+}
+
+@keyframes abilityChargeFill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* Autofire active: pulsing gold ring + icon micro-pulse. */
+.ability-btn--active-fire {
+  border-color: var(--gold-accent);
+  animation: abilityActiveRing 1.2s ease-in-out infinite alternate;
+}
+
+.ability-btn--active-fire .ability-icon {
+  animation: abilityIconPulse 1.2s ease-in-out infinite alternate;
+}
+
+/* Waiting: armed but throttled by a cooldown/guard gap; resumes automatically. */
+.ability-btn--waiting {
+  animation: none;
+  opacity: 0.45;
+}
+
+.ability-btn--waiting .ability-icon {
+  animation: none;
+}
+
+/* Active slots 1-4 held past the threshold: single-use locked, no ring. */
+.ability-btn--single-locked {
+  border-color: var(--gold-accent);
+  box-shadow: 0 0 8px var(--gold-glow) inset;
+}
+
+@keyframes abilityActiveRing {
+  from { box-shadow: 0 0 4px var(--gold-glow); }
+  to { box-shadow: 0 0 14px var(--gold-glow); }
+}
+
+@keyframes abilityIconPulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ability-btn,
+  .ability-btn .cooldown-overlay {
+    transition: none;
+  }
+  .ability-btn--charging {
+    transform: none;
+  }
+  .ability-btn--charging::after {
+    animation: none;
+    transform: scaleX(1);
+    background: repeating-linear-gradient(90deg, var(--gold-accent) 0 6px, transparent 6px 10px);
+  }
+  .ability-btn--active-fire,
+  .ability-btn--active-fire .ability-icon {
+    animation: none;
+    box-shadow: 0 0 0 2px var(--gold-accent) inset;
+  }
+}
+
+/* ==========================================================================
+   Studio Splash (launch only)
+   ========================================================================== */
+
+.splash-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 400ms cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+.splash-overlay.splash-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.splash-overlay.splash-hide {
+  opacity: 0;
+}
+
+.splash-overlay svg,
+.splash-logo {
+  width: min(64vw, 640px);
+  height: auto;
+  filter: drop-shadow(0 0 18px var(--gold-glow));
+}
+
+.splash-overlay.splash-visible svg {
+  animation: splashBreath 2.4s ease-in-out infinite;
+}
+
+@keyframes splashBreath {
+  0%, 100% { filter: drop-shadow(0 0 14px var(--gold-glow)); }
+  50% { filter: drop-shadow(0 0 28px var(--gold-glow)); }
+}
+
+/* ==========================================================================
+   Title Ambient Background
+   ========================================================================== */
+
+.title-ambient-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 990;
+  display: none;
+}
+
+.title-ambient-canvas.active {
+  display: block;
+}
+
+/* Let the ambient show through behind the title card only. */
+.modal-overlay.title-active {
+  background: rgba(5, 6, 10, 0.38);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+/* ==========================================================================
+   Screen Transitions
+   ========================================================================== */
+
+.screen-transition {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  background: #05060a;
+  opacity: 0;
+  pointer-events: none;
+  transition-property: opacity;
+  transition-timing-function: ease-in-out;
+}
+
+.screen-transition.active {
+  pointer-events: auto;
+}
+
+.transition-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  letter-spacing: 4px;
+  color: var(--gold-accent);
+  text-shadow: 0 0 18px var(--gold-glow);
+  white-space: nowrap;
+}
+
+.fps-counter {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--blue-accent);
+  background-color: #0b0d14;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 2px 6px;
+}

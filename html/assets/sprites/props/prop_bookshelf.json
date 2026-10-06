@@ -1,0 +1,60 @@
+{
+  "id": "prop_bookshelf",
+  "kind": "prop",
+  "class": "wall",
+  "native": {
+    "w": 32,
+    "h": 32
+  },
+  "anchor": {
+    "x": 16,
+    "y": 29
+  },
+  "palette": {
+    "0": "#0b0d12",
+    ".": null,
+    "d": "#3f2817",
+    "e": "#6b4423",
+    "f": "#8a5a2b",
+    "g": "#c98a4a",
+    "m": "#aab2bf",
+    "r": "#c0392b",
+    "b": "#b87333"
+  },
+  "frames": {
+    "idle": [
+      "................................",
+      "................................",
+      "................................",
+      "................................",
+      "....ddeeeeeeeeeeeeeeeeeeeedd....",
+      "....ddrrrrgggmmmmbbbbrrrredd....",
+      "....ddrrrrgggmmmmbbbbrrrredd....",
+      "....ddrrrrgggmmmmbbbbrrrredd....",
+      "....ddrrrrgggmmmmbbbbrrrredd....",
+      "....ddrrrrgggmmmmbbbbrrrredd....",
+      "....ddrrrrgggmmmmbbbbrrrredd....",
+      "....ddrrrrgggmmmmbbbbrrrredd....",
+      "....ddffffffffffffffffffffdd....",
+      "....ddmmmrrrrrgggbbbbfffffdd....",
+      "....ddmmmrrrrrgggbbbbeeeeedd....",
+      "....ddmmmrrrrrgggbbbbeeeeedd....",
+      "....ddmmmrrrrrgggbbbbeeeeedd....",
+      "....ddmmmrrrrrgggbbbbeeeeedd....",
+      "....ddmmmrrrrrgggbbbbeeeeedd....",
+      "....ddmmmrrrrrgggbbbbeeeeedd....",
+      "....ddffffffffffffffffffffdd....",
+      "....ddbbbbbgggrrrrrmmmmmmfdd....",
+      "....ddbbbbbgggrrrrrmmmmmmedd....",
+      "....ddbbbbbgggrrrrrmmmmmmedd....",
+      "....ddbbbbbgggrrrrrmmmmmmedd....",
+      "....ddbbbbbgggrrrrrmmmmmmedd....",
+      "....ddbbbbbgggrrrrrmmmmmmedd....",
+      "....ddffffffffffffffffffffdd....",
+      "....ddffffffffffffffffffffdd....",
+      "................................",
+      "................................",
+      "................................"
+    ]
+  }
+}

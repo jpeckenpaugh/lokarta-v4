@@ -1,0 +1,158 @@
+{
+  "levelCount": 5,
+  "entry": { "level": 1, "room": 2, "doorTile": [19, 1], "spawnTile": [19, 2] },
+  "stairShaft": { "1": 9, "2": 6, "3": 3, "4": 8, "5": 5 },
+  "stairTiles": { "3": [33, 6], "5": [20, 20], "6": [33, 19], "8": [20, 33], "9": [33, 33] },
+  "levels": [
+    {
+      "level": 1,
+      "tierId": "crypt",
+      "entryRoom": 2,
+      "stairRoom": 9,
+      "isFinal": false,
+      "openEdges": ["h12", "h23", "h45", "h56", "v14", "v47", "h78", "h89"],
+      "sealedEdges": ["v25", "v36", "v58", "v69"],
+      "gates": { "copper": "v14", "silver": "h45", "gold": "h89" },
+      "keyRooms": { "copper": 1, "silver": 4, "gold": 6 },
+      "roomTiers": { "1": 0, "2": 0, "3": 0, "4": 1, "5": 2, "6": 2, "7": 1, "8": 1, "9": 3 }
+    },
+    {
+      "level": 2,
+      "tierId": "catacombs",
+      "entryRoom": 9,
+      "stairRoom": 6,
+      "isFinal": false,
+      "openEdges": ["h23", "h45", "v36", "h78", "h89", "v14", "v47", "v25"],
+      "sealedEdges": ["h12", "v58", "h56", "v69"],
+      "gates": { "copper": "h78", "silver": "v47", "gold": "v36" },
+      "keyRooms": { "copper": 8, "silver": 7, "gold": 5 },
+      "roomTiers": { "1": 2, "2": 2, "3": 2, "4": 2, "5": 2, "6": 3, "7": 1, "8": 0, "9": 0 }
+    },
+    {
+      "level": 3,
+      "tierId": "shadow_vaults",
+      "entryRoom": 6,
+      "stairRoom": 3,
+      "isFinal": false,
+      "openEdges": ["h12", "h23", "h56", "h78", "v14", "v47", "v58", "v69"],
+      "sealedEdges": ["h45", "h89", "v25", "v36"],
+      "gates": { "copper": "v58", "silver": "h78", "gold": "h23" },
+      "keyRooms": { "copper": 5, "silver": 8, "gold": 2 },
+      "roomTiers": { "1": 2, "2": 2, "3": 3, "4": 2, "5": 0, "6": 0, "7": 2, "8": 1, "9": 0 }
+    },
+    {
+      "level": 4,
+      "tierId": "abyssal_sanctum",
+      "entryRoom": 3,
+      "stairRoom": 8,
+      "isFinal": false,
+      "openEdges": ["h23", "h45", "h56", "h78", "v14", "v47", "v25", "v69"],
+      "sealedEdges": ["h12", "h89", "v58", "v36"],
+      "gates": { "copper": "v25", "silver": "h45", "gold": "h78" },
+      "keyRooms": { "copper": 2, "silver": 5, "gold": 7 },
+      "roomTiers": { "1": 2, "2": 0, "3": 0, "4": 2, "5": 1, "6": 1, "7": 2, "8": 3, "9": 1 }
+    },
+    {
+      "level": 5,
+      "tierId": "crown_spire",
+      "entryRoom": 8,
+      "stairRoom": 5,
+      "isFinal": true,
+      "openEdges": ["h12", "h23", "h78", "h89", "v14", "v25", "v47", "v69"],
+      "sealedEdges": ["h45", "h56", "v58", "v36"],
+      "gates": { "copper": "v47", "silver": "v14", "gold": "v25" },
+      "keyRooms": { "copper": 7, "silver": 4, "gold": 2 },
+      "roomTiers": { "1": 2, "2": 2, "3": 2, "4": 1, "5": 3, "6": 0, "7": 0, "8": 0, "9": 0 }
+    }
+  ],
+  "monsterGroups": {
+    "groupSize": { "1": 3, "2": 3, "3": 4, "4": 4, "5": 4 },
+    "pool": {
+      "1": ["giant_rat", "crypt_skeleton"],
+      "2": ["giant_rat", "crypt_skeleton", "shadow_cultist"],
+      "3": ["crypt_skeleton", "shadow_cultist"],
+      "4": ["shadow_cultist", "elite_cultist"],
+      "5": ["elite_cultist", "shadow_cultist", "elite_cultist"]
+    },
+    "keyHolderType": {
+      "1": { "copper": "crypt_skeleton", "silver": "crypt_skeleton", "gold": "shadow_cultist" },
+      "2": { "copper": "crypt_skeleton", "silver": "shadow_cultist", "gold": "shadow_cultist" },
+      "3": { "copper": "shadow_cultist", "silver": "shadow_cultist", "gold": "elite_cultist" },
+      "4": { "copper": "elite_cultist", "silver": "elite_cultist", "gold": "elite_cultist" },
+      "5": { "copper": "elite_cultist", "silver": "elite_cultist", "gold": "elite_cultist" }
+    },
+    "statScale": {
+      "1": { "hp": 1.0, "atk": 1.0 },
+      "2": { "hp": 1.35, "atk": 1.25 },
+      "3": { "hp": 1.8, "atk": 1.55 },
+      "4": { "hp": 2.4, "atk": 1.9 },
+      "5": { "hp": 3.2, "atk": 2.4 }
+    },
+    "keyHolderModifier": { "hp": 1.5, "atk": 1.15 }
+  },
+  "boss": {
+    "level": 5,
+    "room": 5,
+    "tile": [19, 19],
+    "type": "abyssal_overlord",
+    "name": "The Spire Warden",
+    "hp": 600,
+    "max_hp": 600,
+    "attack": 20,
+    "defense": 6,
+    "moveCadence": 0.7,
+    "attackCadence": 1.4,
+    "isBoss": true,
+    "guardCount": 2,
+    "guardType": "elite_cultist",
+    "guardName": "Spire Sentinel"
+  },
+  "chestTierRule": {
+    "byRoomTier": { "0": "copper", "1": "silver", "2": "silver", "3": "gold" },
+    "goldKeyRoomOverride": "gold"
+  },
+  "propPolicy": {
+    "countByRoomTier": { "0": 2, "1": 3, "2": 3, "3": 2 },
+    "arrivalRoomMax": 1,
+    "clearCenter": true,
+    "minSpacingFromChest": 1,
+    "brazierLightRadius": 2.5,
+    "maxBrazierLights": 2,
+    "bossRoomFixed": { "room": 5, "props": ["throne", "brazier", "brazier"] }
+  },
+  "townGatePolicy": {
+    "roomRole": "entry",
+    "countPerLevel": 1,
+    "propId": "prop_town_gate",
+    "walkOn": true
+  },
+  "placement": {
+    "roles": {
+      "keyHolder": [2, 2],
+      "chest": [-3, 2],
+      "monsterSlot0": [0, 0],
+      "monsterSlot1": [-3, 0],
+      "monsterSlot2": [3, 0],
+      "monsterSlot3": [0, 3],
+      "starterCache": [0, 3]
+    },
+    "order": ["keyHolder", "chest", "monsterSlot0", "monsterSlot1", "monsterSlot2", "monsterSlot3", "starterCache"]
+  },
+  "starterCache": {
+    "1": [
+      { "item_id": "arrows", "quantity": 22 }
+    ],
+    "2": [
+      { "item_id": "health_potion", "quantity": 1 }
+    ],
+    "3": [
+      { "item_id": "health_potion", "quantity": 1 }
+    ],
+    "4": [
+      { "item_id": "health_potion", "quantity": 1 }
+    ],
+    "5": [
+      { "item_id": "health_potion", "quantity": 1 }
+    ]
+  }
+}

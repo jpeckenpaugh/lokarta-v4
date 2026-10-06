@@ -1,0 +1,130 @@
+{
+  "splash": {
+    "showMs": 400,
+    "holdMs": 1500,
+    "hideMs": 400,
+    "reducedHoldMs": 900,
+    "skipAfterMs": 150,
+    "skipFadeMs": 150
+  },
+  "transitions": {
+    "splashToTitle": { "ms": 400, "easing": "cubic-bezier(0.4,0,0.2,1)", "skippable": true },
+    "titleToSelect": { "ms": 260, "easing": "cubic-bezier(0.4,0,0.2,1)", "skippable": true },
+    "titleToGame": { "ms": 300, "easing": "ease-in-out", "skippable": true },
+    "selectToGame": { "ms": 380, "easing": "cubic-bezier(0.65,0,0.35,1)", "skippable": true },
+    "floorAdvance": { "ms": 400, "easing": "ease-in-out", "skippable": false },
+    "gameOverToRetry": { "ms": 340, "easing": "ease-out", "skippable": false },
+    "townVisit": { "ms": 320, "easing": "ease-in-out", "skippable": true },
+    "townToTower": { "ms": 300, "easing": "ease-in-out", "skippable": true },
+    "towerToTown": { "ms": 300, "easing": "ease-in-out", "skippable": true },
+    "toTitle": { "ms": 400, "easing": "ease-in-out", "skippable": true }
+  },
+  "titleAmbient": {
+    "targetFps": 30,
+    "particleCount": 36,
+    "parallaxFarPxPerSec": 4,
+    "parallaxNearPxPerSec": 10,
+    "torchPulseHz": 0.7,
+    "maxDpr": 1.5
+  },
+  "saveSlots": { "count": 5 },
+  "inventory": {
+    "backpack": { "columns": 6, "rows": 6, "defaultSlots": 36 },
+    "activeSlots": 4,
+    "equipmentSlots": 4,
+    "keyedSlots": 8
+  },
+  "economy": {
+    "startingGold": 0,
+    "goldStackCap": 999999
+  },
+  "hud": {
+    "loadout": {
+      "activeKeys": ["1", "2", "3", "4"],
+      "equipmentKeys": ["q", "w", "e", "r"],
+      "columns": 4
+    }
+  },
+  "entityBars": {
+    "widthPx": 24,
+    "bossWidthPx": 32,
+    "heightPx": 3,
+    "gapPx": 1,
+    "outlinePx": 1,
+    "offsetAboveSpritePx": 6,
+    "track": "#1e293b",
+    "hpFill": "#ef4444",
+    "hpFillLow": "#dc2626",
+    "mpFill": "#3b82f6",
+    "lowHpPct": 30,
+    "lowHpPulseHz": 1.5,
+    "playerShowWhen": "always",
+    "enemyShowWhen": "damaged"
+  },
+  "playerVfx": {
+    "shockShield": {
+      "color": "#e2e8f0",
+      "rimColor": "#f8fafc",
+      "radiusScale": 0.62,
+      "lineWidthPx": 3,
+      "pulseHz": 1.4,
+      "baseAlpha": 0.6,
+      "pulseAlpha": 0.3,
+      "fillAlpha": 0.16
+    },
+    "luminousPrayer": {
+      "orbCount": 5,
+      "orbRadiusPx": 3.5,
+      "glowRadiusPx": 9,
+      "orbitRadiusScale": 0.7,
+      "orbitHz": 0.9,
+      "bobScale": 0.03,
+      "color": "#fde68a",
+      "coreColor": "#fffbeb",
+      "durationSec": 1.6,
+      "fadeSec": 0.45
+    }
+  },
+  "town": {
+    "title": "Havenreach",
+    "subtitle": "The town beneath the Crown Spire",
+    "shopName": "Merchant's Stall",
+    "templeName": "Temple of the Dawn",
+    "enterTowerLabel": "Enter the Tower",
+    "healCostPerHp": 1,
+    "healCostPerMp": 1
+  },
+  "pause": {
+    "returnToTownEnabled": false,
+    "description": "The pause menu does not offer a direct town return; use the tower's stair exits or Tower Gate."
+  },
+  "floatingText": {
+    "defaultDurationMs": 1200,
+    "lootDurationMs": 2400,
+    "staggerPx": 18,
+    "risePxPerSec": 20,
+    "maxActive": 48,
+    "description": "Pickup/chest messages spawn staggered around the player and live longer than combat numbers."
+  },
+  "lootPlacement": {
+    "dropRingRadius": 4,
+    "description": "Dropped items sort to the nearest empty walkable tile, expanding ring by ring from the drop point; stacking happens only when no free tile remains in range."
+  },
+  "options": {
+    "defaults": {
+      "soundEffects": true,
+      "sfxVolume": 70,
+      "reduceMotion": "system",
+      "uiScale": "normal",
+      "pixelScale": "auto",
+      "fullscreen": false,
+      "damageNumbers": true,
+      "showFps": false
+    },
+    "ranges": {
+      "sfxVolume": { "min": 0, "max": 100, "step": 5 },
+      "uiScale": { "small": 0.85, "normal": 1.0, "large": 1.15, "xlarge": 1.3 },
+      "pixelScale": { "auto": 64, "1x": 32, "2x": 64, "3x": 96 }
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "source": "docs/level-design.md#7.3",
+  "description": "Tiered chest loot tables. Each chest rolls `rolls` entries, weighted, without replacement. Quantities are [min,max] inclusive. A `vocationGear` entry rolls an item from the opener's vocation pool filtered by lootTier and vocationAffinity (neutral items always eligible).",
+  "spentVisual": {
+    "description": "Opened/spent chests get a drained grey wash so they read as empty and never look like an unopened silver chest.",
+    "overlay": "rgba(30, 32, 38, 0.62)",
+    "accent": "#6b7280",
+    "tint": { "light": "#565b64", "dark": "#2b2d33" }
+  },
+  "chests": {
+    "copper": {
+      "rolls": 2,
+      "entries": [
+        { "itemId": "health_potion", "quantity": [1, 1], "weight": 30 },
+        { "itemId": "mana_potion", "quantity": [1, 1], "weight": 15 },
+        { "itemId": "arrows", "quantity": [8, 16], "weight": 30 },
+        { "vocationGear": true, "lootTier": [1, 1], "quantity": [1, 1], "weight": 10 }
+      ]
+    },
+    "silver": {
+      "rolls": 2,
+      "entries": [
+        { "itemId": "health_potion", "quantity": [2, 2], "weight": 18 },
+        { "itemId": "mana_potion", "quantity": [2, 2], "weight": 15 },
+        { "itemId": "arrows", "quantity": [20, 32], "weight": 22 },
+        { "itemId": "relic_luminous_amulet", "quantity": [1, 1], "weight": 8 },
+        { "vocationGear": true, "lootTier": [1, 2], "quantity": [1, 1], "weight": 27 }
+      ]
+    },
+    "gold": {
+      "rolls": 3,
+      "entries": [
+        { "itemId": "health_potion", "quantity": [3, 3], "weight": 15, "displayName": "Greater Health Potion" },
+        { "itemId": "mana_potion", "quantity": [3, 3], "weight": 15, "displayName": "Greater Mana Potion" },
+        { "itemId": "arrows", "quantity": [40, 60], "weight": 12 },
+        { "itemId": "relic_luminous_amulet", "quantity": [1, 1], "weight": 10 },
+        { "itemId": "relic_champions_crest", "quantity": [1, 1], "weight": 8 },
+        { "vocationGear": true, "lootTier": [2, 3], "quantity": [1, 1], "weight": 40 }
+      ]
+    }
+  }
+}

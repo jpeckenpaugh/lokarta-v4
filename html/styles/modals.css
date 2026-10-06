@@ -1,0 +1,1275 @@
+/* Lokarta: Come Into The Light - Modals, Overlays & Responsive Styles */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-color: rgba(5, 6, 10, 0.88);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-overlay.hidden {
+  display: none !important;
+}
+
+/* Title Screen Modal */
+.title-screen-modal {
+  background: radial-gradient(circle at center, #151824, #08090f);
+  border: 2px solid var(--gold-accent);
+  box-shadow: 0 0 30px rgba(229, 185, 92, 0.3), inset 0 0 30px rgba(0, 0, 0, 0.8);
+  border-radius: 10px;
+  padding: 36px 40px;
+  width: 520px;
+  max-width: 90vw;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: relative;
+}
+
+.torch-flicker-container {
+  display: flex;
+  justify-content: space-between;
+  font-size: 28px;
+  margin-bottom: -15px;
+}
+
+.title-torch {
+  animation: flicker 1.8s infinite alternate ease-in-out;
+}
+
+.right-torch {
+  animation-delay: 0.9s;
+}
+
+@keyframes flicker {
+  0% { transform: scale(1.0) rotate(-2deg); filter: drop-shadow(0 0 8px #f59e0b); }
+  50% { transform: scale(1.15) rotate(3deg); filter: drop-shadow(0 0 16px #ef4444); }
+  100% { transform: scale(0.95) rotate(-1deg); filter: drop-shadow(0 0 10px #f59e0b); }
+}
+
+.title-emblem {
+  font-size: 40px;
+  margin-bottom: 6px;
+  filter: drop-shadow(0 0 12px var(--gold-accent));
+}
+
+.title-main {
+  font-family: var(--font-display);
+  font-size: 2.8rem;
+  letter-spacing: 6px;
+  color: var(--gold-accent);
+  text-shadow: 0 0 16px var(--gold-glow);
+  margin-bottom: 2px;
+}
+
+.title-subtitle {
+  font-size: 1rem;
+  letter-spacing: 3px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.title-tagline {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--blue-accent);
+  letter-spacing: 1px;
+  margin-top: 4px;
+}
+
+.continue-summary-card {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid var(--blue-accent);
+  border-radius: 6px;
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 0.85rem;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.15);
+}
+
+.continue-summary-card .save-tag {
+  color: var(--blue-accent);
+  font-weight: 700;
+  margin-bottom: 4px;
+  font-size: 0.8rem;
+}
+
+.continue-summary-card .save-details {
+  color: var(--text-primary);
+}
+
+.continue-summary-card .save-stats {
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  margin-top: 2px;
+}
+
+.title-menu-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.title-btn {
+  background: linear-gradient(180deg, #1e2438, #101320);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: 1.5px;
+  padding: 12px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.title-btn:hover {
+  background: linear-gradient(180deg, #2e3755, #1a1e32);
+  border-color: var(--gold-accent);
+  color: var(--gold-accent);
+  box-shadow: 0 0 12px var(--gold-glow);
+  transform: translateY(-1px);
+}
+
+.title-btn.continue-btn {
+  border-color: var(--blue-accent);
+  color: var(--blue-accent);
+}
+
+.title-btn.continue-btn:hover {
+  background: linear-gradient(180deg, #0369a1, #0c4a6e);
+  color: #fff;
+  border-color: #7dd3fc;
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+}
+
+.title-btn.new-game-btn {
+  border-color: var(--gold-accent);
+  color: var(--gold-accent);
+}
+
+.title-footer {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-family: var(--font-mono);
+  border-top: 1px solid #1e2233;
+  padding-top: 12px;
+}
+
+/* Character Select Modal (4 Vocations) */
+.character-select-modal {
+  background: #141722;
+  border: 2px solid var(--border-highlight);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(76, 86, 128, 0.3);
+  border-radius: 8px;
+  width: 90%;
+  max-width: 800px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.character-select-modal .modal-header {
+  text-align: center;
+}
+
+.character-select-modal .modal-header h2 {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  color: var(--gold-accent);
+  letter-spacing: 4px;
+  margin-bottom: 2px;
+}
+
+.character-select-modal .modal-header .subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  letter-spacing: 2px;
+}
+
+.prompt {
+  text-align: center;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.vocation-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.vocation-card {
+  background: #0b0d14;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.vocation-card:hover {
+  border-color: var(--gold-accent);
+  box-shadow: 0 0 15px var(--gold-glow);
+}
+
+.vocation-card .card-icon {
+  font-size: 32px;
+  text-align: center;
+}
+
+.vocation-card h3 {
+  font-family: var(--font-display);
+  color: var(--gold-accent);
+  text-align: center;
+  font-size: 1.05rem;
+}
+
+.stats-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  background: #151824;
+  padding: 6px;
+  border-radius: 4px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.stat-label {
+  color: var(--text-muted);
+}
+
+.stat-val.hp {
+  color: var(--hp-red);
+  font-weight: 700;
+}
+
+.stat-val.mp {
+  color: var(--mp-blue);
+  font-weight: 700;
+}
+
+.vocation-card .desc {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+.select-btn, .action-btn {
+  background: linear-gradient(180deg, #2b324d, #171b2b);
+  border: 1px solid var(--gold-accent);
+  color: var(--gold-accent);
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  padding: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: auto;
+  transition: all 0.2s;
+}
+
+.select-btn:hover, .action-btn:hover {
+  background: var(--gold-accent);
+  color: #0a0b10;
+  box-shadow: 0 0 10px var(--gold-glow);
+}
+
+/* A greyed, non-interactive button (e.g. temple at full HP/MP). */
+.action-btn:disabled,
+.action-btn[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-color: var(--border-color);
+  color: var(--text-muted);
+}
+
+.action-btn:disabled:hover,
+.action-btn[aria-disabled='true']:hover {
+  background: linear-gradient(180deg, #2b324d, #171b2b);
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
+/* ==========================================================================
+   Fate Grant Draft Modal (5 Cards)
+   ========================================================================== */
+
+.fate-grant-modal {
+  background: radial-gradient(circle at center, #181b2a, #0b0d14);
+  border: 2px solid var(--gold-accent);
+  box-shadow: 0 0 40px rgba(229, 185, 92, 0.4), inset 0 0 20px rgba(0, 0, 0, 0.8);
+  border-radius: 10px;
+  padding: 24px;
+  max-width: 900px;
+  width: 95vw;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: center;
+  /* Item 3b: fade/scale in on open. */
+  animation: fate-modal-in 200ms ease-out;
+}
+
+/* Item 3b: fade out on close; `forwards` holds the faded state until
+   the manager swaps the overlay to `hidden`. */
+.fate-grant-modal.fate-leaving {
+  animation: fate-modal-out 180ms ease-in forwards;
+}
+
+@keyframes fate-modal-in {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes fate-modal-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: scale(0.98); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fate-grant-modal,
+  .fate-grant-modal.fate-leaving {
+    animation-duration: 0.001ms;
+  }
+}
+
+.fate-grant-modal .modal-header h2 {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  color: var(--gold-accent);
+  letter-spacing: 3px;
+  text-shadow: 0 0 12px var(--gold-glow);
+}
+
+.fate-grant-modal .modal-header .subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+}
+
+.fate-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.fate-card {
+  background: #0d101a;
+  border: 2px solid #2e344d;
+  border-radius: 8px;
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: transform .16s cubic-bezier(.2, 0, .2, 1), border-color .16s, box-shadow .16s, background-color .16s;
+  position: relative;
+  min-height: 180px;
+  /* `<button>` reset so the card skin matches the former <div> version. */
+  font: inherit;
+  text-align: inherit;
+  color: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Focused (keyboard cursor) reuses the hover skin (Jakob's Law). */
+.fate-card.card-focused,
+.fate-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--gold-accent);
+  box-shadow: 0 4px 15px rgba(229, 185, 92, 0.3);
+}
+
+/* Selected keeps blue identity even while focused (blue wins the border). */
+.fate-card.selected,
+.fate-card.selected.card-focused {
+  border-color: var(--blue-accent);
+  background: #111a2e;
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.6);
+  transform: translateY(-6px);
+}
+
+/* Transient: accepted activation — transform-safe brightness pulse (120 ms). */
+.fate-card.card-activating {
+  animation: fate-card-activate 120ms cubic-bezier(.2, 0, .2, 1);
+}
+@keyframes fate-card-activate {
+  0%, 100% { filter: none; }
+  45% { filter: brightness(1.35) drop-shadow(0 0 8px var(--gold-glow)); }
+}
+
+/* Transient: rejected 3rd selection — red flash (200 ms); not color-only. */
+.fate-card.card-reject {
+  animation: fate-card-reject 200ms ease-out;
+}
+@keyframes fate-card-reject {
+  0% { box-shadow: 0 0 16px var(--hp-red-glow); }
+  100% { box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.fate-card.rarity-common { border-color: #64748b; }
+.fate-card.rarity-rare { border-color: #3b82f6; }
+.fate-card.rarity-epic { border-color: #a855f7; }
+.fate-card.rarity-legendary { border-color: #f59e0b; }
+
+.fate-card .card-icon {
+  font-size: 32px;
+  margin-top: 4px;
+}
+
+.fate-card .card-title {
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  color: var(--gold-accent);
+  font-weight: 700;
+}
+
+.fate-card .card-stat-bonus {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+.fate-card .card-desc {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+.fate-card .card-select-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: #1e293b;
+  border: 1px solid #475569;
+  color: transparent;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fate-card.selected .card-select-badge {
+  background: #38bdf8;
+  border-color: #7dd3fc;
+  color: #041226;
+  font-weight: bold;
+}
+
+/* Guide / How to Play Modal */
+.guide-modal {
+  background: #141724;
+  border: 2px solid var(--gold-accent);
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 580px;
+  width: 90vw;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.guide-modal .modal-header {
+  text-align: center;
+}
+
+.guide-modal .modal-header h2 {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  color: var(--gold-accent);
+}
+
+.guide-modal .modal-header .subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.guide-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+}
+
+.guide-section h3 {
+  font-family: var(--font-display);
+  color: var(--gold-accent);
+  font-size: 1rem;
+  margin-bottom: 4px;
+}
+
+.guide-section p {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.guide-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
+
+.guide-list code {
+  background: #0b0c14;
+  border: 1px solid var(--border-color);
+  padding: 2px 5px;
+  border-radius: 3px;
+  color: var(--blue-accent);
+  font-family: var(--font-mono);
+}
+
+/* Result Modals (Victory / Defeat) */
+.result-modal {
+  background: #141722;
+  border: 2px solid var(--gold-accent);
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 480px;
+  width: 90vw;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.result-modal h2 {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  color: var(--gold-accent);
+}
+
+.defeat-modal {
+  border-color: var(--hp-red);
+}
+
+.defeat-modal h2 {
+  color: var(--hp-red);
+}
+
+.result-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.character-summary {
+  background: #0b0d14;
+  border: 1px solid var(--border-color);
+  padding: 12px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.modal-back-action {
+  margin-top: 8px;
+  display: flex;
+  justify-content: center;
+}
+
+/* Title menu rows: selected + disabled states */
+.title-btn.selected {
+  border-color: var(--gold-accent);
+  color: var(--gold-accent);
+  box-shadow: 0 0 12px var(--gold-glow);
+}
+
+.title-btn:disabled,
+.title-btn[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: var(--border-color);
+  color: var(--text-muted);
+}
+
+.title-btn:disabled:hover {
+  transform: none;
+  box-shadow: none;
+  background: linear-gradient(180deg, #1e2438, #101320);
+  color: var(--text-muted);
+}
+
+.action-btn.danger {
+  border-color: var(--hp-red);
+  color: var(--hp-red);
+}
+
+.action-btn.danger:hover {
+  background: var(--hp-red);
+  color: #0a0b10;
+  box-shadow: 0 0 10px var(--hp-red-glow);
+}
+
+.confirm-actions,
+.pause-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.result-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Options Modal */
+.options-modal {
+  background: #141722;
+  border: 2px solid var(--gold-accent);
+  border-radius: 8px;
+  padding: 24px;
+  width: 560px;
+  max-width: 92vw;
+  max-height: 88vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.options-modal .modal-header {
+  text-align: center;
+}
+
+.options-modal .modal-header h2 {
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  color: var(--gold-accent);
+  letter-spacing: 3px;
+}
+
+.options-modal .modal-header .subtitle {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #0b0d14;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 10px 12px;
+  min-height: 48px;
+}
+
+.option-label {
+  font-size: 0.88rem;
+  color: var(--text-primary);
+}
+
+.option-toggle {
+  min-width: 64px;
+  background: #1a1e2e;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.option-toggle[aria-pressed='true'] {
+  border-color: var(--gold-accent);
+  color: var(--gold-accent);
+  box-shadow: 0 0 8px var(--gold-glow);
+}
+
+.option-segmented {
+  display: flex;
+  gap: 4px;
+}
+
+.option-seg {
+  background: #1a1e2e;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.option-seg.active {
+  border-color: var(--gold-accent);
+  color: var(--gold-accent);
+  box-shadow: 0 0 8px var(--gold-glow);
+}
+
+.option-slider {
+  flex: 1;
+  max-width: 200px;
+  accent-color: var(--gold-accent);
+}
+
+.option-value {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--blue-accent);
+  min-width: 28px;
+  text-align: right;
+}
+
+.options-actions {
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Save Slot Select */
+.slot-select-modal {
+  background: #141722;
+  border: 2px solid var(--gold-accent);
+  border-radius: 8px;
+  padding: 24px;
+  width: 640px;
+  max-width: 94vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.slot-select-modal .modal-header {
+  text-align: center;
+}
+
+.slot-select-modal .modal-header h2 {
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  color: var(--gold-accent);
+  letter-spacing: 3px;
+}
+
+.slot-select-modal .modal-header .subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.slot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.slot-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #0b0d14;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px 14px;
+  min-height: 76px;
+}
+
+.slot-card.occupied {
+  border-color: var(--border-highlight);
+}
+
+.slot-card.empty {
+  border-style: dashed;
+  justify-content: space-between;
+}
+
+.slot-card.corrupt {
+  border-style: dashed;
+  border-color: var(--hp-red);
+}
+
+.slot-card.corrupt .slot-title strong {
+  color: var(--hp-red);
+}
+
+.slot-badge {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--gold-accent);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 3px 6px;
+  white-space: nowrap;
+}
+
+.slot-thumb {
+  width: 48px;
+  height: 48px;
+  image-rendering: pixelated;
+}
+
+.slot-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.slot-title {
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.slot-title strong {
+  color: var(--gold-accent);
+}
+
+.slot-sub {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--blue-accent);
+}
+
+.slot-meta {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.slot-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.slot-actions .action-btn {
+  margin-top: 0;
+  padding: 8px 12px;
+}
+
+.slot-ribbon {
+  position: absolute;
+  top: -8px;
+  right: 10px;
+  background: var(--gold-accent);
+  color: #0a0b10;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.slot-empty-body {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.slot-new-btn {
+  margin-top: 0;
+}
+
+.slot-new-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Default New Game target: the first empty slot is the primary
+   action, so a fresh profile reaches character creation in one step. The
+   gold fill makes it the unmistakable single call to action; keyboard focus
+   lands here on render. */
+.slot-new-btn.primary {
+  background: var(--gold-accent);
+  color: #0a0b10;
+  font-weight: 700;
+}
+
+.slot-new-btn.primary:hover,
+.slot-new-btn.primary:focus-visible {
+  background: var(--gold-accent);
+  color: #0a0b10;
+  box-shadow: 0 0 12px var(--gold-glow);
+}
+
+.slot-card.empty.selected {
+  border-color: var(--gold-accent);
+  border-style: solid;
+}
+
+.pause-modal .pause-actions {
+  flex-direction: column;
+}
+
+.pause-modal .title-btn {
+  width: 100%;
+}
+
+/* ==========================================================================
+   Responsive Adaptations
+   ========================================================================== */
+
+@media (max-width: 900px) {
+  .main-frame {
+    flex-direction: column;
+  }
+
+  .sidebar-hud {
+    width: 100%;
+    max-width: 100%;
+    height: 320px;
+    border-top: 2px solid var(--border-color);
+  }
+
+  .center-stage {
+    border-right: none;
+    height: 50vh;
+  }
+
+  .combat-log-panel {
+    height: 90px;
+    min-height: 80px;
+  }
+
+  .touch-controls {
+    display: grid;
+  }
+
+  .ability-bar {
+    display: grid;
+  }
+
+  .vocation-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .fate-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Mobile ability bar sizing. Landscape-short shrinks to 46px; narrow
+   portrait reflows to 2 columns so the D-pad and bar never collide at 320px. */
+@media (min-width: 401px) and (max-width: 900px) and (max-height: 480px) {
+  .ability-bar {
+    grid-template-columns: repeat(4, 46px);
+    grid-template-rows: repeat(2, 46px);
+    gap: 4px;
+  }
+
+  .ability-btn {
+    width: 46px;
+    height: 46px;
+  }
+
+  .ability-btn .ability-icon,
+  .ability-btn .ability-icon .openmoji-icon {
+    width: 26px;
+    height: 26px;
+  }
+}
+
+@media (max-width: 400px) {
+  .ability-bar {
+    grid-template-columns: repeat(2, 48px);
+    grid-template-rows: repeat(4, 48px);
+    gap: 4px;
+  }
+
+  .ability-btn {
+    width: 48px;
+    height: 48px;
+  }
+
+  .ability-btn .ability-icon,
+  .ability-btn .ability-icon .openmoji-icon {
+    width: 26px;
+    height: 26px;
+  }
+}
+
+/* ==========================================================================
+   Town / Shop / Temple Modals
+   ========================================================================== */
+
+.town-modal,
+.shop-modal,
+.temple-modal {
+  max-width: 560px;
+  width: min(92vw, 560px);
+  max-height: 86vh;
+  overflow-y: auto;
+  background-color: var(--bg-panel);
+  border: 1px solid var(--gold-accent);
+  border-radius: 8px;
+  box-shadow: 0 0 30px rgba(229, 185, 92, 0.25);
+  padding: 18px 20px 20px;
+}
+
+.town-vitals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  margin: 10px 0 16px;
+}
+
+.town-gold {
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+.town-actions,
+.modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.town-actions .action-btn,
+.modal-actions .action-btn {
+  width: 100%;
+}
+
+.shop-section-title {
+  font-family: var(--font-display);
+  letter-spacing: 1px;
+  color: var(--gold-accent);
+  font-size: 0.78rem;
+  margin: 12px 0 6px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 3px;
+}
+
+.shop-stock-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.shop-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #0b0c12;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  padding: 6px 8px;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  text-align: left;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.shop-entry:hover:not(:disabled) {
+  border-color: var(--gold-accent);
+  background-color: #161926;
+}
+
+.shop-entry:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Unaffordable upgrades stay clickable to explain the shortfall. */
+.shop-entry.is-unaffordable {
+  opacity: 0.5;
+}
+
+.shop-entry .shop-icon .openmoji-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.shop-entry .shop-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shop-entry .shop-name em {
+  color: var(--text-muted);
+  font-style: normal;
+  font-size: 0.68rem;
+}
+
+.shop-entry .shop-price {
+  color: #fbbf24;
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.shop-upgrades {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.shop-empty {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  padding: 6px 0;
+}
+
+.temple-body {
+  text-align: center;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  margin: 12px 0 16px;
+}
+
+.temple-cost {
+  color: #fbbf24;
+}
+
+.temple-heal-btn {
+  border-color: var(--gold-accent) !important;
+}
+
+.temple-heal-btn:disabled {
+  border-color: var(--border-color) !important;
+}
+
+.backpack-slots-grid {
+  grid-template-columns: repeat(6, 1fr);
+}
+
+.backpack-slot.selected {
+  border-color: var(--blue-accent);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.55);
+}
+
+/* ==========================================================================
+   Persistent Town screen: sibling of #modal-overlay
+   ========================================================================== */
+
+.town-screen {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(5, 6, 10, 0.88);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+  /* Below #modal-overlay (1000) so Options/pause can render above the Town. */
+  z-index: 900;
+}
+
+.town-screen[hidden] {
+  display: none !important;
+}
+
+.town-screen .town-modal {
+  max-width: 720px;
+  width: min(94vw, 720px);
+}
+
+.town-venues {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+.town-venue {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 180px;
+  min-height: 120px;
+  flex: 1 1 180px;
+  background-color: var(--bg-card);
+  border-color: var(--border-highlight);
+}
+
+.town-venue .openmoji-icon {
+  width: 2.4rem;
+  height: 2.4rem;
+}
+
+.town-venue strong {
+  font-family: var(--font-display);
+  letter-spacing: 0.5px;
+  color: var(--gold-accent);
+}
+
+.town-venue span {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.town-hero-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin: 12px 0;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-primary);
+}
+
+.town-hero-summary .town-gold {
+  color: var(--gold-accent);
+  font-weight: 700;
+}
+
+.town-hero-summary .town-hp {
+  color: var(--hp-red);
+}
+
+.town-hero-summary .town-mp {
+  color: var(--mp-blue);
+}

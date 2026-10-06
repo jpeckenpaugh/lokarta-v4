@@ -1,0 +1,36 @@
+{
+  "native": 32,
+  "outline": "#0b0d12",
+  "actors": {
+    "magician": { "kind": "vocation", "file": "./vocations/magician.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
+    "archer": { "kind": "vocation", "file": "./vocations/archer.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
+    "fighter": { "kind": "vocation", "file": "./vocations/fighter.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
+    "paladin": { "kind": "vocation", "file": "./vocations/paladin.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
+    "giant_rat": { "kind": "monster", "file": "./monsters/giant_rat.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
+    "crypt_skeleton": { "kind": "monster", "file": "./monsters/crypt_skeleton.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
+    "shadow_cultist": { "kind": "monster", "file": "./monsters/shadow_cultist.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
+    "elite_cultist": { "kind": "monster", "file": "./monsters/elite_cultist.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
+    "abyssal_overlord": { "kind": "monster", "file": "./monsters/abyssal_overlord.json", "native": { "w": 48, "h": 48 }, "anchor": { "x": 24, "y": 46 } }
+  },
+  "props": {
+    "key_copper": { "kind": "item", "tier": "copper", "file": "./items/key_copper.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 26 }, "frames": ["icon"] },
+    "key_silver": { "kind": "item", "tier": "silver", "file": "./items/key_silver.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 26 }, "frames": ["icon"] },
+    "key_gold": { "kind": "item", "tier": "gold", "file": "./items/key_gold.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 26 }, "frames": ["icon"] },
+    "chest_copper": { "kind": "prop", "tier": "copper", "file": "./items/chest_copper.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 }, "frames": ["closed", "open"] },
+    "chest_silver": { "kind": "prop", "tier": "silver", "file": "./items/chest_silver.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 }, "frames": ["closed", "open"] },
+    "chest_gold": { "kind": "prop", "tier": "gold", "file": "./items/chest_gold.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 }, "frames": ["closed", "open"] },
+    "gated_door_copper": { "kind": "tile", "tier": "copper", "file": "./tiles/gated_door_copper.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 0, "y": 0 }, "frames": ["closed", "open"] },
+    "gated_door_silver": { "kind": "tile", "tier": "silver", "file": "./tiles/gated_door_silver.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 0, "y": 0 }, "frames": ["closed", "open"] },
+    "gated_door_gold": { "kind": "tile", "tier": "gold", "file": "./tiles/gated_door_gold.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 0, "y": 0 }, "frames": ["closed", "open"] },
+    "prop_table": { "kind": "prop", "class": "free", "file": "./props/prop_table.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 28 }, "frames": ["idle"] },
+    "prop_crate": { "kind": "prop", "class": "free", "file": "./props/prop_crate.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 28 }, "frames": ["idle"] },
+    "prop_barrel": { "kind": "prop", "class": "free", "file": "./props/prop_barrel.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 29 }, "frames": ["idle"] },
+    "prop_brazier": { "kind": "prop", "class": "free", "file": "./props/prop_brazier.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 28 }, "frames": ["idle"] },
+    "prop_candelabra": { "kind": "prop", "class": "wall", "file": "./props/prop_candelabra.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 29 }, "frames": ["idle"] },
+    "prop_bookshelf": { "kind": "prop", "class": "wall", "file": "./props/prop_bookshelf.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 29 }, "frames": ["idle"] },
+    "prop_sarcophagus": { "kind": "prop", "class": "wall", "file": "./props/prop_sarcophagus.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 29 }, "frames": ["idle"] },
+    "prop_altar": { "kind": "prop", "class": "free", "file": "./props/prop_altar.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 29 }, "frames": ["idle"] },
+    "prop_throne": { "kind": "prop", "class": "wall", "file": "./props/prop_throne.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 29 }, "frames": ["idle"] },
+    "decor_rug": { "kind": "decor", "class": "decor", "file": "./decor/decor_rug.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 0, "y": 0 }, "frames": ["idle"] }
+  }
+}
