@@ -214,12 +214,12 @@ test('LIV-14 integration: the worker campaign pipeline persists party, unlocks a
     assert.equal(isTowerUnlocked(afterFirst.progress, ordered[1].id), true);
     assert.equal(afterFirst.recruitableVocations.length, 3);
 
-    // Criterion 2/3: one aligned recruit becomes the active member.
+    // Criterion 2/3: one level-1 recruit becomes the active member (LIV-16).
     const recruited = await COMMAND_HANDLERS.recruitMember({ slotIndex: 1, vocation: 'archer' });
     assert.equal(recruited.player.party.length, 2);
     assert.equal(recruited.player.activeMemberId, makeMemberId('archer'));
     assert.equal(recruited.player.vocation, 'archer');
-    assert.equal(recruited.member.level, recruited.player.party[0].level, 'recruit aligns to the party level');
+    assert.equal(recruited.member.level, 1, 'recruit starts at level 1 (first Fate Grant eligible)');
 
     // Criterion 3: moving into the next tower preserves the party + active member,
     // and WS5 party scaling reaches floor generation.

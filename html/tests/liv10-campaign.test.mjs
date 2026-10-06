@@ -147,11 +147,12 @@ test('LIV-10 recruit helpers: missing vocations, gating, and level alignment', (
   assert.equal(recruitMember(player, 'magician'), null);
   assert.equal(recruitMember(player, 'not_a_class'), null);
 
-  // Recruit aligns to the highest party level and becomes active.
+  // Recruits start at level 1 regardless of the existing party level (LIV-16)
+  // and become active, so they can take the first Fate Grant.
   player.party.push(alignMemberToLevel(createPartyMember('fighter'), 8));
   const archer = recruitMember(player, 'archer');
   assert.ok(archer);
-  assert.equal(archer.level, 8, 'new recruit matches the party level');
+  assert.equal(archer.level, 1, 'new recruit starts at level 1');
   assert.equal(player.activeMemberId, makeMemberId('archer'));
   assert.equal(player.vocation, 'archer', 'top level mirrors the new active member');
   assert.deepEqual(partyVocationIds(player), ['magician', 'fighter', 'archer']);
@@ -236,7 +237,7 @@ test('LIV-10 persistence: completeTower + recruitMember round-trip the campaign'
     const recruited = await COMMAND_HANDLERS.recruitMember({ slotIndex: 2, vocation: 'archer' });
     assert.equal(recruited.player.party.length, 2);
     assert.equal(recruited.member.vocation, 'archer');
-    assert.equal(recruited.member.level, 6, 'recruit aligns to the party level');
+    assert.equal(recruited.member.level, 1, 'recruit starts at level 1');
     assert.equal(recruited.player.activeMemberId, makeMemberId('archer'));
     assert.equal(recruited.player.vocation, 'archer');
     assert.ok(!recruited.recruitableVocations.includes('archer'));

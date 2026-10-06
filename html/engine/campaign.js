@@ -6,7 +6,8 @@
  * (LIV-9/WS1):
  *
  *   - which vocations can still be recruited onto the party;
- *   - aligning a fresh recruit to the party's level so allies stay viable;
+ *   - starting a fresh recruit at level 1 so they receive the first Fate Grant
+ *     (which guarantees a basic primary weapon offer);
  *   - recording a tower completion and unlocking the next tower in order;
  *   - the lock state the tower picker renders.
  *
@@ -36,6 +37,13 @@ export const FALLBACK_VOCATION = 'magician';
 
 /** Level range shared with `ProgressionSystem` (kept local so this module is pure). */
 const MAX_LEVEL = 20;
+
+/**
+ * A fresh recruit always joins at level 1 (never aligned up to the party level)
+ * so they are eligible for the first Fate Grant — the level-1 draft guarantees a
+ * main_hand offer, i.e. a basic primary weapon. See LIV-16.
+ */
+export const RECRUIT_STARTING_LEVEL = 1;
 
 function catalogVocationIds() {
   return Object.keys(VOCATIONS_CATALOG || {});
@@ -108,10 +116,12 @@ export function alignMemberToLevel(member, level) {
 }
 
 /**
- * Recruits `vocation` onto the party, aligned to the party's level, and makes
- * the recruit the active member. Mutates `player` and returns the new member,
- * or null when the vocation is unknown, already on the party, or the party is
- * full. A repeated recruit of the same vocation is rejected.
+ * Recruits `vocation` onto the party at level 1 and makes the recruit the active
+ * member. Recruits are never aligned up to the party's level (LIV-16): starting
+ * fresh at level 1 keeps them eligible for the first Fate Grant, whose level-1
+ * guarantee offers a basic primary weapon. Mutates `player` and returns the new
+ * member, or null when the vocation is unknown, already on the party, or the
+ * party is full. A repeated recruit of the same vocation is rejected.
  * @param {object} player
  * @param {string} vocation
  * @returns {object|null}
@@ -124,7 +134,7 @@ export function recruitMember(player, vocation) {
   if (player.party.length >= MAX_PARTY_SIZE) return null;
 
   const member = createPartyMember(key);
-  alignMemberToLevel(member, partyLevel(player));
+  alignMemberToLevel(member, RECRUIT_STARTING_LEVEL);
   const active = getActiveMember(player);
   member.x = Number(active && active.x) || Number(player.x) || 0;
   member.y = Number(active && active.y) || Number(player.y) || 0;

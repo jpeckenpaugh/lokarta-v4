@@ -421,8 +421,10 @@ async function handleCompleteTower(payload = {}) {
 }
 
 /**
- * Recruits one vocation onto an occupied slot's party. Aligns the recruit to
- * the party level, appends it, makes it the active member, and persists.
+ * Recruits one vocation onto an occupied slot's party at level 1 (LIV-16),
+ * appends it, makes it the active member, and persists. Starting at level 1
+ * keeps the recruit eligible for the first Fate Grant, whose level-1 guarantee
+ * offers a basic primary weapon.
  * @param {{ slotIndex: number, vocation: string }} payload
  * @returns {Promise<{ player: object, member: object, recruitableVocations: string[] }>}
  */
