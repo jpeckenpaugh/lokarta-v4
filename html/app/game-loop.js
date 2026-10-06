@@ -415,6 +415,17 @@ export const gameLoopMethods = {
     });
     for (const ev of events) this.applyPartyEvent(ev);
   },
+  /**
+   * LIV-22 — an auto ally collects any ground item it steps onto, routing it
+   * through the same walk-over pipeline (and into the same shared party
+   * backpack) the active member uses. No-op when its tile is empty. The pickup
+   * persists in the background, exactly like the active member's walk-over.
+   */
+  handleAllyWalkoverPickup(member) {
+    if (!member || !this.gridMap || !this.player) return;
+    if (this.gridMap.getItems(member.x, member.y).length === 0) return;
+    this.handlePickUp(member.x, member.y);
+  },
   /** Turns one party-AI intent into animation, sound, log, float text and loot. */
   applyPartyEvent(ev) {
     if (!ev || !ev.member) return;
@@ -423,6 +434,8 @@ export const gameLoopMethods = {
       // No footstep cue for auto allies: 3 members stepping every tick would
       // flood the audio channel. Only the player's own step plays.
       setAnimState(member, 'walk');
+      // LIV-22: allies also collect walk-over drops into the shared backpack.
+      this.handleAllyWalkoverPickup(member);
       return;
     }
     if (ev.type === 'idle') {
@@ -433,6 +446,23 @@ export const gameLoopMethods = {
       setAnimState(member, 'attack', this.nowMs());
       this.resolvePartyAbilityResult(ev);
     }
+    if (ev.type === 'potion') {
+      this.resolvePartyPotionResult(ev);
+    }
+  },
+  /** Applies an auto-ally potion drink: cue, log, float text, HUD + save. */
+  resolvePartyPotionResult(ev) {
+    const res = ev.result;
+    if (!res || !res.success) return;
+    soundFX.play('potionDrink');
+    if (res.message) this.logCombat(res.message, 'loot');
+    const label = ev.resource === 'mp' ? 'MP' : 'HP';
+    const color = ev.resource === 'mp' ? '#38bdf8' : '#22c55e';
+    if (res.restored > 0) {
+      this.addFloatingText(`+${res.restored} ${label}`, ev.member.x, ev.member.y, color);
+    }
+    this.updateHUD();
+    this.persistSave();
   },
   /** Resolves an auto-ally ability through the shared combat-result pipeline. */
   resolvePartyAbilityResult(ev) {

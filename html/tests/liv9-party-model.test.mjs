@@ -255,9 +255,14 @@ test('LIV-9 migration: legacy single-character save wraps without data loss', ()
   assert.equal(member.gold, 512, 'gold preserved');
   assert.deepEqual(member.levelKeys, LEGACY_PLAYER.levelKeys, 'level keys preserved');
   assert.deepEqual(member.springCharges, LEGACY_PLAYER.springCharges, 'spring charges preserved');
-  assert.deepEqual(member.backpack, LEGACY_PLAYER.backpack, 'backpack preserved');
   assert.deepEqual(member.paperdoll, LEGACY_PLAYER.paperdoll, 'paperdoll preserved');
-  assert.deepEqual(member.action_bar, LEGACY_PLAYER.action_bar, 'action bar preserved');
+  // LIV-22 changed the backpack contract: the party shares one top-level
+  // backpack and members never carry their own copies. The hotbar stays per
+  // member. The shared grid is normalized to the catalog size on migration.
+  assert.equal(member.backpack, undefined, 'no per-member backpack (shared party backpack)');
+  assert.deepEqual(member.action_bar, LEGACY_PLAYER.action_bar, 'per-member action bar preserved');
+  assert.equal(migrated.backpack.length, 36, 'shared backpack normalized to the catalog size');
+  assert.deepEqual(migrated.backpack[0], LEGACY_PLAYER.backpack[0], 'shared backpack contents preserved on the top level');
   assert.equal(legacy.party, undefined, 'input is not mutated');
 
   assert.equal(migratePlayerParty(migrated), migrated, 'migration is idempotent (reference no-op)');

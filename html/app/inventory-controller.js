@@ -20,24 +20,25 @@ const FLOATING_LOOT_MS = Number(FLOATING_TEXT.lootDurationMs) || 2400;
  * Special ground-pickup dispatch keyed by an item's catalog `pickupType`.
  * Normal inventory items fall through to `InventorySystem.pickUpItem`. Keeps
  * currency and keys out of the backpack so gold credits the purse and a key
- * unlocks its per-level gate.
+ * unlocks its per-level gate. `x`/`y` are the source tile so the same handlers
+ * serve the active member and auto allies (LIV-22).
  */
 const GROUND_PICKUP_HANDLERS = {
-  currency: (app, item) => {
+  currency: (app, item, x, y) => {
     const gained = EconomySystem.addGold(app.player, item.quantity || 0);
-    app.gridMap.popTopItem(app.player.x, app.player.y);
+    app.gridMap.popTopItem(x, y);
     if (gained > 0) {
       soundFX.play('coins');
       app.logCombat(`Picked up ${gained} gold.`, 'loot');
-      app.addFloatingText(`+${gained}g`, app.player.x, app.player.y, '#fbbf24', { durationMs: FLOATING_LOOT_MS });
+      app.addFloatingText(`+${gained}g`, x, y, '#fbbf24', { durationMs: FLOATING_LOOT_MS });
       app.updateHUD();
     }
     return gained > 0;
   },
-  key: (app, item) => {
+  key: (app, item, x, y) => {
     const level = app.player?.current_floor || 1;
     const newlyEarned = DoorSystem.grantKey(app.player, level, item.keyTier);
-    app.gridMap.popTopItem(app.player.x, app.player.y);
+    app.gridMap.popTopItem(x, y);
     soundFX.play('keyJangle');
     app.logCombat(
       newlyEarned
@@ -45,7 +46,7 @@ const GROUND_PICKUP_HANDLERS = {
         : `The ${item.name} was already earned on this floor.`,
       'loot'
     );
-    app.addFloatingText(`+${item.name}`, app.player.x, app.player.y, '#facc15', { durationMs: FLOATING_LOOT_MS });
+    app.addFloatingText(`+${item.name}`, x, y, '#facc15', { durationMs: FLOATING_LOOT_MS });
     app.updateHUD();
     return newlyEarned;
   },
@@ -56,26 +57,36 @@ const GROUND_PICKUP_HANDLERS = {
  * Assigned onto `LokartaApp.prototype` from `app-controller.js`.
  */
 export const inventoryControllerMethods = {
-  async handlePickUp() {
+  /**
+   * Collects the top ground item on `(gridX, gridY)` into the shared party
+   * inventory. Defaults to the active member's tile; auto allies call it with
+   * their own tile so a walk-over drop lands in the same shared backpack
+   * (LIV-22).
+   * @returns {Promise<boolean>} true when something was collected
+   */
+  async handlePickUp(gridX = this.player.x, gridY = this.player.y) {
     soundFX.init();
     // Items 4/5: currency and keys resolve through a typed dispatch so
     // they credit the purse / unlock the level rather than banking as items.
-    const tileItems = this.gridMap.getItems(this.player.x, this.player.y);
+    const tileItems = this.gridMap.getItems(gridX, gridY);
     const topItem = tileItems[tileItems.length - 1];
     const specialHandler = topItem && GROUND_PICKUP_HANDLERS[topItem.pickupType];
     if (specialHandler) {
-      if (specialHandler(this, topItem)) await this.persistSave();
-      return;
+      const collected = specialHandler(this, topItem, gridX, gridY);
+      if (collected) await this.persistSave();
+      return collected;
     }
 
-    const res = InventorySystem.pickUpItem(this.player, this.gridMap);
+    const res = InventorySystem.pickUpItem(this.player, this.gridMap, gridX, gridY);
     if (res.success) {
       soundFX.play('itemPickup');
       this.logCombat(res.message, 'loot');
-      this.addFloatingText(`+${res.item?.name}`, this.player.x, this.player.y, '#22c55e', { durationMs: FLOATING_LOOT_MS });
+      this.addFloatingText(`+${res.item?.name}`, gridX, gridY, '#22c55e', { durationMs: FLOATING_LOOT_MS });
       this.updateHUD();
       await this.persistSave();
+      return true;
     }
+    return false;
   },
   /**
    * Opens the chest under the player (walk-on) or at an explicit tile and picks

@@ -18,10 +18,11 @@
  * Nothing here touches IndexedDB, the DOM, the Web Worker API, or timers.
  */
 
-import { createPlayer } from './config.js';
+import { createPlayer, INVENTORY_CONFIG } from './config.js';
 import {
   VOCATIONS_CATALOG,
   TOWERS_CATALOG,
+  ITEMS_CATALOG,
   firstTowerId,
   isTowerId,
   towerUnlockRequires,
@@ -58,6 +59,12 @@ export const MAX_PARTY_SIZE = Math.max(1, Object.keys(VOCATIONS_CATALOG || {}).l
  * Fields that live on the save envelope or the shared run, never on a single
  * member. Every other top-level player field is active-member state that is
  * mirrored into the active `party` entry on capture.
+ *
+ * `backpack` is the single **shared party backpack** (LIV-22): it stays on the
+ * top-level player and is never swapped per member, so loot picked up by the
+ * active member or an auto ally always lands in one stash. `action_bar` (the
+ * per-character quick-use hotbar) and `paperdoll` (equipped gear) stay per
+ * member.
  */
 const MEMBER_EXCLUDED_KEYS = new Set([
   // Envelope / persistence bookkeeping.
@@ -66,6 +73,8 @@ const MEMBER_EXCLUDED_KEYS = new Set([
   'createdAt', 'updatedAt', 'lastPlayedAt', 'floorEntry',
   // Shared run state (the whole party is on the same floor).
   'current_floor', 'towerId', 'location', 'townVisits',
+  // Shared party backpack: one grid for the whole party (LIV-22).
+  'backpack',
   // Member identity / meta (owned by the member entry, not copied from top level).
   'id', 'memberId', 'vocation', 'aiMode', 'faction', 'anim',
 ]);
@@ -73,6 +82,77 @@ const MEMBER_EXCLUDED_KEYS = new Set([
 function clone(value) {
   if (value === undefined) return undefined;
   return JSON.parse(JSON.stringify(value));
+}
+
+/** Catalog max stack for an item id (defaults to 1, never a heuristic). */
+function itemMaxStack(item) {
+  const entry = item && ITEMS_CATALOG[item.item_id];
+  const max = entry && typeof entry.maxStack === 'number' ? entry.maxStack : 1;
+  return max > 0 ? max : 1;
+}
+
+/**
+ * Merges one ground/legacy stack into a shared container: stack onto an
+ * existing slot first, then fill the first empty slot. Mirrors the
+ * `InventorySystem` stacking rule without importing it (keeps `party.js`
+ * dependency-light for the pure model).
+ */
+function mergeIntoSharedContainer(container, item) {
+  if (!item) return;
+  const maxStack = itemMaxStack(item);
+  let remaining = Number(item.quantity) || 1;
+  if (maxStack > 1) {
+    for (let i = 0; i < container.length && remaining > 0; i++) {
+      const slot = container[i];
+      if (slot && slot.item_id === item.item_id && slot.quantity < maxStack) {
+        const add = Math.min(maxStack - slot.quantity, remaining);
+        slot.quantity += add;
+        remaining -= add;
+      }
+    }
+  }
+  for (let i = 0; i < container.length && remaining > 0; i++) {
+    if (container[i] === null) {
+      const add = Math.min(maxStack, remaining);
+      container[i] = { ...item, quantity: add };
+      remaining -= add;
+    }
+  }
+}
+
+/** Resize a shared container to `size`, preserving existing entries. */
+function resizeSharedContainer(container, size) {
+  const next = new Array(size).fill(null);
+  const source = Array.isArray(container) ? container : [];
+  for (let i = 0; i < Math.min(size, source.length); i++) next[i] = source[i] || null;
+  return next;
+}
+
+/**
+ * Folds per-member backpacks from pre-LIV-22 saves into the shared top-level
+ * backpack, then strips the per-member copies. The active member's live
+ * backpack already *is* the top-level, so only non-active members contribute
+ * overflow (never duplicated). Items that no longer fit are left in place
+ * rather than dropped. The shared grid is normalized to the catalog size on the
+ * first pass so migration is idempotent. Returns true when anything changed.
+ */
+function consolidateSharedInventory(player, members, activeId) {
+  let changed = false;
+  if (!Array.isArray(player.backpack) || player.backpack.length !== INVENTORY_CONFIG.BACKPACK_SLOTS) {
+    player.backpack = resizeSharedContainer(player.backpack, INVENTORY_CONFIG.BACKPACK_SLOTS);
+    changed = true;
+  }
+  for (const member of members) {
+    if (member.memberId !== activeId && Array.isArray(member.backpack)) {
+      for (const item of member.backpack) mergeIntoSharedContainer(player.backpack, item);
+      changed = true;
+    }
+    if ('backpack' in member) {
+      delete member.backpack;
+      changed = true;
+    }
+  }
+  return changed;
 }
 
 function normalizeVocation(vocation) {
@@ -114,6 +194,9 @@ export function createPartyMember(vocation, overrides = {}) {
   member.vocation = key;
   member.aiMode = DEFAULT_AI_MODE;
   member.faction = PARTY_FACTION;
+  // The party shares one backpack held on the top-level player (LIV-22); a
+  // member never carries its own copy. The hotbar and equipment stay per member.
+  delete member.backpack;
   for (const [field, value] of Object.entries(overrides || {})) {
     if (field === 'memberId' || field === 'vocation' || field === 'faction') continue;
     member[field] = clone(value);
@@ -353,7 +436,10 @@ export function migratePlayerParty(player) {
       activeId = (byVocation || members[0]).memberId;
     }
     const activeIdChanged = activeId !== player.activeMemberId;
-    if (!membersChanged && !progressChanged && !activeIdChanged) return player;
+    // Fold any legacy per-member backpack/hotbar into the shared party stash
+    // (LIV-22) and strip the per-member copies.
+    const inventoryChanged = consolidateSharedInventory(player, members, activeId);
+    if (!membersChanged && !progressChanged && !activeIdChanged && !inventoryChanged) return player;
     return { ...player, party: members, activeMemberId: activeId, towerProgress: progress };
   }
 
@@ -364,13 +450,16 @@ export function migratePlayerParty(player) {
     if (MEMBER_EXCLUDED_KEYS.has(key)) continue;
     member[key] = clone(value);
   }
-  return {
+  const result = {
     ...player,
     vocation,
     party: [member],
     activeMemberId: member.memberId,
     towerProgress: progress,
   };
+  // Normalize the shared containers (LIV-22) so a rerun is an idempotent no-op.
+  consolidateSharedInventory(result, result.party, member.memberId);
+  return result;
 }
 
 /**

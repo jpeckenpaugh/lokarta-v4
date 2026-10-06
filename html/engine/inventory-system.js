@@ -16,6 +16,7 @@
 import { INVENTORY_CONFIG, EQUIPMENT_KEY_MAP, EQUIPMENT_SLOT_KEYS } from './config.js';
 import { ITEMS_CATALOG, UI_CATALOG } from '../data/index.js';
 import { findOwnedItem, applyItemRankUp, formatRankUpMessage } from './item-progression.js';
+import { sameActor } from './faction.js';
 
 const EQUIP_SLOT_ORDER = EQUIPMENT_SLOT_KEYS;
 
@@ -43,16 +44,77 @@ const CONSUMABLE_EFFECTS = {
   restore: (player, item, effect, removeCallback) => {
     const res = RESTORE_RESOURCES[effect.resource];
     if (!res) return { success: false, message: `Unknown consumable resource: ${effect.resource}` };
-    if (player[res.current] >= player[res.max]) {
+    const amount = Number(item.stat_bonus) || Number(effect.amount) || 0;
+
+    // `effect.scope: 'party'` (items.json) turns one drink into a shared restore:
+    // every living party member missing that resource is topped up (LIV-24).
+    // Unscoped/`self` consumables keep the original single-target behavior.
+    const partyScope = effect.scope === 'party';
+    const targets = partyScope
+      ? restoreTargets(player, res)
+      : (Number(player[res.current]) < Number(player[res.max]) ? [player] : []);
+    if (targets.length === 0) {
       return { success: false, message: `${res.full} is already full!` };
     }
-    const amount = Number(item.stat_bonus) || Number(effect.amount) || 0;
-    const restored = Math.min(amount, player[res.max] - player[res.current]);
-    player[res.current] = Math.min(player[res.max], player[res.current] + amount);
+
+    let restored = 0;
+    for (let i = 0; i < targets.length; i++) {
+      const target = targets[i];
+      const before = Number(target[res.current]) || 0;
+      const max = Number(target[res.max]) || 0;
+      restored += Math.min(amount, max - before);
+      target[res.current] = Math.min(max, before + amount);
+    }
     removeCallback();
-    return { success: true, message: `Drank ${item.name}. Restored +${restored} ${res.label} (${player[res.current]}/${player[res.max]}).`, item };
+
+    if (partyScope && targets.length > 1) {
+      return {
+        success: true,
+        message: `Drank ${item.name}. Restored +${restored} ${res.label} across the party (${targets.length}).`,
+        item,
+        restored,
+        targets: targets.length,
+      };
+    }
+    return {
+      success: true,
+      message: `Drank ${item.name}. Restored +${restored} ${res.label} (${player[res.current]}/${player[res.max]}).`,
+      item,
+      restored,
+      targets: targets.length,
+    };
   },
 };
+
+/**
+ * Living party members that would actually gain from a restore of `res`, with
+ * the authoritative top-level active member included exactly once. A legacy /
+ * party-less player resolves to just itself. Used by `effect.scope: 'party'`.
+ * @param {object} player
+ * @param {{ current: string, max: string }} res
+ * @returns {object[]}
+ */
+function restoreTargets(player, res) {
+  const out = [];
+  if (!player) return out;
+  const eligible = (actor) => actor
+    && !(Number(actor.hp) <= 0)
+    && Number(actor[res.max]) > 0
+    && Number(actor[res.current]) < Number(actor[res.max]);
+
+  if (eligible(player)) out.push(player);
+
+  const party = Array.isArray(player.party) ? player.party : null;
+  if (party) {
+    for (let i = 0; i < party.length; i++) {
+      const member = party[i];
+      if (!member || Number(member.hp) <= 0) continue;
+      if (sameActor(player, member)) continue; // active mirror already counted
+      if (eligible(member)) out.push(member);
+    }
+  }
+  return out;
+}
 
 export class InventorySystem {
   /**
@@ -189,10 +251,19 @@ export class InventorySystem {
   /**
    * Automatically collects the top ground item, routing consumables into empty
    * active slots and everything else into the backpack (equipment banks).
+   *
+   * The containers resolved here are the shared party inventory, so any party
+   * actor (the active member or an auto ally) can collect a walk-over drop.
+   * @param {object} player Shared-inventory owner (the top-level player).
+   * @param {import('./grid-map.js').GridMap} gridMap
+   * @param {number} [atX] Tile x to collect from; defaults to the player's.
+   * @param {number} [atY] Tile y to collect from; defaults to the player's.
    */
-  static pickUpItem(player, gridMap) {
+  static pickUpItem(player, gridMap, atX, atY) {
     InventorySystem.ensureContainers(player);
-    const tileItems = gridMap.getItems(player.x, player.y);
+    const x = Number.isFinite(atX) ? atX : player.x;
+    const y = Number.isFinite(atY) ? atY : player.y;
+    const tileItems = gridMap.getItems(x, y);
     if (tileItems.length === 0) {
       return { success: false, message: 'There is nothing here to pick up.' };
     }
@@ -256,7 +327,7 @@ export class InventorySystem {
     }
 
     if (groundItem.quantity <= 0) {
-      gridMap.popTopItem(player.x, player.y);
+      gridMap.popTopItem(x, y);
     }
 
     if (totalPickedUp === 0) {

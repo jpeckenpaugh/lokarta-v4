@@ -321,3 +321,37 @@ floating text and loot by routing single-target results through the existing
   square.
 
 T0 coverage: `html/tests/liv13-party-ai.test.mjs`.
+
+---
+
+## 9. WS7 shared party backpack & ally walk-over pickup (LIV-22)
+
+Board T2 round 2 item 4: allies pick up walk-over drops into a **shared party
+backpack**; no member carries its own backpack.
+
+### 9.1 Shared backpack contract (`html/engine/party.js`)
+
+- `backpack` joins `MEMBER_EXCLUDED_KEYS`: it lives on the **top-level player**
+  (the party stash) and is never copied into or out of a member. Switching the
+  active member therefore never swaps the backpack.
+- A `PartyMember` carries **no** `backpack`. `action_bar` (the per-character
+  quick-use hotbar) and `paperdoll` (equipped gear) stay per member, so the
+  LIV-16 level-1 Fate Grant gate (empty hotbar) is unaffected.
+- `migratePlayerParty` folds any legacy per-member `backpack` into the shared
+  top-level grid (stacking via catalog `maxStack`, never duplicating the active
+  member's mirror) and strips the per-member copies. The shared grid is
+  normalized to `UI_CATALOG.inventory.backpack.defaultSlots` on the first pass,
+  and the migration stays idempotent (reference no-op on rerun).
+
+### 9.2 Pickup pipeline
+
+- `InventorySystem.pickUpItem(player, gridMap, atX?, atY?)` collects from an
+  explicit tile (defaults to the actor's own), routing consumables to the
+  active hotbar and everything else into the shared backpack.
+- `inventory-controller.js` `handlePickUp(gridX, gridY)` takes the source tile
+  so currency/keys credit the shared purse/level keys from any actor.
+- `game-loop.js` `applyPartyEvent` calls `handleAllyWalkoverPickup(member)` on
+  every auto-ally `move` event, which runs the same pipeline at the ally's tile.
+  Empty tiles are a no-op.
+
+T0 coverage: `html/tests/liv22-ally-pickup.test.mjs`.
