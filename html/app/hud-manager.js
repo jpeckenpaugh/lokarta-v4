@@ -275,6 +275,8 @@ export class HUDManager {
 
         ${HUDManager.renderKeyIndicators(player)}
 
+        ${HUDManager.renderPartyPanel(player)}
+
         <div class="meter-container hp-meter">
           <div class="meter-info">
             <span class="meter-label">HEALTH (HP)</span>
@@ -352,6 +354,47 @@ export class HUDManager {
       <div class="level-keys-row" aria-label="Keys earned on this floor">
         <span class="level-keys-label">KEYS</span>
         <span class="level-keys-icons">${icons}</span>
+      </div>
+    `;
+  }
+
+  /**
+   * Compact party panel (LIV-10/WS2): one chip per member with initials,
+   * HP/MP bars and an active marker. Data-driven from `player.party` and the
+   * vocation catalog; safe no-op for legacy single-character players.
+   */
+  static renderPartyPanel(player) {
+    const party = Array.isArray(player?.party) ? player.party : null;
+    if (!party || party.length === 0) return '';
+    const activeId = player.activeMemberId;
+    const members = party
+      .map((member) => {
+        const voc = member.vocation || 'magician';
+        const theme = VOCATIONS_CATALOG?.[voc]?.renderTheme || {};
+        const label = theme.classLabel || voc.charAt(0).toUpperCase();
+        const color = theme.primary || '#5c2d91';
+        const accent = theme.accent || '#ffd700';
+        const hpPct = Math.max(0, Math.min(100, (Number(member.hp) / Math.max(1, Number(member.max_hp))) * 100));
+        const mpPct = Math.max(0, Math.min(100, (Number(member.mana) / Math.max(1, Number(member.max_mana))) * 100));
+        const isActive = member.memberId === activeId;
+        const name = voc.charAt(0).toUpperCase() + voc.slice(1);
+        return `
+          <div class="party-chip${isActive ? ' is-active' : ''}" data-member="${member.memberId || voc}" title="${name} · Lv ${member.level || 1}" style="--party-color: ${color}; --party-accent: ${accent};">
+            <span class="party-chip-badge">${label}</span>
+            <span class="party-chip-body">
+              <span class="party-chip-name">${name}${isActive ? ' <em>★</em>' : ''}</span>
+              <span class="party-chip-bars">
+                <span class="party-hp"><i style="width:${hpPct}%"></i></span>
+                <span class="party-mp"><i style="width:${mpPct}%"></i></span>
+              </span>
+            </span>
+          </div>`;
+      })
+      .join('');
+    return `
+      <div class="party-panel" aria-label="Party members">
+        <div class="party-panel-header">PARTY (${party.length})</div>
+        <div class="party-chips">${members}</div>
       </div>
     `;
   }

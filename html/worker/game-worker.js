@@ -43,6 +43,10 @@ import {
   migratePlayerParty,
   captureActiveMember,
   normalizeTowerProgress,
+  completePlayerTower,
+  recruitMember,
+  recruitableVocations,
+  isTowerUnlocked,
 } from '../engine/index.js';
 import { DEFAULT_TOWER_ID, getTowerDefinition } from '../data/index.js';
 
@@ -304,6 +308,12 @@ async function handleSelectTower(payload = {}) {
     springCharges: {},
     saveVersion: SAVE_FORMAT_VERSION,
   });
+  // Campaign gate: a tower is only enterable once its prerequisites are
+  // complete. Completed towers stay replayable; locked ones are rejected even
+  // if a caller bypasses the picker.
+  if (!isTowerUnlocked(player.towerProgress, towerId)) {
+    throw new Error(`Tower '${towerId}' is locked — clear the previous tower first.`);
+  }
   const floor = generateFloor(1, null, towerId);
   floor.slotIndex = slotIndex;
   const start = floor.spawn_coords || floor.entrance;
@@ -326,6 +336,97 @@ async function handleSelectTower(payload = {}) {
   await writeLastPlayed(slotIndex);
 
   return { player, floor, slot: updatedSlot || slot };
+}
+
+/**
+ * Records a tower completion for an occupied slot: marks the tower in
+ * `towerProgress.completedTowerIds`, unlocks the next tower in campaign order,
+ * and persists. Non-terminal: the caller decides whether this was the final
+ * tower (allComplete) or should lead into the recruit flow.
+ * @param {{ slotIndex: number, towerId?: string }} payload
+ * @returns {Promise<{
+ *   player: object, progress: object, completedTowerId: string|null,
+ *   allComplete: boolean, nextTowerId: string|null, recruitableVocations: string[]
+ * }>}
+ */
+async function handleCompleteTower(payload = {}) {
+  const slotIndex = clampSlotIndex(payload.slotIndex);
+  await openStorage();
+
+  const slot = await read(STORES.SAVE_SLOTS, slotId(slotIndex));
+  if (!slot || slot.status !== 'occupied' || !slot.characterId) {
+    throw new Error(`Slot ${slotIndex} is empty.`);
+  }
+  let player = await read(STORES.CHARACTERS, slot.characterId);
+  if (!player) {
+    throw new Error(`Could not load Slot ${slotIndex}. Try again.`);
+  }
+  player = migratePlayerParty(player);
+
+  const towerId = resolveTowerId(payload.towerId || player.towerId);
+  const info = completePlayerTower(player, towerId);
+  player.towerId = towerId;
+  player.towerProgress = info.progress;
+  player.slotId = slotId(slotIndex);
+  player.slotIndex = slotIndex;
+  player.saveVersion = SAVE_FORMAT_VERSION;
+  const timestamp = now();
+  player.updatedAt = timestamp;
+  player.lastPlayedAt = timestamp;
+  captureActiveMember(player);
+
+  await put(STORES.CHARACTERS, player);
+  await refreshSlot(slotIndex, player, null, timestamp);
+  await writeLastPlayed(slotIndex);
+
+  return {
+    player,
+    progress: player.towerProgress,
+    completedTowerId: info.completedTowerId,
+    allComplete: info.allComplete,
+    nextTowerId: info.nextTowerId,
+    recruitableVocations: recruitableVocations(player),
+  };
+}
+
+/**
+ * Recruits one vocation onto an occupied slot's party. Aligns the recruit to
+ * the party level, appends it, makes it the active member, and persists.
+ * @param {{ slotIndex: number, vocation: string }} payload
+ * @returns {Promise<{ player: object, member: object, recruitableVocations: string[] }>}
+ */
+async function handleRecruitMember(payload = {}) {
+  const slotIndex = clampSlotIndex(payload.slotIndex);
+  await openStorage();
+
+  const slot = await read(STORES.SAVE_SLOTS, slotId(slotIndex));
+  if (!slot || slot.status !== 'occupied' || !slot.characterId) {
+    throw new Error(`Slot ${slotIndex} is empty.`);
+  }
+  let player = await read(STORES.CHARACTERS, slot.characterId);
+  if (!player) {
+    throw new Error(`Could not load Slot ${slotIndex}. Try again.`);
+  }
+  player = migratePlayerParty(player);
+
+  const member = recruitMember(player, payload.vocation);
+  if (!member) {
+    throw new Error(`Cannot recruit '${payload.vocation}' — unknown, already in the party, or the party is full.`);
+  }
+
+  player.slotId = slotId(slotIndex);
+  player.slotIndex = slotIndex;
+  player.saveVersion = SAVE_FORMAT_VERSION;
+  const timestamp = now();
+  player.updatedAt = timestamp;
+  player.lastPlayedAt = timestamp;
+  captureActiveMember(player);
+
+  await put(STORES.CHARACTERS, player);
+  await refreshSlot(slotIndex, player, null, timestamp);
+  await writeLastPlayed(slotIndex);
+
+  return { player, member, recruitableVocations: recruitableVocations(player) };
 }
 
 /**
@@ -751,6 +852,8 @@ export const COMMAND_HANDLERS = {
   createSlot: handleCreateSlot,
   loadSlot: handleLoadSlot,
   selectTower: handleSelectTower,
+  completeTower: handleCompleteTower,
+  recruitMember: handleRecruitMember,
   deleteSlot: handleDeleteSlot,
   restartFloor: handleRestartFloor,
   respawnAfterDeath: handleRespawnAfterDeath,

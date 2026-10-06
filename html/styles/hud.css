@@ -991,3 +991,99 @@
 .backpack-slot .slot-class-badge.visible {
   opacity: 0.85;
 }
+
+/* --- LIV-10/WS2 party panel --- */
+.party-panel {
+  margin-top: 2px;
+}
+
+.party-panel-header {
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.party-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.party-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--party-color, #5c2d91);
+  border-radius: 4px;
+  background: #0b0d14;
+}
+
+.party-chip.is-active {
+  border-color: var(--party-accent, var(--gold-accent));
+  box-shadow: 0 0 8px var(--gold-glow);
+}
+
+.party-chip-badge {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--party-color, #5c2d91);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.party-chip-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.party-chip-name {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.party-chip-name em {
+  color: var(--party-accent, var(--gold-accent));
+  font-style: normal;
+}
+
+.party-chip-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.party-hp,
+.party-mp {
+  display: block;
+  height: 3px;
+  background: #1a1d2a;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.party-hp i,
+.party-mp i {
+  display: block;
+  height: 100%;
+}
+
+.party-hp i { background: var(--hp-red); }
+.party-mp i { background: var(--mp-blue); }

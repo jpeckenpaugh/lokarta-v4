@@ -158,3 +158,38 @@ The `campaign` block holds every Tower Complete / Recruit / locked-tower string
 the pure model, tower progression, worker round-trips, and the idempotent
 non-destructive migration. The full T0 suite (`node --test
 html/tests/*.test.mjs`) must stay green.
+
+---
+
+## 6. WS2 campaign loop (LIV-10)
+
+WS2 layers the non-terminal campaign loop on this model. The pure helpers live in
+`html/engine/campaign.js`; the authoritative state remains the WS1 shape.
+
+| Helper | Purpose |
+| :--- | :--- |
+| `partyLevel(player)` | Highest member level (active included); recruit alignment target. |
+| `recruitableVocations(player)` | Catalog vocations not yet on the party. |
+| `canRecruit(player)` | Party has room and a vocation is left. |
+| `alignMemberToLevel(member, level)` | Catalog base + per-level growth, full HP/MP, refreshed boosts. |
+| `recruitMember(player, vocation)` | Appends an aligned member, makes it active; rejects unknown/duplicate/full. |
+| `completePlayerTower(player, towerId)` | Records completion, unlocks the next tower, reports `allComplete`/`nextTowerId`. |
+| `towerUnlockInfo(progress, towerId)` | `{ unlocked, requires }` for the picker. |
+
+New worker RPCs (wired through `GameClient`):
+
+- `completeTower({ slotIndex, towerId })` → `{ player, progress, completedTowerId,
+  allComplete, nextTowerId, recruitableVocations }`. Idempotent and
+  non-destructive: keys/springs/party survive.
+- `recruitMember({ slotIndex, vocation })` → `{ player, member,
+  recruitableVocations }`. Rejects an unknown, duplicate, or over-cap recruit.
+
+`selectTower` now enforces the campaign gate in the worker: a tower whose
+`unlockRequires` are not satisfied is rejected even if a caller bypasses the
+picker. Completed towers stay replayable.
+
+UI flow (`floor-controller.js`): clearing a summit records the tower and then
+shows **Tower Complete** → **Recruit** → enters the next unlocked tower as the
+new recruit. **Ultimate Victory** fires only when every authored tower is
+complete. Locked towers render disabled in the picker via `towerUnlockInfo`.
+The HUD shows a compact party panel (`HUDManager.renderPartyPanel`).

@@ -17,6 +17,7 @@ import {
   StairSystem,
 } from '../engine/stair-system.js';
 import { GridMap, createPlayer } from '../engine/index.js';
+import { firstTowerId, nextTowerIdAfter } from '../data/index.js';
 import { generateFloor, TOWER_LEVEL_COUNT } from '../services/floor-generator.js';
 import { LokartaApp } from '../app/app-controller.js';
 
@@ -198,24 +199,37 @@ test('E8 final-floor detection is catalog-driven, not the retired 20-floor const
 
 test('E8 handleFloorClear keeps the summit sealed while the guardian lives', async () => {
   const app = Object.create(LokartaApp.prototype);
-  app.player = { x: 20, y: 20, current_floor: 5, facing: 'down' };
+  app.player = { x: 20, y: 20, current_floor: 5, facing: 'down', slotIndex: 1 };
   app.isFloorCleared = false;
   app.isPaused = false;
   app.isFinalFloor = true;
+  app.towerId = firstTowerId();
+  app.towerProgress = { completedTowerIds: [], unlockedTowerIds: [firstTowerId()] };
   app.monsters = [{ id: 'boss', isBoss: true, hp: 100 }];
   app.stairHint = null;
 
   let victoryShown = false;
+  let towerCompleteShown = false;
   let logs = 0;
   app.persistSave = async () => {};
+  app.updateHUD = () => {};
   app.showVictoryModal = () => { victoryShown = true; };
+  app.showTowerCompleteModal = () => { towerCompleteShown = true; };
+  app.gameClient = {
+    completeTower: async () => ({
+      player: { ...app.player, towerProgress: { completedTowerIds: [firstTowerId()], unlockedTowerIds: [firstTowerId(), nextTowerIdAfter(firstTowerId())] } },
+      allComplete: false,
+      nextTowerId: nextTowerIdAfter(firstTowerId()),
+      recruitableVocations: ['archer', 'fighter', 'paladin'],
+    }),
+  };
   app.logCombat = () => { logs += 1; };
   app.addFloatingText = () => {};
 
   assert.equal(app.isGuardianAlive(), true);
 
   await app.handleFloorClear({ kind: 'summit', dir: 'summit', targetLevel: null });
-  assert.equal(victoryShown, false);
+  assert.equal(towerCompleteShown, false);
   assert.equal(app.isFloorCleared, false);
   assert.equal(logs, 1, 'sealed feedback logs once, not every tick');
 
@@ -223,10 +237,11 @@ test('E8 handleFloorClear keeps the summit sealed while the guardian lives', asy
   await app.handleFloorClear({ kind: 'summit', dir: 'summit', targetLevel: null });
   assert.equal(logs, 1);
 
-  // Once the guardian dies the summit resolves to victory.
+  // Once the guardian dies the summit resolves to a non-terminal Tower Complete.
   app.monsters = [];
   await app.handleFloorClear({ kind: 'summit', dir: 'summit', targetLevel: null });
-  assert.equal(victoryShown, true);
+  assert.equal(towerCompleteShown, true);
+  assert.equal(victoryShown, false, 'one tower is not Ultimate Victory');
   assert.equal(app.isFloorCleared, true);
 });
 

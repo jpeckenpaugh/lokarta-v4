@@ -209,6 +209,27 @@ export class GameClient {
   }
 
   /**
+   * Records a tower completion for an occupied slot and unlocks the next tower
+   * in campaign order.
+   * @param {number} slotIndex
+   * @param {string} towerId
+   * @returns {Promise<{ player: object, allComplete: boolean, nextTowerId: string|null, recruitableVocations: string[] }>}
+   */
+  async completeTower(slotIndex, towerId) {
+    return this.request('completeTower', { slotIndex, towerId });
+  }
+
+  /**
+   * Recruits a vocation onto an occupied slot's party as the new active member.
+   * @param {number} slotIndex
+   * @param {string} vocation
+   * @returns {Promise<{ player: object, member: object, recruitableVocations: string[] }>}
+   */
+  async recruitMember(slotIndex, vocation) {
+    return this.request('recruitMember', { slotIndex, vocation });
+  }
+
+  /**
    * Deletes a save slot.
    * @param {number} slotIndex
    * @returns {Promise<{ success: boolean }>}

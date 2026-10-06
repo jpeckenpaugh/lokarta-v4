@@ -3,9 +3,10 @@
  */
 
 import { FateGrantSystem } from '../engine/index.js';
+import { towerUnlockInfo } from '../engine/campaign.js';
 import { soundFX } from '../audio/index.js';
 import { HUDManager } from './hud-manager.js';
-import { UI_CATALOG, listTowerDefinitions, getTowerDefinition } from '../data/index.js';
+import { UI_CATALOG, VOCATIONS_CATALOG, listTowerDefinitions, getTowerDefinition } from '../data/index.js';
 import {
   SAVE_SLOT_COUNT,
   formatPlaytime,
@@ -540,23 +541,43 @@ export class ModalManager {
     this._reset(modalOverlayEl);
     modalOverlayEl.classList.remove('title-active');
     const list = Array.isArray(towers) ? towers : [];
+    const progress = callbacks.progress || null;
+    const campaign = UI_CATALOG?.campaign || {};
+    const lockedLabel = campaign.towerLockedLabel || 'Locked';
+    const lockedHint = campaign.towerLockedHint || 'Complete {required} to unlock.';
+    const unlockedLabel = campaign.towerUnlockedLabel || 'Unlocked';
     const cards = list
       .map((tower) => {
         const active = tower.id === currentTowerId;
         const levels = Number(tower.levelCount) || 1;
+        const { unlocked, requires } = towerUnlockInfo(progress, tower.id);
+        const requiredNames = requires
+          .map((id) => getTowerDefinition(id)?.name || id)
+          .join(', ');
+        const hint = lockedHint.replace('{required}', requiredNames);
         const icon = tower.icon
           ? `<img class="openmoji-icon card-emoji" src="./assets/openmoji/${tower.icon}.svg" alt="${tower.name}" />`
           : '';
+        const statusRow = !unlocked
+          ? `<div class="stat-row"><span class="stat-label">Status:</span><span class="stat-val tower-locked">${lockedLabel}</span></div>`
+          : active
+            ? '<div class="stat-row"><span class="stat-label">Status:</span><span class="stat-val">Current</span></div>'
+            : `<div class="stat-row"><span class="stat-label">Status:</span><span class="stat-val">${unlockedLabel}</span></div>`;
+        const button = active
+          ? `<button class="select-btn" data-tower="${tower.id}">Resume</button>`
+          : unlocked
+            ? `<button class="select-btn" data-tower="${tower.id}">Enter</button>`
+            : `<button class="select-btn" disabled aria-disabled="true">${lockedLabel}</button>`;
         return `
-          <div class="vocation-card${active ? ' is-active' : ''}" data-tower="${tower.id}">
+          <div class="vocation-card${active ? ' is-active' : ''}${unlocked ? '' : ' is-locked'}" data-tower="${tower.id}"${unlocked ? '' : ' aria-disabled="true"'}>
             <div class="card-icon">${icon}</div>
             <h3>${tower.name}</h3>
-            <p class="desc">${tower.description || ''}</p>
+            <p class="desc">${unlocked ? (tower.description || '') : hint}</p>
             <div class="stats-preview">
               <div class="stat-row"><span class="stat-label">Floors:</span><span class="stat-val">${levels}</span></div>
-              ${active ? '<div class="stat-row"><span class="stat-label">Status:</span><span class="stat-val">Current</span></div>' : ''}
+              ${statusRow}
             </div>
-            <button class="select-btn" data-tower="${tower.id}">${active ? 'Resume' : 'Enter'}</button>
+            ${button}
           </div>`;
       })
       .join('');
@@ -567,7 +588,7 @@ export class ModalManager {
           <h2>CHOOSE A TOWER</h2>
           <div class="subtitle">Each tower has its own floors, foes, and guardian.</div>
         </div>
-        <p class="prompt">Select a tower to descend into. Switching restarts that character at the chosen tower's first floor.</p>
+        <p class="prompt">Select a tower to descend into. The towers awaken in campaign order — clear one to unlock the next.</p>
         <div class="vocation-cards">${cards}</div>
         <div class="modal-actions">
           <button class="action-btn" id="tower-cancel">Back to Town</button>
@@ -575,7 +596,7 @@ export class ModalManager {
       </div>
     `;
 
-    modalOverlayEl.querySelectorAll('.select-btn, .vocation-card').forEach((btn) => {
+    modalOverlayEl.querySelectorAll('.select-btn[data-tower]').forEach((btn) => {
       btn.addEventListener('click', async (e) => {
         const towerId = e.currentTarget.getAttribute('data-tower');
         if (!towerId) return;
@@ -594,6 +615,105 @@ export class ModalManager {
       e.preventDefault();
       this._close(modalOverlayEl);
       callbacks.onCancel?.();
+    });
+  }
+
+  /**
+   * Non-terminal Tower Complete card. Leads into the recruit flow via
+   * `onContinue`; the caller owns picking the next tower.
+   * @param {HTMLElement} modalOverlayEl
+   * @param {{ towerName?: string, nextTowerName?: string }} summary
+   * @param {{ onContinue?: Function, onReturnToTown?: Function }} callbacks
+   */
+  static showTowerCompleteModal(modalOverlayEl, summary = {}, callbacks = {}) {
+    if (!modalOverlayEl) return;
+    this._reset(modalOverlayEl);
+    modalOverlayEl.classList.remove('title-active');
+    const campaign = UI_CATALOG?.campaign || {};
+    const title = campaign.towerCompleteTitle || 'Tower Complete';
+    const body = (campaign.towerCompleteBody || 'The {tower} has fallen. A new companion awaits.')
+      .replace('{tower}', summary.towerName || 'tower');
+    const continueLabel = campaign.towerContinueLabel || 'Continue';
+    const townLabel = campaign.towerReturnToTownLabel || 'Return to Town';
+    const nextLine = summary.nextTowerName
+      ? `<p class="result-subtitle">The path to <strong>${summary.nextTowerName}</strong> now lies open.</p>`
+      : '<p class="result-subtitle">The campaign continues.</p>';
+
+    modalOverlayEl.innerHTML = `
+      <div class="result-modal victory-modal tower-complete-modal">
+        <h2>${title}</h2>
+        ${nextLine}
+        <p class="result-subtitle">${body}</p>
+        <div class="confirm-actions">
+          <button class="action-btn" id="tower-complete-continue">${continueLabel}</button>
+          <button class="action-btn" id="tower-complete-town">${townLabel}</button>
+        </div>
+      </div>
+    `;
+
+    modalOverlayEl.querySelector('#tower-complete-continue')?.addEventListener('click', () => {
+      soundFX.play('click');
+      callbacks.onContinue?.();
+    });
+    modalOverlayEl.querySelector('#tower-complete-town')?.addEventListener('click', () => {
+      soundFX.play('click');
+      callbacks.onReturnToTown?.();
+    });
+  }
+
+  /**
+   * Recruit card: the player must choose one vocation not yet on the party.
+   * @param {HTMLElement} modalOverlayEl
+   * @param {string[]} vocations - recruitable vocation ids
+   * @param {{ partyVocations?: string[] }} context
+   * @param {{ onRecruit?: Function }} callbacks
+   */
+  static showRecruitModal(modalOverlayEl, vocations, context = {}, callbacks = {}) {
+    if (!modalOverlayEl) return;
+    this._reset(modalOverlayEl);
+    modalOverlayEl.classList.remove('title-active');
+    const campaign = UI_CATALOG?.campaign || {};
+    const title = campaign.recruitTitle || 'Recruit a Companion';
+    const prompt = campaign.recruitPrompt || 'Choose the vocation that joins your party.';
+    const list = Array.isArray(vocations) ? vocations : [];
+    const cards = list
+      .map((vocation) => {
+        const voc = VOCATIONS_CATALOG?.[vocation] || {};
+        const name = voc.name || vocation.charAt(0).toUpperCase() + vocation.slice(1);
+        const icon = VOCATION_ICONS[vocation] || '1F9D9';
+        return `
+          <div class="vocation-card" data-vocation="${vocation}">
+            <div class="card-icon"><img class="openmoji-icon card-emoji" src="./assets/openmoji/${icon}.svg" alt="${name}" /></div>
+            <h3>${name}</h3>
+            <p class="desc">${voc.description || ''}</p>
+            <div class="stats-preview">
+              <div class="stat-row"><span class="stat-label">Health (HP):</span><span class="stat-val hp">${voc.hp ?? voc.max_hp ?? '-'}</span></div>
+              <div class="stat-row"><span class="stat-label">Mana (MP):</span><span class="stat-val mp">${voc.mana ?? voc.max_mana ?? '-'}</span></div>
+            </div>
+            <button class="select-btn" data-vocation="${vocation}">${campaign.recruitConfirmLabel || 'Recruit'} ${name}</button>
+          </div>`;
+      })
+      .join('');
+
+    modalOverlayEl.innerHTML = `
+      <div class="character-select-modal">
+        <div class="modal-header">
+          <h2>${title}</h2>
+          <div class="subtitle">Party: ${(context.partyVocations || []).length} / 4</div>
+        </div>
+        <p class="prompt">${prompt}</p>
+        <div class="vocation-cards">${cards}</div>
+      </div>
+    `;
+
+    modalOverlayEl.querySelectorAll('.select-btn[data-vocation]').forEach((el) => {
+      el.addEventListener('click', (e) => {
+        const vocation = e.currentTarget.getAttribute('data-vocation');
+        if (!vocation) return;
+        soundFX.play('click');
+        this._close(modalOverlayEl);
+        callbacks.onRecruit?.(vocation);
+      });
     });
   }
 
@@ -1233,12 +1353,14 @@ export class ModalManager {
     this._reset(modalOverlayEl);
     modalOverlayEl.classList.remove('title-active');
     const p = player || {};
+    const campaign = UI_CATALOG?.campaign || {};
     modalOverlayEl.innerHTML = `
       <div class="result-modal victory-modal">
-        <h2>ULTIMATE VICTORY</h2>
-        <p class="result-subtitle">The tower is conquered. Lokarta is lit.</p>
+        <h2>${campaign.ultimateVictoryTitle || 'ULTIMATE VICTORY'}</h2>
+        <p class="result-subtitle">${campaign.ultimateVictoryBody || 'The tower is conquered. Lokarta is lit.'}</p>
         <div class="character-summary">
           <p><strong>Vocation:</strong> ${String(p.vocation || 'magician').toUpperCase()}</p>
+          <p><strong>Party:</strong> ${Array.isArray(p.party) ? p.party.length : 1} members</p>
           <p><strong>Final Level:</strong> Level ${p.level || 1}</p>
           <p><strong>Damage Boost:</strong> +${Math.round(((p.skillBoosts?.damageMultiplier || 1) - 1) * 100)}%</p>
           <p><strong>Remaining HP:</strong> ${p.hp} / ${p.max_hp}</p>

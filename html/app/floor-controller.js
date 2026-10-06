@@ -7,10 +7,12 @@ import {
   LightingSystem,
   StairSystem,
   DoorSystem,
+  isTowerUnlocked,
+  recruitableVocations,
 } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
 import { TOWER_LEVEL_COUNT, getTowerLevelCount } from '../services/floor-generator.js';
-import { listTowerDefinitions } from '../data/index.js';
+import { listTowerDefinitions, getTowerDefinition } from '../data/index.js';
 import { createAnimState } from './animation-state.js';
 import { ModalManager } from './modal-manager.js';
 
@@ -126,13 +128,12 @@ export const floorControllerMethods = {
     const isVictory = isSummit || (targetLevel === null && finalFloor);
 
     if (isVictory) {
+      // Non-terminal by default (LIV-10/WS2): clearing a tower's summit shows
+      // Tower Complete and leads into Recruit; "Ultimate Victory" only fires
+      // once every authored tower is complete.
       this.isFloorCleared = true;
       this.isPaused = true;
-      soundFX.play('victory');
-      this.logCombat(`🎉 YOU CONQUERED ${(this.towerName || 'THE CROWN SPIRE').toUpperCase()}! THE TOWER IS LIT!`, 'victory');
-      this.addFloatingText('CAMPAIGN COMPLETED!', this.player.x, this.player.y, '#ffd700');
-      await this.persistSave(true);
-      this.showVictoryModal();
+      await this.handleTowerCompletion();
       return;
     }
 
@@ -177,6 +178,112 @@ export const floorControllerMethods = {
       if (this.modalOverlayEl.classList.contains('hidden')) {
         this.isPaused = false;
       }
+    }
+  },
+  /**
+   * Non-terminal campaign completion (LIV-10/WS2). Records the cleared tower,
+   * unlocks the next tower in order, then routes to either the terminal
+   * Ultimate Victory screen (all towers done) or the Tower Complete + Recruit
+   * flow. Falls back to the legacy victory screen if persistence fails so the
+   * player is never stranded.
+   */
+  async handleTowerCompletion() {
+    const towerId = this.towerId || this.player?.towerId || null;
+    let data;
+    try {
+      await this.persistSave(true);
+      data = await this.gameClient.completeTower(this.player.slotIndex, towerId);
+    } catch (err) {
+      console.error('Tower completion error:', err);
+      soundFX.play('victory');
+      this.showVictoryModal();
+      return;
+    }
+
+    this.player = data.player || this.player;
+    this.updateHUD();
+    const towerLabel = (this.towerName || towerId || 'the tower').toUpperCase();
+
+    if (data.allComplete) {
+      soundFX.play('victory');
+      this.logCombat('🎉 ALL TOWERS CONQUERED! LOKARTA IS FREE!', 'victory');
+      this.addFloatingText('ULTIMATE VICTORY!', this.player.x, this.player.y, '#ffd700');
+      this.showVictoryModal();
+      return;
+    }
+
+    soundFX.play('victory');
+    this.logCombat(`🎉 YOU CONQUERED ${towerLabel}! A new companion awaits.`, 'victory');
+    this.addFloatingText('TOWER COMPLETE!', this.player.x, this.player.y, '#ffd700');
+    this.showTowerCompleteModal(data);
+  },
+  /** Shows the Tower Complete card and leads into the recruit flow. */
+  showTowerCompleteModal(data) {
+    const nextTower = data?.nextTowerId ? getTowerDefinition(data.nextTowerId) : null;
+    ModalManager.showTowerCompleteModal(this.modalOverlayEl, {
+      towerName: this.towerName || this.towerId || 'the tower',
+      nextTowerName: nextTower ? nextTower.name : null,
+    }, {
+      onContinue: () => this.promptRecruit(data),
+      onReturnToTown: () => {
+        this.isFloorCleared = false;
+        this.showTown();
+      },
+    });
+  },
+  /** Offers one remaining vocation; the player must pick one to continue. */
+  promptRecruit(data) {
+    const remaining = Array.isArray(data?.recruitableVocations) && data.recruitableVocations.length
+      ? data.recruitableVocations
+      : recruitableVocations(this.player);
+    if (!remaining.length) {
+      this.proceedToNextTower(data?.nextTowerId || null);
+      return;
+    }
+    ModalManager.showRecruitModal(this.modalOverlayEl, remaining, {
+      partyVocations: (this.player.party || []).map((m) => m.vocation),
+    }, {
+      onRecruit: (vocation) => this.finishRecruit(vocation, data?.nextTowerId || null),
+    });
+  },
+  /** Persists the chosen recruit as the active member, then advances. */
+  async finishRecruit(vocation, nextTowerId) {
+    try {
+      const data = await this.gameClient.recruitMember(this.player.slotIndex, vocation);
+      this.player = data.player || this.player;
+      this.updateHUD();
+      const name = this.player.vocation ? this.player.vocation.toUpperCase() : String(vocation).toUpperCase();
+      this.logCombat(`${name} joins your party!`, 'victory');
+      await this.persistSave(true);
+    } catch (err) {
+      console.error('Recruit error:', err);
+      this.isFloorCleared = false;
+      this.showTown();
+      return;
+    }
+    this.proceedToNextTower(nextTowerId);
+  },
+  /**
+   * Moves the active (newly recruited) member into the next unlocked tower,
+   * or returns to the Town hub when the campaign has no next tower.
+   */
+  async proceedToNextTower(nextTowerId) {
+    this.isFloorCleared = false;
+    if (!nextTowerId || nextTowerId === this.player?.towerId) {
+      this.showTown();
+      return;
+    }
+    try {
+      const data = await this.gameClient.selectTower(this.player.slotIndex, nextTowerId);
+      this.player = data.player;
+      this.applyDungeonData(data.floor);
+      LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
+      this.updateHUD();
+      await this.persistSave(true);
+      this.enterTower();
+    } catch (err) {
+      console.error('Next-tower transition error:', err);
+      this.showTown();
     }
   },
   /**
@@ -274,7 +381,13 @@ export const floorControllerMethods = {
   chooseTower() {
     const towers = listTowerDefinitions();
     ModalManager.showTowerSelectModal(this.modalOverlayEl, towers, this.player?.towerId || null, {
+      progress: this.player?.towerProgress || null,
       onSelect: async (towerId) => {
+        if (!isTowerUnlocked(this.player?.towerProgress, towerId)) {
+          this.logCombat('That tower is sealed — clear the previous tower first.', 'warning');
+          this.chooseTower();
+          return;
+        }
         const activeTowerId = this.player?.towerId || null;
         if (towerId === activeTowerId) {
           this.enterTower();
