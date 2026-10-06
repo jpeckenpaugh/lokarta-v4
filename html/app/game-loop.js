@@ -19,6 +19,7 @@ import {
 import { soundFX } from '../audio/index.js';
 import { KEYBINDINGS_CATALOG, UI_CATALOG } from '../data/index.js';
 import { setAnimState, advanceAnim } from './animation-state.js';
+import { swapWithPartyMemberAt } from '../engine/party-swap.js';
 
 const DIRECTION_VECTORS = {
   up: { dx: 0, dy: -1 },
@@ -549,7 +550,17 @@ export const gameLoopMethods = {
         const monsterAtTarget = this.monsters.find(m => m.x === targetX && m.y === targetY && m.hp > 0);
         const allyAtTarget = PartyAI.partyMemberAt(this.player, targetX, targetY);
         if (allyAtTarget) {
-          // An ally holds that tile; the active member cannot stack on the party.
+          // Party rule (LIV-8 T2 round 2): an allied body never blocks the
+          // primary. Walking into an ally trades places — the ally steps onto
+          // the tile the player just left, so neither can be pinned.
+          const swapped = swapWithPartyMemberAt(this.player, targetX, targetY);
+          if (swapped) {
+            swapped.facing = EntityAI.getFacing(swapped.x, swapped.y, this.player.x, this.player.y);
+            setAnimState(swapped, 'walk');
+            soundFX.play('footstep');
+            setAnimState(this.player, 'walk');
+            if (this.resolvePlayerTileEntry()) return;
+          }
         } else if (monsterAtTarget) {
           this.selectedMonsterId = monsterAtTarget.id;
           this.logCombat(`Target locked on ${monsterAtTarget.name} (${monsterAtTarget.hp}/${monsterAtTarget.max_hp} HP).`, 'system');
@@ -558,32 +569,39 @@ export const gameLoopMethods = {
           this.player.y = targetY;
           soundFX.play('footstep');
           setAnimState(this.player, 'walk');
-
-          // Frictionless walkover auto-pickup
-          const items = this.gridMap.getItems(this.player.x, this.player.y);
-          if (items.length > 0) {
-            this.handlePickUp();
-          }
-
-          // Walk-on chest open (E4): chests are world entities, not tile items.
-          // Opening also collects the contents in the same turn.
-          if (ChestSystem.findChestAt(this.chests, this.player.x, this.player.y)) {
-            this.handleOpenChest(this.player.x, this.player.y);
-          }
-
-          // Healing springs are impassable fountains; their
-          // effect is applied per-second from an adjacent square in tick().
-
-          // Walk-on Tower Gate: step back to the Town.
-          if (this.gridMap.isTownGate(this.player.x, this.player.y)) {
-            this.handleTownGate(this.player.x, this.player.y);
-            return;
-          }
+          if (this.resolvePlayerTileEntry()) return;
         }
       }
     } else if (this.player) {
       setAnimState(this.player, 'idle');
     }
+  },
+  /**
+   * Resolves the world interactions for the tile the active member just entered:
+   * frictionless walkover auto-pickup, walk-on chest open, and the walk-on Town
+   * Gate. Healing springs are impassable fountains whose effect is applied
+   * per-second from an adjacent square in tick().
+   * Returns true when the Town Gate fired so the caller can stop the tick.
+   * @returns {boolean}
+   */
+  resolvePlayerTileEntry() {
+    const items = this.gridMap.getItems(this.player.x, this.player.y);
+    if (items.length > 0) {
+      this.handlePickUp();
+    }
+
+    // Walk-on chest open (E4): chests are world entities, not tile items.
+    // Opening also collects the contents in the same turn.
+    if (ChestSystem.findChestAt(this.chests, this.player.x, this.player.y)) {
+      this.handleOpenChest(this.player.x, this.player.y);
+    }
+
+    // Walk-on Tower Gate: step back to the Town.
+    if (this.gridMap.isTownGate(this.player.x, this.player.y)) {
+      this.handleTownGate(this.player.x, this.player.y);
+      return true;
+    }
+    return false;
   },
   resolveWaveLandedMonsters(carriedMonsters, fX, fY) {
     if (!carriedMonsters || carriedMonsters.length === 0) return;
