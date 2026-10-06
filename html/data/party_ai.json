@@ -1,15 +1,24 @@
 {
-  "_comment": "Per-vocation auto-AI profiles for non-active party members (LIV-9 schema; LIV-8 WS5 content). Every non-active ally reads its profile here; no vocation names are hardcoded in JS.",
+  "_comment": "Per-vocation auto-AI profiles for non-active party members (LIV-9 schema; LIV-8 WS5 content; FIX-11 v2 additions). Every non-active ally reads its profile here; no vocation names are hardcoded in JS.",
+  "_schemaVersion": 2,
   "_semantics": {
-    "preferredAbilities": "Ordered ability ids; the first usable one (off cooldown, in range, resources available) wins.",
+    "preferredAbilities": "Ordered combat ability ids; the first usable one (off cooldown, in range, resources available) wins.",
     "followDistance": "Tiles the member trails the active member while no target is acquired.",
     "engageRadius": "Distance (tiles, from the member) at which it acquires the nearest hostile and closes to fight.",
     "castRange": "Preferred combat distance; the member closes to / retreats to this while engaged.",
     "retreatHpPct": "HP fraction (0-1) below which the member disengages and returns to formation.",
     "retargetSec": "Minimum seconds the member commits to a target before switching.",
-    "healAlliesWhenHurt": "Support flag: prefer a heal when any party member is below the hurt threshold."
+    "healAlliesWhenHurt": "Legacy support flag (v1): prefer a heal when any party member is below the hurt threshold. Superseded by `support.enabled` but kept true on the Paladin for back-compat.",
+    "movement": "v2 movement naturalness (FIX-8 / LIV-23). `cadenceSec` = minimum seconds between this member's move steps (lower = more responsive); `staggerSec` = initial phase offset before its first step so allies do not step in lockstep; `jitterSec` = random 0..jitterSec added to each cadence interval for organic variance; `wanderChance` = probability rolled once per `wanderCooldownSec` window that an idle, in-formation member takes a short wander step; `wanderRadius` = max tiles a wander step may stray from the active member; `wanderCooldownSec` = minimum seconds between wander steps.",
+    "support": "v2 support casting (FIX-10 / LIV-25). Casts only when `enabled`. `healPct` = cast a heal when the most-injured living ally is at or below this HP fraction; `shieldPct` = shield the most-injured ally at or below this fraction; `minManaFrac` = never begin a support cast below this mana fraction; `cooldownSec` = minimum seconds between this member's support casts (anti-spam); `order` = support kinds evaluated in order ('heal' before 'shield' or vice versa); `abilities` = allowed support ability ids for this vocation.",
+    "potion": "v2 auto-potion (FIX-9 / LIV-24). When HP fraction is at or below `hpPct`, the member consumes `itemId` from the shared party backpack if off `cooldownSec`; when no HP drink is due and mana fraction is at or below `manaPct`, it consumes `manaItemId` instead. `hpPct` is pinned to 0.50 to match the Board rule (auto-drink below 50%). The consumed potion's authored `effect.scope: 'party'` makes the restore land on every eligible party member, not just the drinker.",
+    "autoFateGrant": "v2 deterministic auto-Fate-Grant policy (FIX-5 / LIV-20), read once for the whole party. Non-active allies that level up auto-draft `picks` cards without pausing; `priority` is an ordered list of rule tokens (highest first) used as tie-breakers. Valid tokens: upgrade, main_hand, off_hand, affinity, rarity, offer_order. The offer itself is generated per member per level; the policy picks deterministically from whatever is offered."
   },
-  "_design": "Roles stay distinct: Fighter/Paladin hold the line (follow 1, melee), Archer/Magician fight from the back (follow 3). Retreat thresholds track fragility - Magician (60 HP) disengages earliest at 0.35, Fighter (140 HP) holds latest at 0.20. Paladin is the only healing profile. Rationale: docs/design/game-design.md 8.1.",
+  "_design": "Roles stay distinct: Fighter/Paladin hold the line (follow 1, melee), Archer/Magician fight from the back (follow 3). Retreat thresholds track fragility - Magician (60 HP) disengages earliest at 0.35, Fighter (140 HP) holds latest at 0.20. Paladin is the only support profile. Rationale: docs/design/game-design.md 8.1.",
+  "autoFateGrant": {
+    "picks": 2,
+    "priority": ["upgrade", "main_hand", "off_hand", "affinity", "rarity", "offer_order"]
+  },
   "default": {
     "preferredAbilities": [],
     "followDistance": 2,
@@ -17,7 +26,32 @@
     "retreatHpPct": 0.25,
     "castRange": 4,
     "retargetSec": 1.5,
-    "healAlliesWhenHurt": false
+    "healAlliesWhenHurt": false,
+    "movement": {
+      "cadenceSec": 0.2,
+      "staggerSec": 0.0,
+      "jitterSec": 0.06,
+      "wanderChance": 0.2,
+      "wanderRadius": 2,
+      "wanderCooldownSec": 4.0
+    },
+    "support": {
+      "enabled": false,
+      "healPct": 0.6,
+      "shieldPct": 0.55,
+      "minManaFrac": 0.2,
+      "cooldownSec": 4.0,
+      "order": ["heal", "shield"],
+      "abilities": []
+    },
+    "potion": {
+      "enabled": true,
+      "hpPct": 0.5,
+      "manaPct": 0.5,
+      "cooldownSec": 8.0,
+      "itemId": "health_potion",
+      "manaItemId": "mana_potion"
+    }
   },
   "profiles": {
     "magician": {
@@ -28,7 +62,32 @@
       "castRange": 5,
       "retargetSec": 1.5,
       "healAlliesWhenHurt": false,
-      "_note": "Squishiest backline (60 HP): disengages earliest so an artillery telegraph cannot one-shot it. Opens with Beam (4-tile, 20 dmg), fills with Spark, and takes the longest to retarget because it commits to a cast."
+      "movement": {
+        "cadenceSec": 0.22,
+        "staggerSec": 0.12,
+        "jitterSec": 0.07,
+        "wanderChance": 0.4,
+        "wanderRadius": 2,
+        "wanderCooldownSec": 3.5
+      },
+      "support": {
+        "enabled": false,
+        "healPct": 0.6,
+        "shieldPct": 0.55,
+        "minManaFrac": 0.2,
+        "cooldownSec": 4.0,
+        "order": ["heal", "shield"],
+        "abilities": []
+      },
+      "potion": {
+        "enabled": true,
+        "hpPct": 0.5,
+        "manaPct": 0.5,
+        "cooldownSec": 8.0,
+        "itemId": "health_potion",
+        "manaItemId": "mana_potion"
+      },
+      "_note": "Squishiest backline (60 HP): disengages earliest so an artillery telegraph cannot one-shot it. Opens with Beam (4-tile, 20 dmg), fills with Spark, and takes the longest to retarget because it commits to a cast. Steps last in formation (stagger 0.12) and is the most mobile wanderer (0.40) so it keeps sightlines for its long casts. Mana-hungry kit: drinks mana at 50% too."
     },
     "archer": {
       "preferredAbilities": ["archer_power_shot", "archer_bow_shot"],
@@ -38,7 +97,32 @@
       "castRange": 6,
       "retargetSec": 1.2,
       "healAlliesWhenHurt": false,
-      "_note": "Longest reach (6). Opens with Power Shot (4s cooldown) before Bow Shot so the auto-AI does not drain the party's arrow stock; that ordering is the ammo-economy guard rail."
+      "movement": {
+        "cadenceSec": 0.15,
+        "staggerSec": 0.08,
+        "jitterSec": 0.06,
+        "wanderChance": 0.35,
+        "wanderRadius": 2,
+        "wanderCooldownSec": 3.0
+      },
+      "support": {
+        "enabled": false,
+        "healPct": 0.6,
+        "shieldPct": 0.55,
+        "minManaFrac": 0.2,
+        "cooldownSec": 4.0,
+        "order": ["heal", "shield"],
+        "abilities": []
+      },
+      "potion": {
+        "enabled": true,
+        "hpPct": 0.5,
+        "manaPct": 0.5,
+        "cooldownSec": 8.0,
+        "itemId": "health_potion",
+        "manaItemId": "mana_potion"
+      },
+      "_note": "Longest reach (6) and the fastest footwork (cadence 0.15): a marksman repositions quickly but does not body-block. Opens with Power Shot (4s cooldown) before Bow Shot so the auto-AI does not drain the party's arrow stock; that ordering is the ammo-economy guard rail."
     },
     "fighter": {
       "preferredAbilities": ["fighter_cleave", "fighter_slash"],
@@ -48,7 +132,32 @@
       "castRange": 1,
       "retargetSec": 1.0,
       "healAlliesWhenHurt": false,
-      "_note": "Frontline anchor (140 HP): intercepts out to 3 tiles, holds to 20% HP, and retargets fastest so Cleave lands on clusters rather than a single body."
+      "movement": {
+        "cadenceSec": 0.16,
+        "staggerSec": 0.0,
+        "jitterSec": 0.05,
+        "wanderChance": 0.15,
+        "wanderRadius": 1,
+        "wanderCooldownSec": 4.0
+      },
+      "support": {
+        "enabled": false,
+        "healPct": 0.6,
+        "shieldPct": 0.55,
+        "minManaFrac": 0.2,
+        "cooldownSec": 4.0,
+        "order": ["heal", "shield"],
+        "abilities": []
+      },
+      "potion": {
+        "enabled": true,
+        "hpPct": 0.5,
+        "manaPct": 0.5,
+        "cooldownSec": 8.0,
+        "itemId": "health_potion",
+        "manaItemId": "mana_potion"
+      },
+      "_note": "Frontline anchor (140 HP): intercepts out to 3 tiles, holds to 20% HP, and retargets fastest so Cleave lands on clusters rather than a single body. Steps first (stagger 0.00), holds position tightly (wander 0.15, radius 1) so the line reads as a wall."
     },
     "paladin": {
       "preferredAbilities": ["paladin_heal", "paladin_holy_strike"],
@@ -58,7 +167,32 @@
       "castRange": 1,
       "retargetSec": 1.2,
       "healAlliesWhenHurt": true,
-      "_note": "Melee anchor and the party's only healer: Holy Prayer (healRadius 6) finds the most-injured ally, otherwise Holy Strike. Retarget 1.2 keeps it responsive to a dropping ally."
+      "movement": {
+        "cadenceSec": 0.2,
+        "staggerSec": 0.04,
+        "jitterSec": 0.06,
+        "wanderChance": 0.15,
+        "wanderRadius": 1,
+        "wanderCooldownSec": 4.0
+      },
+      "support": {
+        "enabled": true,
+        "healPct": 0.65,
+        "shieldPct": 0.55,
+        "minManaFrac": 0.2,
+        "cooldownSec": 4.0,
+        "order": ["heal", "shield"],
+        "abilities": ["paladin_heal", "holy_shield"]
+      },
+      "potion": {
+        "enabled": true,
+        "hpPct": 0.5,
+        "manaPct": 0.5,
+        "cooldownSec": 8.0,
+        "itemId": "health_potion",
+        "manaItemId": "mana_potion"
+      },
+      "_note": "Melee anchor and the party's only support: Holy Prayer (healRadius 6) heals the most-injured ally at <=65% HP, then Aegis Holy Shield (range 6) bulwarks the lowest ally at <=55% while mana stays above 20%; a 4s support cooldown plus the heal's own 6s / shield's 12s cooldown means no spam. Holds the line (wander 0.15, radius 1) so the heal radius stays on the front. Mana powers heals, so it drinks mana at 50%."
     }
   }
 }
