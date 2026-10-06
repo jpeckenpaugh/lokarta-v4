@@ -1,0 +1,50 @@
+{
+  "_comment": "Per-vocation auto-AI profiles for non-active party members (LIV-9 WS1 schema; LIV-8 WS5 owns balance/copy). Every non-active ally reads its profile here; no vocation names are hardcoded in JS.",
+  "default": {
+    "preferredAbilities": [],
+    "followDistance": 2,
+    "engageRadius": 5,
+    "retreatHpPct": 0.25,
+    "castRange": 4,
+    "retargetSec": 1.5,
+    "healAlliesWhenHurt": false
+  },
+  "profiles": {
+    "magician": {
+      "preferredAbilities": ["magician_beam", "magician_spark"],
+      "followDistance": 3,
+      "engageRadius": 6,
+      "retreatHpPct": 0.3,
+      "castRange": 5,
+      "retargetSec": 1.5,
+      "healAlliesWhenHurt": false
+    },
+    "archer": {
+      "preferredAbilities": ["archer_power_shot", "archer_bow_shot"],
+      "followDistance": 3,
+      "engageRadius": 7,
+      "retreatHpPct": 0.3,
+      "castRange": 6,
+      "retargetSec": 1.2,
+      "healAlliesWhenHurt": false
+    },
+    "fighter": {
+      "preferredAbilities": ["fighter_cleave", "fighter_slash"],
+      "followDistance": 1,
+      "engageRadius": 2,
+      "retreatHpPct": 0.2,
+      "castRange": 1,
+      "retargetSec": 1.0,
+      "healAlliesWhenHurt": false
+    },
+    "paladin": {
+      "preferredAbilities": ["paladin_heal", "paladin_holy_strike"],
+      "followDistance": 1,
+      "engageRadius": 2,
+      "retreatHpPct": 0.25,
+      "castRange": 1,
+      "retargetSec": 1.2,
+      "healAlliesWhenHurt": true
+    }
+  }
+}

@@ -4,6 +4,8 @@
     {
       "id": "spire_of_light",
       "name": "The Spire of Light",
+      "order": 1,
+      "unlockRequires": [],
       "icon": "1F5DD",
       "description": "The original five-tier ascent: gated halls climbing from the Gatehouse to the Crown Spire.",
       "theme": {
@@ -169,6 +171,8 @@
     {
       "id": "sunken_catacombs",
       "name": "The Sunken Catacombs",
+      "order": 2,
+      "unlockRequires": ["spire_of_light"],
       "icon": "1F480",
       "description": "A shorter four-tier descent through flooded vaults. Attrition identity: poison and slow chip the player while summoned adds hold the doors, ending in the Tidebound King.",
       "theme": {
@@ -316,6 +320,8 @@
     {
       "id": "emberforge",
       "name": "The Emberforge",
+      "order": 3,
+      "unlockRequires": ["sunken_catacombs"],
       "icon": "1F525",
       "description": "A forgeshaft that never cooled: five tiers of burning artillery and undead smiths, where standing still is the only real mistake.",
       "theme": {
@@ -487,6 +493,8 @@
     {
       "id": "rime_aerie",
       "name": "The Rime Aerie",
+      "order": 4,
+      "unlockRequires": ["emberforge"],
       "icon": "1F52E",
       "description": "A short, savage frozen belfry: three tiers of slow and stun that punish kiting, capped by the Frostbound Choirmaster. Highest intensity per floor.",
       "theme": {

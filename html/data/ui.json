@@ -94,6 +94,20 @@
     "healCostPerHp": 1,
     "healCostPerMp": 1
   },
+  "campaign": {
+    "towerCompleteTitle": "Tower Complete",
+    "towerCompleteBody": "The {tower} has fallen. A new companion awaits.",
+    "recruitTitle": "Recruit a Companion",
+    "recruitPrompt": "Choose the vocation that joins your party.",
+    "recruitConfirmLabel": "Recruit",
+    "ultimateVictoryTitle": "ULTIMATE VICTORY",
+    "ultimateVictoryBody": "Every tower has fallen. Lokarta is free.",
+    "towerUnlockedLabel": "Unlocked",
+    "towerLockedLabel": "Locked",
+    "towerLockedHint": "Complete {required} to unlock.",
+    "towerContinueLabel": "Continue",
+    "towerReturnToTownLabel": "Return to Havenreach"
+  },
   "pause": {
     "returnToTownEnabled": false,
     "description": "The pause menu does not offer a direct town return; use the tower's stair exits or Tower Gate."

@@ -151,6 +151,8 @@
     "healMax": 50,
     "manaCost": 25,
     "cooldownSec": 6.0,
+    "healRadius": 6,
+    "targetsAllies": true,
     "soundId": "holy_chime",
     "actionKey": "healing_prayer"
   }

@@ -18,6 +18,7 @@ import tileThemesData from './tile_themes.json' with { type: 'json' };
 import keybindingsData from './keybindings.json' with { type: 'json' };
 import uiData from './ui.json' with { type: 'json' };
 import economyData from './economy.json' with { type: 'json' };
+import partyAiData from './party_ai.json' with { type: 'json' };
 
 /**
  * Tower registry: `tower_levels.json` holds a set of full tower definitions.
@@ -64,6 +65,64 @@ export function towerLevelSpec(levelNumber, towerId) {
   return specs[clampToTowerLevel(levelNumber, towerId) - 1] || null;
 }
 
+/**
+ * Campaign order of a tower. Uses the authored `order` field when present and
+ * otherwise falls back to catalog array position, so a catalog authored before
+ * `order` existed still resolves a deterministic sequence.
+ */
+export function towerOrder(towerId) {
+  const tower = getTowerDefinition(towerId);
+  if (!tower) return 1;
+  const explicit = Math.floor(Number(tower.order));
+  if (Number.isFinite(explicit) && explicit >= 1) return explicit;
+  const idx = TOWERS.findIndex((t) => t && t.id === tower.id);
+  return idx >= 0 ? idx + 1 : 1;
+}
+
+/** All authored towers sorted by campaign order. */
+export function listTowerDefinitionsByOrder() {
+  return TOWERS.slice().sort((a, b) => towerOrder(a.id) - towerOrder(b.id));
+}
+
+/** Id of the first tower in campaign order (always unlocked at campaign start). */
+export function firstTowerId() {
+  const ordered = listTowerDefinitionsByOrder();
+  return (ordered[0] && ordered[0].id) || DEFAULT_TOWER_ID;
+}
+
+/** True when `towerId` identifies an authored tower. */
+export function isTowerId(towerId) {
+  return TOWER_BY_ID.has(towerId);
+}
+
+/**
+ * Tower ids that must be completed before `towerId` unlocks. Reads the authored
+ * `unlockRequires` array when present; otherwise derives "the previous tower by
+ * order", with the first tower requiring nothing.
+ */
+export function towerUnlockRequires(towerId) {
+  const tower = getTowerDefinition(towerId);
+  if (!tower) return [];
+  if (Array.isArray(tower.unlockRequires)) {
+    return tower.unlockRequires.filter((id) => TOWER_BY_ID.has(id) && id !== tower.id);
+  }
+  const ordered = listTowerDefinitionsByOrder();
+  const idx = ordered.findIndex((t) => t.id === tower.id);
+  return idx > 0 ? [ordered[idx - 1].id] : [];
+}
+
+/** Tower ids whose unlock requirement is satisfied by completing `completedTowerId`. */
+export function towersUnlockedBy(completedTowerId) {
+  return TOWERS.filter((t) => towerUnlockRequires(t.id).includes(completedTowerId)).map((t) => t.id);
+}
+
+/** The next tower after `towerId` in campaign order, or null at the end. */
+export function nextTowerIdAfter(towerId) {
+  const ordered = listTowerDefinitionsByOrder();
+  const idx = ordered.findIndex((t) => t.id === towerId);
+  return idx >= 0 && idx < ordered.length - 1 ? ordered[idx + 1].id : null;
+}
+
 export const TOWER_CATALOG_ROOT = TOWER_CATALOG;
 export const TOWERS_CATALOG = TOWERS;
 export const DEFAULT_TOWER_DEFINITION = DEFAULT_TOWER;
@@ -94,4 +153,5 @@ export const TILE_THEMES_CATALOG = tileThemesData;
 export const KEYBINDINGS_CATALOG = keybindingsData;
 export const UI_CATALOG = uiData;
 export const ECONOMY_CATALOG = economyData;
+export const PARTY_AI_CATALOG = partyAiData;
 
