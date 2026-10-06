@@ -37,6 +37,7 @@ import {
 } from '../services/save-slots.js';
 import { generateFloor, resolveArrivalCoords, FLOOR_TEMPLATE_VERSION } from '../services/floor-generator.js';
 import { createPlayer } from '../engine/index.js';
+import { DEFAULT_TOWER_ID, getTowerDefinition } from '../data/index.js';
 
 const OPTIONS_KEY = 'options';
 const LAST_PLAYED_KEY = 'last_played_slot';
@@ -48,12 +49,24 @@ const LAST_PLAYED_KEY = 'last_played_slot';
  * @param {object|null} floor
  * @returns {boolean}
  */
-export function isStaleFloor(floor) {
-  return !floor || floor.template_version !== FLOOR_TEMPLATE_VERSION;
+export function isStaleFloor(floor, towerId = null) {
+  if (!floor) return true;
+  if (floor.template_version !== FLOOR_TEMPLATE_VERSION) return true;
+  // A cached floor belongs to exactly one tower: switching towers regenerates
+  // and overwrites the slot's floor cache without an IndexedDB schema change.
+  // A legacy record with no tower id is treated as the default tower.
+  if (towerId && (floor.tower_id || DEFAULT_TOWER_ID) !== towerId) return true;
+  return false;
 }
 
-function clampFloor(value) {
-  return clampTowerFloor(value);
+/** Resolves a requested tower id to an authored tower id (falls back to default). */
+function resolveTowerId(towerId) {
+  const tower = getTowerDefinition(towerId);
+  return tower ? tower.id : DEFAULT_TOWER_ID;
+}
+
+function clampFloor(value, towerId = DEFAULT_TOWER_ID) {
+  return clampTowerFloor(value, towerId);
 }
 
 function clampSlotIndex(value) {
@@ -114,15 +127,16 @@ async function readLastPlayed() {
  * @param {boolean} [forceRegenerate=false]
  * @returns {Promise<object>}
  */
-async function loadOrGenerateSlotFloor(slotIndex, floorNumber, forceRegenerate = false) {
-  const fn = clampFloor(floorNumber);
+async function loadOrGenerateSlotFloor(slotIndex, floorNumber, towerId = DEFAULT_TOWER_ID, forceRegenerate = false) {
+  const resolvedTowerId = resolveTowerId(towerId);
+  const fn = clampFloor(floorNumber, resolvedTowerId);
   let floor = null;
   if (!forceRegenerate) {
     floor = await read(STORES.SLOT_FLOORS, slotFloorKey(slotIndex, fn));
-    if (isStaleFloor(floor)) floor = null;
+    if (isStaleFloor(floor, resolvedTowerId)) floor = null;
   }
   if (!floor) {
-    floor = generateFloor(fn);
+    floor = generateFloor(fn, null, resolvedTowerId);
     floor.slotIndex = slotIndex;
     await put(STORES.SLOT_FLOORS, floor);
   }
@@ -215,11 +229,13 @@ async function handleListSlots() {
  */
 async function handleCreateSlot(payload = {}) {
   const { vocation = 'magician' } = payload;
+  const towerId = resolveTowerId(payload.towerId);
   const slotIndex = clampSlotIndex(payload.slotIndex);
   await openStorage();
 
   const player = makeSlotPlayer(vocation, slotIndex);
-  const floor = generateFloor(1);
+  player.towerId = towerId;
+  const floor = generateFloor(1, null, towerId);
   floor.slotIndex = slotIndex;
   if (floor.spawn_coords) {
     player.x = floor.spawn_coords.x;
@@ -240,6 +256,59 @@ async function handleCreateSlot(payload = {}) {
 }
 
 /**
+ * Selects a tower for an occupied slot: stamps the tower id, restarts the
+ * character at that tower's level 1, regenerates its floor, and persists. Keys
+ * and spring charges are per-run and reset so a fresh tower cannot inherit the
+ * previous tower's progression.
+ * @param {{ slotIndex: number, towerId: string }} payload
+ * @returns {Promise<{ player: object, floor: object, slot: object }>}
+ */
+async function handleSelectTower(payload = {}) {
+  const slotIndex = clampSlotIndex(payload.slotIndex);
+  const towerId = resolveTowerId(payload.towerId);
+  await openStorage();
+
+  const slot = await read(STORES.SAVE_SLOTS, slotId(slotIndex));
+  if (!slot || slot.status !== 'occupied' || !slot.characterId) {
+    throw new Error(`Slot ${slotIndex} is empty.`);
+  }
+  const stored = await read(STORES.CHARACTERS, slot.characterId);
+  if (!stored) {
+    throw new Error(`Could not load Slot ${slotIndex}. Try again.`);
+  }
+
+  const player = {
+    ...stored,
+    towerId,
+    current_floor: 1,
+    levelKeys: {},
+    springCharges: {},
+    saveVersion: SAVE_FORMAT_VERSION,
+  };
+  const floor = generateFloor(1, null, towerId);
+  floor.slotIndex = slotIndex;
+  const start = floor.spawn_coords || floor.entrance;
+  if (start) {
+    player.x = start.x;
+    player.y = start.y;
+  }
+  player.slotId = slotId(slotIndex);
+  player.slotIndex = slotIndex;
+  player.floorEntry = snapshotFloorEntry(player);
+  const timestamp = now();
+  player.updatedAt = timestamp;
+  player.lastPlayedAt = timestamp;
+
+  await put(STORES.CHARACTERS, player);
+  await put(STORES.SLOT_FLOORS, floor);
+  await put(STORES.DUNGEON_FLOORS, floor);
+  const updatedSlot = await refreshSlot(slotIndex, player, floor.biome_name, timestamp);
+  await writeLastPlayed(slotIndex);
+
+  return { player, floor, slot: updatedSlot || slot };
+}
+
+/**
  * Loads an occupied slot's character and current floor.
  * @param {{ slotIndex: number }} payload
  * @returns {Promise<{ player: object, floor: object, slot: object }>}
@@ -257,14 +326,17 @@ async function handleLoadSlot(payload = {}) {
   if (!stored) {
     throw new Error(`Could not load Slot ${slotIndex}. Try again.`);
   }
-  // Clamp a pre-tower save (which may point past level 5) onto the tower and
-  // stamp the current save format before any floor is generated or cached.
+  // Clamp a pre-tower save (which may point past its tower's final level) onto
+  // the selected tower and stamp the current save format before any floor is
+  // generated or cached.
+  const towerId = resolveTowerId(stored.towerId || slot.towerId);
   const player = {
-    ...migratePlayerToTower(stored),
+    ...migratePlayerToTower(stored, towerId),
+    towerId,
     saveVersion: SAVE_FORMAT_VERSION,
   };
 
-  const floor = await loadOrGenerateSlotFloor(slotIndex, player.current_floor || 1);
+  const floor = await loadOrGenerateSlotFloor(slotIndex, player.current_floor || 1, towerId);
   // Continuing a save always starts at the level's start position,
   // regardless of where the player stood when last saved.
   const start = floor.spawn_coords || floor.entrance;
@@ -335,13 +407,16 @@ async function handleRestartFloor(payload = {}) {
     throw new Error(`Could not load Slot ${slotIndex}. Try again.`);
   }
 
+  const towerId = resolveTowerId(player.towerId || slot.towerId);
+  player.towerId = towerId;
   // Clamp the pre-tower snapshot floor before restoring so a legacy floorEntry
-  // can never put the player past level 5.
+  // can never put the player past the tower's final level.
   if (slot.floorEntry) {
-    slot.floorEntry = { ...slot.floorEntry, current_floor: clampTowerFloor(slot.floorEntry.current_floor) };
+    slot.floorEntry = { ...slot.floorEntry, current_floor: clampTowerFloor(slot.floorEntry.current_floor, towerId) };
   }
   restoreFloorEntry(player, slot.floorEntry);
-  player.current_floor = clampTowerFloor(player.current_floor);
+  player.towerId = towerId;
+  player.current_floor = clampTowerFloor(player.current_floor, towerId);
   player.slotId = slotId(slotIndex);
   player.slotIndex = slotIndex;
   player.saveVersion = SAVE_FORMAT_VERSION;
@@ -349,7 +424,7 @@ async function handleRestartFloor(payload = {}) {
   player.updatedAt = timestamp;
   player.lastPlayedAt = timestamp;
 
-  const floor = await loadOrGenerateSlotFloor(slotIndex, player.current_floor || 1);
+  const floor = await loadOrGenerateSlotFloor(slotIndex, player.current_floor || 1, towerId);
   if (floor.spawn_coords) {
     player.x = player.x ?? floor.spawn_coords.x;
     player.y = player.y ?? floor.spawn_coords.y;
@@ -382,11 +457,12 @@ async function handleRespawnAfterDeath(payload = {}) {
     throw new Error(`Could not load Slot ${slotIndex}. Try again.`);
   }
 
+  player.towerId = resolveTowerId(player.towerId || slot.towerId);
   const respawnFloor = descendOnDeath(player);
   player.current_floor = respawnFloor;
   applyFullRestore(player);
 
-  const floor = await loadOrGenerateSlotFloor(slotIndex, respawnFloor);
+  const floor = await loadOrGenerateSlotFloor(slotIndex, respawnFloor, player.towerId);
   // Land at the level's start position (its entrance spawn / arrival from below).
   const start = resolveArrivalCoords(floor, respawnFloor - 1) || floor.spawn_coords || floor.entrance;
   if (start) {
@@ -418,13 +494,15 @@ async function handleNewGame(payload = {}) {
   const { vocation = 'magician' } = payload;
   await openStorage();
 
+  const towerId = resolveTowerId(payload.towerId);
   const player = createPlayer(vocation);
+  player.towerId = towerId;
   const currentTime = now();
   player.createdAt = currentTime;
   player.updatedAt = currentTime;
   player.playtimeMs = 0;
 
-  const floor = generateFloor(1);
+  const floor = generateFloor(1, null, towerId);
   if (floor.spawn_coords) {
     player.x = floor.spawn_coords.x;
     player.y = floor.spawn_coords.y;
@@ -451,8 +529,8 @@ async function handleSaveCharacter(payload = {}) {
   await openStorage();
   const savedAt = now();
   player.updatedAt = savedAt;
-  // Never persist a floor outside the tower, whatever the caller sent.
-  player.current_floor = clampTowerFloor(player.current_floor);
+  // Never persist a floor outside the player's tower, whatever the caller sent.
+  player.current_floor = clampTowerFloor(player.current_floor, player.towerId);
   player.saveVersion = SAVE_FORMAT_VERSION;
 
   await put(STORES.CHARACTERS, player);
@@ -472,20 +550,21 @@ async function handleSaveCharacter(payload = {}) {
  */
 async function handleGetFloor(payload = {}) {
   const { floorNumber = 1, slotIndex = null, forceRegenerate = false } = payload;
+  const towerId = resolveTowerId(payload.towerId);
   await openStorage();
 
   if (slotIndex) {
-    return loadOrGenerateSlotFloor(clampSlotIndex(slotIndex), floorNumber, forceRegenerate);
+    return loadOrGenerateSlotFloor(clampSlotIndex(slotIndex), floorNumber, towerId, forceRegenerate);
   }
 
-  const fn = clampFloor(floorNumber);
+  const fn = clampFloor(floorNumber, towerId);
   let floor = null;
   if (!forceRegenerate) {
     floor = await read(STORES.DUNGEON_FLOORS, fn);
-    if (isStaleFloor(floor)) floor = null;
+    if (isStaleFloor(floor, towerId)) floor = null;
   }
   if (!floor) {
-    floor = generateFloor(fn);
+    floor = generateFloor(fn, null, towerId);
     await put(STORES.DUNGEON_FLOORS, floor);
   }
   return floor;
@@ -505,17 +584,19 @@ async function handleAdvanceFloor(payload = {}) {
 
   await openStorage();
 
+  const towerId = resolveTowerId(player.towerId);
+  player.towerId = towerId;
   const currentFloor = Number(player.current_floor) || 1;
-  const nextFloor = clampFloor(nextFloorNumber !== undefined ? nextFloorNumber : currentFloor + 1);
+  const nextFloor = clampFloor(nextFloorNumber !== undefined ? nextFloorNumber : currentFloor + 1, towerId);
   const slotIndex = player.slotIndex || null;
 
   let floor;
   if (slotIndex) {
-    floor = await loadOrGenerateSlotFloor(slotIndex, nextFloor);
+    floor = await loadOrGenerateSlotFloor(slotIndex, nextFloor, towerId);
   } else {
     floor = await read(STORES.DUNGEON_FLOORS, nextFloor);
-    if (isStaleFloor(floor)) {
-      floor = generateFloor(nextFloor);
+    if (isStaleFloor(floor, towerId)) {
+      floor = generateFloor(nextFloor, null, towerId);
       await put(STORES.DUNGEON_FLOORS, floor);
     }
   }
@@ -615,7 +696,7 @@ async function handleSaveFloorState(payload = {}) {
   }
   await openStorage();
 
-  const floorNumber = clampFloor(player.current_floor || 1);
+  const floorNumber = clampFloor(player.current_floor || 1, player.towerId);
   const slotIndex = player.slotIndex || null;
   const floor = slotIndex
     ? await read(STORES.SLOT_FLOORS, slotFloorKey(slotIndex, floorNumber))
@@ -634,6 +715,7 @@ export const COMMAND_HANDLERS = {
   listSlots: handleListSlots,
   createSlot: handleCreateSlot,
   loadSlot: handleLoadSlot,
+  selectTower: handleSelectTower,
   deleteSlot: handleDeleteSlot,
   restartFloor: handleRestartFloor,
   respawnAfterDeath: handleRespawnAfterDeath,

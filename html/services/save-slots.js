@@ -6,19 +6,22 @@
  * the Web Worker API, or timers.
  */
 
-import { UI_CATALOG, TOWER_LEVELS_CATALOG } from '../data/index.js';
+import {
+  UI_CATALOG,
+  DEFAULT_TOWER_ID,
+  towerLevelCount,
+} from '../data/index.js';
 
 /** Number of independent save slots (from the ui.json presentation catalog). */
 export const SAVE_SLOT_COUNT = (UI_CATALOG && UI_CATALOG.saveSlots && UI_CATALOG.saveSlots.count) || 5;
 
 /**
- * Highest playable tower level (from the tower_levels.json catalog). Saves that
- * predate the 20 -> 5 floor cut may point past this and must be clamped.
+ * Highest playable level of the default tower (from tower_levels.json). Kept
+ * for legacy call sites; use `clampTowerFloor(n, towerId)` for a selected
+ * tower. Saves that predate the 20 -> 5 floor cut may point past this and are
+ * clamped by the caller.
  */
-export const TOWER_LEVEL_COUNT = Math.max(
-  1,
-  Math.floor(Number(TOWER_LEVELS_CATALOG?.levelCount) || 5)
-);
+export const TOWER_LEVEL_COUNT = Math.max(1, towerLevelCount(DEFAULT_TOWER_ID));
 
 /** Default persisted options (from the ui.json presentation catalog). */
 export const OPTION_DEFAULTS = Object.freeze({
@@ -68,6 +71,7 @@ export function emptySlotRecord(slotIndex) {
     level: null,
     currentFloor: null,
     biome: null,
+    towerId: null,
     playtimeMs: 0,
     floorEntry: null,
     createdAt: null,
@@ -91,6 +95,7 @@ export function snapshotFloorEntry(player) {
     x: player.x,
     y: player.y,
     current_floor: player.current_floor,
+    towerId: player.towerId || null,
     level: player.level,
     xp: player.xp,
     action_bar: clone(player.action_bar),
@@ -132,8 +137,9 @@ export function deriveSlotMeta(player, slotIndex, biome = null) {
     name: player?.name || null,
     vocation: player?.vocation || null,
     level: Number(player?.level) || 1,
-    currentFloor: clampTowerFloor(player?.current_floor),
+    currentFloor: clampTowerFloor(player?.current_floor, player?.towerId),
     biome: biome || null,
+    towerId: player?.towerId || null,
     playtimeMs: Number(player?.playtimeMs) || 0,
     floorEntry: snapshotFloorEntry(player),
     createdAt: player?.createdAt || existing,
@@ -143,27 +149,29 @@ export function deriveSlotMeta(player, slotIndex, biome = null) {
 }
 
 /**
- * Clamps an arbitrary floor number onto the playable 1..TOWER_LEVEL_COUNT
- * tower. Legacy saves from the retired 20-floor layout can point as high as 20;
+ * Clamps an arbitrary floor number onto the selected tower's 1..levelCount
+ * range. Legacy saves from the retired 20-floor layout can point as high as 20;
  * clamping means they land on the tower without ever loading a floor beyond the
  * final level. Non-finite values default to level 1.
  * @param {number} floorNumber
- * @returns {number} 1..TOWER_LEVEL_COUNT
+ * @param {string} [towerId]
+ * @returns {number}
  */
-export function clampTowerFloor(floorNumber) {
+export function clampTowerFloor(floorNumber, towerId = DEFAULT_TOWER_ID) {
   const n = Math.floor(Number(floorNumber));
   if (!Number.isFinite(n)) return 1;
-  return Math.max(1, Math.min(TOWER_LEVEL_COUNT, n));
+  return Math.max(1, Math.min(towerLevelCount(towerId), n));
 }
 
 /**
  * Floor the player respawns on after death: one level lower, clamped so
- * the first level is the floor. `current_floor` is clamped onto the tower first.
+ * the first level is the floor. `current_floor` is clamped onto the player's
+ * tower first.
  * @param {object|null} player
- * @returns {number} 1..TOWER_LEVEL_COUNT
+ * @returns {number}
  */
 export function descendOnDeath(player) {
-  const current = clampTowerFloor(player?.current_floor);
+  const current = clampTowerFloor(player?.current_floor, player?.towerId);
   return Math.max(1, current - 1);
 }
 
@@ -190,13 +198,14 @@ export function applyFullRestore(player) {
  * @param {object|null} player
  * @returns {object|null}
  */
-export function migratePlayerToTower(player) {
+export function migratePlayerToTower(player, towerId = null) {
   if (!player || typeof player !== 'object') return player;
+  const effectiveTowerId = towerId || player.towerId || DEFAULT_TOWER_ID;
   let flatFloor = player.current_floor;
   if (flatFloor === undefined || flatFloor === null || !Number.isFinite(Number(flatFloor))) {
     flatFloor = 1;
   }
-  const clamped = clampTowerFloor(flatFloor);
+  const clamped = clampTowerFloor(flatFloor, effectiveTowerId);
   const entry = player.floorEntry;
   let entryClamped = null;
   if (entry && typeof entry === 'object') {
@@ -204,7 +213,7 @@ export function migratePlayerToTower(player) {
     if (entryFloor === undefined || entryFloor === null || !Number.isFinite(Number(entryFloor))) {
       entryFloor = 1;
     }
-    entryClamped = clampTowerFloor(entryFloor);
+    entryClamped = clampTowerFloor(entryFloor, effectiveTowerId);
   }
   const floorNeedsFix = Number(flatFloor) !== clamped;
   const entryNeedsFix = entryClamped !== null && Number(entry.current_floor) !== entryClamped;
@@ -227,11 +236,12 @@ export function migratePlayerToTower(player) {
  */
 export function normalizeSlotToTower(slot) {
   if (!slot || typeof slot !== 'object') return slot;
+  const towerId = slot.towerId || DEFAULT_TOWER_ID;
   let rawFloor = slot.currentFloor;
   if (rawFloor === undefined || rawFloor === null || !Number.isFinite(Number(rawFloor))) {
     rawFloor = 1;
   }
-  const clamped = clampTowerFloor(rawFloor);
+  const clamped = clampTowerFloor(rawFloor, towerId);
   const entry = slot.floorEntry;
   let entryClamped = null;
   if (entry && typeof entry === 'object') {
@@ -239,7 +249,7 @@ export function normalizeSlotToTower(slot) {
     if (entryFloor === undefined || entryFloor === null || !Number.isFinite(Number(entryFloor))) {
       entryFloor = 1;
     }
-    entryClamped = clampTowerFloor(entryFloor);
+    entryClamped = clampTowerFloor(entryFloor, towerId);
   }
   const floorNeedsFix = Number(rawFloor) !== clamped;
   const entryNeedsFix = entryClamped !== null && Number(entry.current_floor) !== entryClamped;
@@ -487,6 +497,7 @@ export function planLegacyMigration(legacyCharacters, legacyFloors, guard = null
     ...newest,
     slotId: slotId(1),
     slotIndex: 1,
+    towerId: newest.towerId || DEFAULT_TOWER_ID,
     playtimeMs: Number(newest.playtimeMs) || 0,
     saveVersion: SAVE_FORMAT_VERSION,
   });

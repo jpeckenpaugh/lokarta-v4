@@ -11,7 +11,7 @@
  */
 
 import { CONFIG, TILE_TYPES } from '../engine/index.js';
-import { TILE_THEMES_CATALOG, VOCATIONS_CATALOG, CHESTS_CATALOG } from '../data/index.js';
+import { TILE_THEMES_CATALOG, VOCATIONS_CATALOG, CHESTS_CATALOG, DEFAULT_TOWER_ID, getTowerDefinition } from '../data/index.js';
 import { SPRITE_CATALOG, PROP_CATALOG, PROP_IDS_BY_TIER } from '../assets/sprites/index.js';
 import { dirFromFacing, resolveFrameIndex } from './animation-state.js';
 
@@ -31,17 +31,24 @@ const TIER_TINTS = {
 };
 
 /**
- * Resolves the tile theme for a run floor. Merges `tile_themes.levels[n]` over
- * the legacy root catalog so per-level variation ships as data only; out-of-range
- * floors fall back to the root object. See docs/art-direction-tower.md §2.
+ * Resolves the tile theme for a run floor. The selected tower's data-authored
+ * `theme.levelTheme` maps its level to a `tile_themes.levels` entry, merged over
+ * the root catalog; unknown/out-of-range floors fall back to the root object.
+ * See docs/art-direction-tower.md §2.
  * @param {number} floorNumber
+ * @param {string} [towerId]
  * @returns {object} theme object with wall/floor/stairs/door (+ features/decor when leveled)
  */
-export function themeForFloor(floorNumber) {
+export function themeForFloor(floorNumber, towerId = DEFAULT_TOWER_ID) {
   const n = Math.floor(Number(floorNumber));
+  if (!Number.isFinite(n)) return TILE_THEMES_CATALOG;
+  const tower = getTowerDefinition(towerId);
+  const count = Number(tower?.levelCount) || TOWER_LEVEL_COUNT;
   const levels = TILE_THEMES_CATALOG.levels;
-  if (!levels || !Number.isFinite(n) || n < 1 || n > TOWER_LEVEL_COUNT) return TILE_THEMES_CATALOG;
-  const level = levels[String(n)];
+  if (!levels || n < 1 || n > count) return TILE_THEMES_CATALOG;
+  const map = tower && tower.theme && tower.theme.levelTheme;
+  const key = map ? (map[String(n)] ?? String(n)) : String(n);
+  const level = levels[key];
   return level ? { ...TILE_THEMES_CATALOG, ...level } : TILE_THEMES_CATALOG;
 }
 

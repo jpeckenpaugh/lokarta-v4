@@ -9,7 +9,8 @@ import {
   DoorSystem,
 } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
-import { TOWER_LEVEL_COUNT } from '../services/floor-generator.js';
+import { TOWER_LEVEL_COUNT, getTowerLevelCount } from '../services/floor-generator.js';
+import { listTowerDefinitions } from '../data/index.js';
 import { createAnimState } from './animation-state.js';
 import { ModalManager } from './modal-manager.js';
 
@@ -27,8 +28,16 @@ export const floorControllerMethods = {
     // instead of blindly advancing. The arrival tile is disarmed so stepping onto
     // it can never immediately re-trigger a transition.
     this.stairs = (floorData.stairs || []).map(stair => ({ ...stair }));
+    // Track the active tower so final-floor detection and theming follow the
+    // selected tower's level count, not the default tower's.
+    this.towerId = floorData.tower_id || this.player?.towerId || null;
+    this.towerLevelCount =
+      Number(floorData.level_count) ||
+      (this.towerId ? getTowerLevelCount(this.towerId) : TOWER_LEVEL_COUNT);
     this.isFinalFloor =
-      floorData.is_final === true || (floorData.floor_number || 0) >= TOWER_LEVEL_COUNT;
+      floorData.is_final === true || (floorData.floor_number || 0) >= this.towerLevelCount;
+    this.towerName = floorData.tower_name || null;
+    this.bossName = (floorData.monsters || []).find(m => m.isBoss)?.name || 'the guardian';
     this.stairSystem = new StairSystem(
       this.stairs,
       this.player?.current_floor || floorData.floor_number || 1,
@@ -99,7 +108,7 @@ export const floorControllerMethods = {
     const dir = resolution?.dir || null;
     const kind = resolution?.kind || null;
     const currentFloor = this.player?.current_floor || 1;
-    const finalFloor = this.isFinalFloor || currentFloor >= TOWER_LEVEL_COUNT;
+    const finalFloor = this.isFinalFloor || currentFloor >= (this.towerLevelCount || TOWER_LEVEL_COUNT);
     const isSummit = kind === 'summit' || dir === 'summit';
     const targetLevel = resolution?.targetLevel ?? null;
 
@@ -108,7 +117,7 @@ export const floorControllerMethods = {
       const hint = `summit:${this.player.x},${this.player.y}`;
       if (this.stairHint !== hint) {
         this.stairHint = hint;
-        this.logCombat('The Summit is sealed until the Spire Warden falls.', 'warning');
+        this.logCombat(`The Summit is sealed until ${this.bossName} falls.`, 'warning');
         this.addFloatingText('SEALED', this.player.x, this.player.y, '#ef4444');
       }
       return;
@@ -120,7 +129,7 @@ export const floorControllerMethods = {
       this.isFloorCleared = true;
       this.isPaused = true;
       soundFX.play('victory');
-      this.logCombat('🎉 YOU CONQUERED THE CROWN SPIRE! THE TOWER IS LIT!', 'victory');
+      this.logCombat(`🎉 YOU CONQUERED ${(this.towerName || 'THE CROWN SPIRE').toUpperCase()}! THE TOWER IS LIT!`, 'victory');
       this.addFloatingText('CAMPAIGN COMPLETED!', this.player.x, this.player.y, '#ffd700');
       await this.persistSave(true);
       this.showVictoryModal();
@@ -251,9 +260,40 @@ export const floorControllerMethods = {
     this.closeModal();
     ModalManager.renderTownHub(this.townEl, this, {
       onEnterTower: () => this.enterTower(),
+      onChooseTower: () => this.chooseTower(),
       onShop: () => this.openShop(),
       onTemple: () => this.openTemple(),
       onOptions: () => this.showOptionsModal('town'),
+    });
+  },
+  /**
+   * Opens the Town's tower picker. Selecting a different tower restarts the
+   * current character at that tower's first floor (worker `selectTower`); picking
+   * the active tower simply resumes it.
+   */
+  chooseTower() {
+    const towers = listTowerDefinitions();
+    ModalManager.showTowerSelectModal(this.modalOverlayEl, towers, this.player?.towerId || null, {
+      onSelect: async (towerId) => {
+        const activeTowerId = this.player?.towerId || null;
+        if (towerId === activeTowerId) {
+          this.enterTower();
+          return;
+        }
+        try {
+          const data = await this.gameClient.selectTower(this.player.slotIndex, towerId);
+          this.player = data.player;
+          this.applyDungeonData(data.floor);
+          LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
+          this.updateHUD();
+          await this.persistSave(true);
+          this.enterTower();
+        } catch (err) {
+          console.error('Tower selection error:', err);
+          this.showTown();
+        }
+      },
+      onCancel: () => this.showTown(),
     });
   },
   /** Enter the tower from the Town: resume gameplay on the current floor. */

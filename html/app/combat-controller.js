@@ -416,7 +416,7 @@ export const combatControllerMethods = {
 
         // E8: the catalog-driven final floor (not the retired 20-floor cave)
         // resolves the boss kill into the campaign ending.
-        if (isBoss && (this.isFinalFloor || (this.player.current_floor || 1) >= TOWER_LEVEL_COUNT)) {
+        if (isBoss && (this.isFinalFloor || (this.player.current_floor || 1) >= (this.towerLevelCount || TOWER_LEVEL_COUNT))) {
           setTimeout(
             () => this.handleFloorClear({ kind: 'summit', dir: 'summit', targetLevel: null }),
             600

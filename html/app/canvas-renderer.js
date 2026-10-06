@@ -202,7 +202,7 @@ export class CanvasRenderer {
     const clampEndY = Math.min(gridMap.height - 1, endTileY);
 
     // Resolve the tower floor theme once; per-level variation is data-driven.
-    const theme = themeForFloor(player.current_floor || 1);
+    const theme = themeForFloor(player.current_floor || 1, player.towerId);
     const featureScan = !!(theme.decor && theme.decor.banner > 0);
     // Reused per-tile options object: no per-frame allocation in the tile loop.
     const tileOpts = {

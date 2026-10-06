@@ -2,7 +2,7 @@
  * Lokarta: Come Into The Light - Engine Configuration & Constants
  */
 
-import { VOCATIONS_CATALOG, MONSTERS_CATALOG, ABILITIES_CATALOG, UI_CATALOG, ECONOMY_CATALOG, KEYBINDINGS_CATALOG } from '../data/index.js';
+import { VOCATIONS_CATALOG, MONSTERS_CATALOG, ABILITIES_CATALOG, UI_CATALOG, ECONOMY_CATALOG, KEYBINDINGS_CATALOG, DEFAULT_TOWER_ID } from '../data/index.js';
 
 export const TILE_TYPES = {
   FLOOR: 0,
@@ -142,6 +142,7 @@ function buildArchetype(vocKey) {
     xp: 0,
     xpToNextLevel: 100,
     current_floor: 1,
+    towerId: DEFAULT_TOWER_ID,
     x: 2,
     y: 2,
     facing: 'right',

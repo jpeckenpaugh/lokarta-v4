@@ -5,7 +5,7 @@
 import { FateGrantSystem } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
 import { HUDManager } from './hud-manager.js';
-import { UI_CATALOG } from '../data/index.js';
+import { UI_CATALOG, listTowerDefinitions, getTowerDefinition } from '../data/index.js';
 import {
   SAVE_SLOT_COUNT,
   formatPlaytime,
@@ -527,6 +527,76 @@ export class ModalManager {
     });
   }
 
+  /**
+   * Tower-selection card list (catalog-driven). Renders one card per authored
+   * tower and reports the chosen `towerId`; callers own the actual switch.
+   * @param {HTMLElement} modalOverlayEl
+   * @param {object[]} towers - tower definitions (`id`/`name`/`description`/`levelCount`/`icon`)
+   * @param {string|null} currentTowerId
+   * @param {{ onSelect?: Function, onCancel?: Function }} callbacks
+   */
+  static showTowerSelectModal(modalOverlayEl, towers, currentTowerId, callbacks = {}) {
+    if (!modalOverlayEl) return;
+    this._reset(modalOverlayEl);
+    modalOverlayEl.classList.remove('title-active');
+    const list = Array.isArray(towers) ? towers : [];
+    const cards = list
+      .map((tower) => {
+        const active = tower.id === currentTowerId;
+        const levels = Number(tower.levelCount) || 1;
+        const icon = tower.icon
+          ? `<img class="openmoji-icon card-emoji" src="./assets/openmoji/${tower.icon}.svg" alt="${tower.name}" />`
+          : '';
+        return `
+          <div class="vocation-card${active ? ' is-active' : ''}" data-tower="${tower.id}">
+            <div class="card-icon">${icon}</div>
+            <h3>${tower.name}</h3>
+            <p class="desc">${tower.description || ''}</p>
+            <div class="stats-preview">
+              <div class="stat-row"><span class="stat-label">Floors:</span><span class="stat-val">${levels}</span></div>
+              ${active ? '<div class="stat-row"><span class="stat-label">Status:</span><span class="stat-val">Current</span></div>' : ''}
+            </div>
+            <button class="select-btn" data-tower="${tower.id}">${active ? 'Resume' : 'Enter'}</button>
+          </div>`;
+      })
+      .join('');
+
+    modalOverlayEl.innerHTML = `
+      <div class="character-select-modal">
+        <div class="modal-header">
+          <h2>CHOOSE A TOWER</h2>
+          <div class="subtitle">Each tower has its own floors, foes, and guardian.</div>
+        </div>
+        <p class="prompt">Select a tower to descend into. Switching restarts that character at the chosen tower's first floor.</p>
+        <div class="vocation-cards">${cards}</div>
+        <div class="modal-actions">
+          <button class="action-btn" id="tower-cancel">Back to Town</button>
+        </div>
+      </div>
+    `;
+
+    modalOverlayEl.querySelectorAll('.select-btn, .vocation-card').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        const towerId = e.currentTarget.getAttribute('data-tower');
+        if (!towerId) return;
+        soundFX.play('click');
+        this._close(modalOverlayEl);
+        if (callbacks.onSelect) await callbacks.onSelect(towerId);
+      });
+    });
+    modalOverlayEl.querySelector('#tower-cancel')?.addEventListener('click', () => {
+      soundFX.play('click');
+      this._close(modalOverlayEl);
+      callbacks.onCancel?.();
+    });
+    this._setKeyHandler(modalOverlayEl, (e) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      this._close(modalOverlayEl);
+      callbacks.onCancel?.();
+    });
+  }
+
   static showGuideModal(modalOverlayEl, callbacks = {}) {
     this._reset(modalOverlayEl);
     modalOverlayEl.classList.remove('title-active');
@@ -650,6 +720,9 @@ export class ModalManager {
     const town = app?.townConfig || { title: 'Havenreach', subtitle: '', shopName: "Merchant's Stall", templeName: 'Temple of the Dawn', enterTowerLabel: 'Enter the Tower' };
     const player = app?.player || {};
     const floor = player.current_floor || 1;
+    const towers = listTowerDefinitions();
+    const currentTower = getTowerDefinition(player.towerId);
+    const towerLabel = currentTower ? currentTower.name : (town.enterTowerLabel || 'Enter the Tower');
 
     townEl.hidden = false;
     townEl.onkeydown = null;
@@ -671,10 +744,17 @@ export class ModalManager {
             <span>Heal &amp; revive</span>
           </button>
           <button class="action-btn town-venue town-enter-btn" id="town-tower">
-            <img class="openmoji-icon" src="./assets/openmoji/1F5DD.svg" alt="Tower Gate" />
+            <img class="openmoji-icon" src="./assets/openmoji/${currentTower?.icon || '1F5DD'}.svg" alt="Tower Gate" />
             <strong>${town.enterTowerLabel || 'Enter the Tower'}</strong>
-            <span>Resume at Floor ${floor}</span>
+            <span>${towerLabel} · Floor ${floor}</span>
           </button>
+          ${towers.length > 1
+            ? `<button class="action-btn town-venue" id="town-choose-tower">
+                 <img class="openmoji-icon" src="./assets/openmoji/1F3AF.svg" alt="Towers" />
+                 <strong>Choose Tower</strong>
+                 <span>${towers.length} towers available</span>
+               </button>`
+            : ''}
         </div>
         ${ModalManager._townVitalsHtml(app)}
         <div class="modal-actions">
@@ -686,6 +766,7 @@ export class ModalManager {
     townEl.querySelector('#town-shop')?.addEventListener('click', () => { soundFX.play('click'); callbacks.onShop?.(); });
     townEl.querySelector('#town-temple')?.addEventListener('click', () => { soundFX.play('click'); callbacks.onTemple?.(); });
     townEl.querySelector('#town-tower')?.addEventListener('click', () => { soundFX.play('click'); callbacks.onEnterTower?.(); });
+    townEl.querySelector('#town-choose-tower')?.addEventListener('click', () => { soundFX.play('click'); callbacks.onChooseTower?.(); });
     townEl.querySelector('#town-options')?.addEventListener('click', () => { soundFX.play('click'); callbacks.onOptions?.(); });
     townEl.querySelector('.town-venue')?.focus();
   }

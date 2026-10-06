@@ -15,9 +15,13 @@ import {
   ITEMS_CATALOG,
   BIOMES_CATALOG,
   DUNGEONS_CATALOG,
-  TOWER_LEVELS_CATALOG,
   CHESTS_CATALOG,
   TILE_THEMES_CATALOG,
+  DEFAULT_TOWER_ID,
+  getTowerDefinition,
+  listTowerDefinitions,
+  towerLevelCount,
+  towerLevelSpec,
 } from '../data/index.js';
 import { PROP_MANIFEST } from '../assets/sprites/index.js';
 
@@ -31,7 +35,22 @@ export const TILE_TYPES = {
   TOWN_GATE: 6,
 };
 
-export const TOWER_LEVEL_COUNT = 5;
+/**
+ * Level count of the default tower. Kept as a convenience export for the many
+ * legacy call sites that predate multi-tower selection; new code should use
+ * `getTowerLevelCount(towerId)` so it tracks the selected tower.
+ */
+export const TOWER_LEVEL_COUNT = towerLevelCount(DEFAULT_TOWER_ID);
+
+/** Highest playable level of the selected tower. */
+export function getTowerLevelCount(towerId = DEFAULT_TOWER_ID) {
+  return towerLevelCount(towerId);
+}
+
+/** The authored tower definitions (id/name/theme/levelCount/...), in order. */
+export function listTowers() {
+  return listTowerDefinitions();
+}
 
 const GATE_TIERS = ['copper', 'silver', 'gold'];
 
@@ -116,29 +135,42 @@ export function createPRNG(seed) {
  * @param {number} floorNumber
  * @returns {number} 1..5
  */
-export function clampLevel(floorNumber) {
+export function clampLevel(floorNumber, towerId = DEFAULT_TOWER_ID) {
   const n = Math.floor(Number(floorNumber));
   if (!Number.isFinite(n)) return 1;
-  return Math.max(1, Math.min(TOWER_LEVEL_COUNT, n));
+  return Math.max(1, Math.min(towerLevelCount(towerId), n));
 }
 
 /**
- * Returns tier info (display name + light color) for a tower level.
+ * Returns tier info (display name + light color) for a tower level. The biome
+ * is resolved from the level's authored `tierId` first (so two towers may reuse
+ * the same biome palette at different depths); the min/max-level scan is only a
+ * legacy fallback.
  * @param {number} floorNumber
- * @returns {{ name: string, minLevel: number, maxLevel: number, lightColor: string }}
+ * @param {string} [towerId]
+ * @returns {{ name: string, lightColor: string }}
  */
-export function getBiomeForFloor(floorNumber) {
-  const level = clampLevel(floorNumber);
+export function getBiomeForFloor(floorNumber, towerId = DEFAULT_TOWER_ID) {
+  const level = clampLevel(floorNumber, towerId);
+  const spec = getLevelSpec(level, towerId);
+  const direct = spec && BIOMES_CATALOG[spec.tierId];
   const biome =
+    direct ||
     Object.values(BIOMES_CATALOG).find(
       b => level >= b.minLevel && level <= b.maxLevel
-    ) || BIOMES_CATALOG.crown_spire;
+    ) ||
+    BIOMES_CATALOG.crown_spire;
   return { name: biome.name, lightColor: biome.lightColor };
 }
 
-/** @returns {object} the E1 level definition from tower_levels.json. */
-export function getLevelSpec(levelNumber) {
-  return TOWER_LEVELS_CATALOG.levels[clampLevel(levelNumber) - 1];
+/**
+ * The per-level definition for a tower (from `tower_levels.json`).
+ * @param {number} levelNumber
+ * @param {string} [towerId]
+ * @returns {object}
+ */
+export function getLevelSpec(levelNumber, towerId = DEFAULT_TOWER_ID) {
+  return towerLevelSpec(levelNumber, towerId);
 }
 
 /**
@@ -149,8 +181,11 @@ export function getLevelSpec(levelNumber) {
  * @param {number} room - 1..9
  * @returns {'copper'|'silver'|'gold'}
  */
-export function chestTierForRoom(levelSpec, room) {
-  const rule = TOWER_LEVELS_CATALOG.chestTierRule || {};
+export function chestTierForRoom(levelSpec, room, tower = null) {
+  const rule =
+    (tower && tower.chestTierRule) ||
+    getTowerDefinition(DEFAULT_TOWER_ID)?.chestTierRule ||
+    {};
   const byRoomTier = rule.byRoomTier || {};
   const goldKeyRoom = levelSpec?.keyRooms?.gold;
   if (goldKeyRoom && Number(goldKeyRoom) === Number(room)) {
@@ -624,11 +659,24 @@ function findNearestPropTile(start, room, propCls, blocked, matrix, hardExclude)
   return tiles[0] || null;
 }
 
-/** Merged level theme's `props` block (data-driven; no per-level code). */
-function themePropsForLevel(levelId) {
+/**
+ * Resolves a tower level to its `tile_themes.json` entry via the tower's
+ * data-authored `theme.levelTheme` map. Unknown ids fall back to the raw level
+ * number, then to the root theme, so no renderer code changes are needed to add
+ * a tower with a distinct palette ordering.
+ */
+function themeLevelFor(levelId, tower) {
   const root = TILE_THEMES_CATALOG;
-  const level = root.levels && root.levels[String(levelId)];
-  return (level && level.props) || root.props || null;
+  const map = tower && tower.theme && tower.theme.levelTheme;
+  const key = map ? (map[String(levelId)] ?? String(levelId)) : String(levelId);
+  const level = root.levels && root.levels[key];
+  return level ? { ...root, ...level } : root;
+}
+
+/** Resolved level theme's `props` block (data-driven; no per-level code). */
+function themePropsForLevel(levelId, tower) {
+  const theme = themeLevelFor(levelId, tower);
+  return theme.props || null;
 }
 
 function round(n) {
@@ -642,10 +690,12 @@ function round(n) {
  * @param {number|string} [seed] - Optional custom PRNG seed
  * @returns {object} floor payload (tiles + structural metadata + entities)
  */
-export function generateFloor(floorNumber = 1, seed = null) {
-  const levelId = clampLevel(floorNumber);
-  const tower = TOWER_LEVELS_CATALOG;
-  const levelSpec = getLevelSpec(levelId);
+export function generateFloor(floorNumber = 1, seed = null, towerId = DEFAULT_TOWER_ID) {
+  const tower = getTowerDefinition(towerId);
+  const resolvedTowerId = tower.id;
+  const levelCount = towerLevelCount(resolvedTowerId);
+  const levelId = clampLevel(floorNumber, resolvedTowerId);
+  const levelSpec = getLevelSpec(levelId, resolvedTowerId);
   const dungeonSpec = DUNGEONS_CATALOG.standard_40x40;
   const rooms = dungeonSpec.rooms;
   const roomCenters = dungeonSpec.roomCenters;
@@ -656,7 +706,7 @@ export function generateFloor(floorNumber = 1, seed = null) {
   const prngSeed = seed !== null && seed !== undefined ? seed : 1337 + levelId * 42;
   const rng = createPRNG(prngSeed);
 
-  const { name: biomeName, lightColor } = getBiomeForFloor(levelId);
+  const { name: biomeName, lightColor } = getBiomeForFloor(levelId, resolvedTowerId);
   const levelName = `${biomeName}`;
 
   // 1. Initialize all walls.
@@ -730,7 +780,7 @@ export function generateFloor(floorNumber = 1, seed = null) {
   // level's up-stair; entering from an upper level lands beside this level's
   // down-stair (the "exit"), never back at the entrance (D2 §3).
   const arrivalFromLower = levelId > 1 ? { ...spawnCoords } : null;
-  const arrivalFromUpper = levelId < TOWER_LEVEL_COUNT
+  const arrivalFromUpper = levelId < levelCount
     ? stairNeighbor(downTile, roomCenters[String(downRoom)])
     : null;
 
@@ -860,7 +910,7 @@ export function generateFloor(floorNumber = 1, seed = null) {
       room,
       x: tile.x,
       y: tile.y,
-      tier: chestTierForRoom(levelSpec, room),
+      tier: chestTierForRoom(levelSpec, room, tower),
       opened: false,
     });
   }
@@ -1039,8 +1089,8 @@ export function generateFloor(floorNumber = 1, seed = null) {
   //     so the D2 §10 no-soft-lock proof is untouched (props are walk-over).
   const props = [];
   const propPolicy = tower.propPolicy || {};
-  const themeProps = themePropsForLevel(levelId);
-  const levelTheme = (TILE_THEMES_CATALOG.levels && TILE_THEMES_CATALOG.levels[String(levelId)]) || {};
+  const themeProps = themePropsForLevel(levelId, tower);
+  const levelTheme = themeLevelFor(levelId, tower);
   const flameColor = (levelTheme.features && levelTheme.features.flame) || lightColor;
   if (themeProps && Array.isArray(themeProps.set) && themeProps.set.length > 0) {
     const propBlocked = new Set(occupied);
@@ -1183,6 +1233,9 @@ export function generateFloor(floorNumber = 1, seed = null) {
     floor_number: levelId,
     level: levelId,
     id: levelId,
+    tower_id: resolvedTowerId,
+    tower_name: tower.name || null,
+    level_count: levelCount,
     template_version: FLOOR_TEMPLATE_VERSION,
     name: levelName,
     biome: biomeName,
@@ -1236,8 +1289,9 @@ export function generateFloor(floorNumber = 1, seed = null) {
  */
 export function resolveArrivalCoords(floor, fromFloor) {
   if (!floor) return null;
-  const to = clampLevel(floor.floor_number ?? floor.level ?? floor.id ?? 1);
-  const from = clampLevel(fromFloor ?? to);
+  const towerId = floor.tower_id || DEFAULT_TOWER_ID;
+  const to = clampLevel(floor.floor_number ?? floor.level ?? floor.id ?? 1, towerId);
+  const from = clampLevel(fromFloor ?? to, towerId);
   if (from < to) {
     return floor.arrival_from_lower_coords || floor.spawn_coords || floor.entrance || null;
   }

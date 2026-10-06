@@ -185,8 +185,8 @@ export class GameClient {
    * @param {string} vocation
    * @returns {Promise<{ player: object, floor: object, slot: object }>}
    */
-  async createSlot(slotIndex, vocation) {
-    return this.request('createSlot', { slotIndex, vocation });
+  async createSlot(slotIndex, vocation, towerId) {
+    return this.request('createSlot', { slotIndex, vocation, towerId });
   }
 
   /**
@@ -196,6 +196,16 @@ export class GameClient {
    */
   async loadSlot(slotIndex) {
     return this.request('loadSlot', { slotIndex });
+  }
+
+  /**
+   * Selects a tower for an occupied slot and restarts it at that tower's level 1.
+   * @param {number} slotIndex
+   * @param {string} towerId
+   * @returns {Promise<{ player: object, floor: object, slot: object }>}
+   */
+  async selectTower(slotIndex, towerId) {
+    return this.request('selectTower', { slotIndex, towerId });
   }
 
   /**

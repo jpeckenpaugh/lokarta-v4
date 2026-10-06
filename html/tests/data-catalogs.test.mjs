@@ -263,6 +263,21 @@ test('JSON Data Catalogs', async (t) => {
   await t.test('loads and validates tower_levels.json catalog', () => {
     assert.equal(TOWER_LEVELS_CATALOG.levelCount, 5);
     assert.equal(TOWER_LEVELS_CATALOG.levels.length, 5);
+    // LIV-3: the catalog now holds a set of full tower definitions.
+    assert.ok(Array.isArray(TOWER_LEVELS_CATALOG.towers), 'towers must be an array');
+    assert.ok(TOWER_LEVELS_CATALOG.towers.length >= 2, 'at least two towers must load');
+    for (const tower of TOWER_LEVELS_CATALOG.towers) {
+      assert.ok(tower.id, 'tower id');
+      assert.equal(tower.levels.length, tower.levelCount, `${tower.id} levels match levelCount`);
+      assert.ok(tower.monsterGroups && tower.monsterGroups.pool, `${tower.id} monster pools`);
+      assert.ok(tower.boss && tower.boss.type, `${tower.id} boss`);
+      assert.ok(tower.theme && tower.theme.levelTheme, `${tower.id} theme`);
+    }
+    assert.equal(
+      TOWER_LEVELS_CATALOG.defaultTowerId,
+      TOWER_LEVELS_CATALOG.towers[0].id,
+      'defaultTowerId must resolve to the first authored tower'
+    );
     assert.equal(TOWER_LEVELS_CATALOG.entry.room, 2);
     assert.deepEqual(TOWER_LEVELS_CATALOG.entry.doorTile, [19, 1]);
     assert.deepEqual(TOWER_LEVELS_CATALOG.entry.spawnTile, [19, 2]);
