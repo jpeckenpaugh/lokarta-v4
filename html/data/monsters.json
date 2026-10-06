@@ -1,6 +1,7 @@
 {
   "giant_rat": {
     "type": "giant_rat",
+    "faction": "monsters",
     "name": "Giant Rat",
     "baseHp": 30,
     "baseAttack": 6,
@@ -27,6 +28,7 @@
   },
   "crypt_skeleton": {
     "type": "crypt_skeleton",
+    "faction": "monsters",
     "name": "Bone Sentry",
     "baseHp": 50,
     "baseAttack": 12,
@@ -62,6 +64,7 @@
   },
   "shadow_cultist": {
     "type": "shadow_cultist",
+    "faction": "monsters",
     "name": "Shadow Cultist",
     "baseHp": 40,
     "baseAttack": 10,
@@ -90,6 +93,7 @@
   },
   "elite_cultist": {
     "type": "elite_cultist",
+    "faction": "monsters",
     "name": "Elite Cultist",
     "baseHp": 80,
     "baseAttack": 18,
@@ -118,6 +122,7 @@
   },
   "abyssal_overlord": {
     "type": "abyssal_overlord",
+    "faction": "monsters",
     "name": "The Spire Warden",
     "isBoss": true,
     "baseHp": 600,
@@ -152,6 +157,7 @@
   },
   "cinder_acolyte": {
     "type": "cinder_acolyte",
+    "faction": "monsters",
     "name": "Cinder Acolyte",
     "baseHp": 38,
     "baseAttack": 11,
@@ -203,6 +209,7 @@
   },
   "grave_charger": {
     "type": "grave_charger",
+    "faction": "monsters",
     "name": "Grave Charger",
     "baseHp": 70,
     "baseAttack": 16,
@@ -250,6 +257,7 @@
   },
   "plague_bomber": {
     "type": "plague_bomber",
+    "faction": "monsters",
     "name": "Plague Bomber",
     "baseHp": 55,
     "baseAttack": 13,
@@ -300,6 +308,7 @@
   },
   "bone_summoner": {
     "type": "bone_summoner",
+    "faction": "monsters",
     "name": "Bone Summoner",
     "baseHp": 48,
     "baseAttack": 10,
@@ -341,6 +350,7 @@
   },
   "mire_hound": {
     "type": "mire_hound",
+    "faction": "monsters",
     "name": "Mire Hound",
     "baseHp": 34,
     "baseAttack": 8,
@@ -384,6 +394,7 @@
   },
   "rime_acolyte": {
     "type": "rime_acolyte",
+    "faction": "monsters",
     "name": "Rime Acolyte",
     "baseHp": 42,
     "baseAttack": 11,
@@ -435,6 +446,7 @@
   },
   "sepulcher_mortar": {
     "type": "sepulcher_mortar",
+    "faction": "monsters",
     "name": "Sepulcher Mortar",
     "baseHp": 46,
     "baseAttack": 14,
@@ -485,6 +497,7 @@
   },
   "chime_wraith": {
     "type": "chime_wraith",
+    "faction": "monsters",
     "name": "Chime Wraith",
     "baseHp": 44,
     "baseAttack": 9,
@@ -535,6 +548,7 @@
   },
   "barrow_knight": {
     "type": "barrow_knight",
+    "faction": "monsters",
     "name": "Barrow Knight",
     "baseHp": 92,
     "baseAttack": 18,
@@ -595,6 +609,7 @@
   },
   "ossuary_priest": {
     "type": "ossuary_priest",
+    "faction": "monsters",
     "name": "Ossuary Priest",
     "baseHp": 52,
     "baseAttack": 10,
@@ -655,6 +670,7 @@
   },
   "brine_witch": {
     "type": "brine_witch",
+    "faction": "monsters",
     "name": "Brine Witch",
     "baseHp": 50,
     "baseAttack": 12,
@@ -706,6 +722,7 @@
   },
   "tidebound_king": {
     "type": "tidebound_king",
+    "faction": "monsters",
     "name": "The Tidebound King",
     "isBoss": true,
     "baseHp": 540,
@@ -774,6 +791,7 @@
   },
   "forgemaster_kol": {
     "type": "forgemaster_kol",
+    "faction": "monsters",
     "name": "The Forgemaster",
     "isBoss": true,
     "baseHp": 560,
@@ -850,6 +868,7 @@
   },
   "frostbound_choirmaster": {
     "type": "frostbound_choirmaster",
+    "faction": "monsters",
     "name": "The Frostbound Choirmaster",
     "isBoss": true,
     "baseHp": 470,

@@ -462,6 +462,8 @@
     "healMin": 25,
     "healMax": 35,
     "mpRestore": 15,
+    "healRadius": 6,
+    "targetsAllies": true,
     "maxStack": 1,
     "upgradeSpec": {
       "maxMpInc": 10,

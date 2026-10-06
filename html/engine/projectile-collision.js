@@ -58,15 +58,19 @@ export function tilesOnSegment(x0, y0, x1, y1) {
  * @param {number} x1
  * @param {number} y1
  * @param {(x:number,y:number)=>boolean} isWall
+ * @param {(monster:object)=>boolean} [isHostile] Optional faction filter: only
+ *   monsters it accepts are considered, so a party projectile can never strike
+ *   an ally. Omitted = accept every live monster (legacy behavior).
  * @returns {{ monster: object, tile: {x:number,y:number}|null, stoppedByWall: boolean }|null}
  */
-export function firstMonsterOnSegment(monsters, x0, y0, x1, y1, isWall) {
+export function firstMonsterOnSegment(monsters, x0, y0, x1, y1, isWall, isHostile = null) {
   const tiles = tilesOnSegment(x0, y0, x1, y1);
   for (const tile of tiles) {
     if (isWall && isWall(tile.x, tile.y)) {
       return { monster: null, tile, stoppedByWall: true };
     }
-    const monster = monsters.find(m => m.hp > 0 && m.x === tile.x && m.y === tile.y);
+    const monster = monsters.find(m => m.hp > 0 && m.x === tile.x && m.y === tile.y
+      && (!isHostile || isHostile(m)));
     if (monster) return { monster, tile, stoppedByWall: false };
   }
   return null;
@@ -128,15 +132,18 @@ export function wouldSwapPlaces(from, to, attackTile, attackNext) {
  * @param {Array<{x:number,y:number}>} waveTiles - current front tiles
  * @param {{originX:number,originY:number,fX:number,fY:number,frontIndex:number}} geometry
  * @param {Set<string>|Array<string>} carriedIds
+ * @param {(monster:object)=>boolean} [isHostile] Optional faction filter so a
+ *   party beam only sweeps hostiles. Omitted = accept every live monster.
  * @returns {object[]}
  */
-export function monstersCaughtByBeam(monsters, waveTiles, geometry, carriedIds) {
+export function monstersCaughtByBeam(monsters, waveTiles, geometry, carriedIds, isHostile = null) {
   const carried = carriedIds instanceof Set ? carriedIds : new Set(carriedIds || []);
   const caught = [];
   const seen = new Set();
 
   const consider = monster => {
     if (monster.hp <= 0 || carried.has(monster.id) || seen.has(monster.id)) return;
+    if (isHostile && !isHostile(monster)) return;
     seen.add(monster.id);
     caught.push(monster);
   };

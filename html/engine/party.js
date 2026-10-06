@@ -26,12 +26,27 @@ import {
   isTowerId,
   towerUnlockRequires,
 } from '../data/index.js';
+import {
+  PARTY_FACTION,
+  MONSTER_FACTION,
+  NEUTRAL_FACTION,
+  factionOf,
+  isFriendly,
+  isHostile,
+  sameActor,
+} from './faction.js';
 
-/** Faction tag shared by every party member (combat same-faction guard). */
-export const PARTY_FACTION = 'party';
-
-/** Faction tag for hostile monsters. */
-export const MONSTER_FACTION = 'monsters';
+// Faction constants and the friendly-fire helpers are owned by `faction.js`.
+// Re-exported here so existing party-model consumers keep one import surface.
+export {
+  PARTY_FACTION,
+  MONSTER_FACTION,
+  NEUTRAL_FACTION,
+  factionOf,
+  isFriendly,
+  isHostile,
+  sameActor,
+};
 
 /** Default auto-AI mode for a party member. */
 export const DEFAULT_AI_MODE = 'auto';

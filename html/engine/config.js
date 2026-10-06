@@ -3,6 +3,7 @@
  */
 
 import { VOCATIONS_CATALOG, MONSTERS_CATALOG, ABILITIES_CATALOG, UI_CATALOG, ECONOMY_CATALOG, KEYBINDINGS_CATALOG, DEFAULT_TOWER_ID } from '../data/index.js';
+import { PARTY_FACTION } from './faction.js';
 
 export const TILE_TYPES = {
   FLOOR: 0,
@@ -134,6 +135,9 @@ function buildArchetype(vocKey) {
   return {
     id: data.id,
     vocation: data.vocation,
+    // Every player-shaped actor is on the party faction; the friendly-fire guard
+    // in combat-system.js reads this. Monsters declare `monsters` in the catalog.
+    faction: PARTY_FACTION,
     hp: data.hp,
     max_hp: data.hp,
     mana: data.mana,

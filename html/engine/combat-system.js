@@ -6,8 +6,23 @@ import { CONFIG } from './config.js';
 import { LightingSystem } from './lighting-system.js';
 import { ABILITIES_CATALOG, MONSTERS_CATALOG, ITEMS_CATALOG } from '../data/index.js';
 import { getEffectiveDamage, getEffectiveRange, getEffectiveManaCost } from './item-stats.js';
+import { isFriendly, isHostile, sameActor, factionOf } from './faction.js';
 
+/**
+ * Actor contract (LIV-11 WS3): every `executeX` method takes the **acting
+ * combatant** as its first argument — the manual active member or an auto ally.
+ * An actor is any `createPlayer`-shaped object plus `{ faction, memberId? }`,
+ * carrying its own `cooldowns`, `hp/max_hp`, `mana/max_mana`, gear and position.
+ * No method may read a global player: WS4 drives allies through the same API.
+ */
 export class CombatSystem {
+  /** Actor whose timers advance every simulation tick (per member). */
+  static tickActorTimers(actor, deltaSec) {
+    if (!actor) return;
+    CombatSystem.decrementCooldowns(actor, deltaSec);
+    CombatSystem.decrementSpellTimers(actor, deltaSec);
+  }
+
   static decrementCooldowns(player, deltaSec) {
     if (!player.cooldowns) return;
     for (const key of Object.keys(player.cooldowns)) {
@@ -21,6 +36,21 @@ export class CombatSystem {
     if (player.lightSpellTimer > 0) {
       player.lightSpellTimer = Math.max(0, player.lightSpellTimer - deltaSec);
     }
+  }
+
+  /** Declaration-backed friendly check between two combatants. */
+  static isFriendly(a, b) {
+    return isFriendly(a, b);
+  }
+
+  /** True when `a` may damage `b` (factionless entities are hostile). */
+  static isHostile(a, b) {
+    return isHostile(a, b);
+  }
+
+  /** True when both references denote the same party actor. */
+  static sameActor(a, b) {
+    return sameActor(a, b);
   }
 
   static randomBetween(min, max) {
@@ -99,6 +129,20 @@ export class CombatSystem {
   static applyIncomingDamage(player, damage, attacker = null) {
     if (!player || damage <= 0) {
       return { damageToPlayer: 0, absorbed: 0, dodged: false, deflected: false, rawDamage: damage || 0 };
+    }
+
+    // Friendly fire is impossible: a same-faction attacker is blocked before
+    // any dodge/mitigation/absorb roll. Factionless legacy entities are not
+    // "friendly" (see faction.js) and keep taking damage exactly as before.
+    if (attacker && CombatSystem.isFriendly(attacker, player)) {
+      return {
+        damageToPlayer: 0,
+        absorbed: 0,
+        dodged: false,
+        deflected: false,
+        friendlyFire: true,
+        rawDamage: damage,
+      };
     }
 
     // 0. Shock Shield (Apprentice's Cape): deflect exactly one incoming
@@ -189,6 +233,7 @@ export class CombatSystem {
 
     for (const m of monsters) {
       if (!m || m.hp <= 0) continue;
+      if (!CombatSystem.isHostile(player, m)) continue; // never swing at an ally
       const dx = m.x - player.x;
       const dy = m.y - player.y;
       const dist = Math.hypot(dx, dy);
@@ -717,7 +762,8 @@ export class CombatSystem {
     const weaponItem = opts.item || player.paperdoll?.main_hand || null;
 
     let hitMonster = null;
-    if (target && Math.hypot(target.x - player.x, target.y - player.y) <= reach) {
+    if (target && CombatSystem.isHostile(player, target)
+      && Math.hypot(target.x - player.x, target.y - player.y) <= reach) {
       hitMonster = target;
     } else {
       hitMonster = CombatSystem.findMonsterInMeleeArea(player, opts.monsters || [], reach, facing, gridMap);
@@ -816,7 +862,8 @@ export class CombatSystem {
     const mult = player.skillBoosts?.damageMultiplier || 1.0;
 
     let hitMonster = null;
-    if (target && Math.hypot(target.x - player.x, target.y - player.y) <= reach) {
+    if (target && CombatSystem.isHostile(player, target)
+      && Math.hypot(target.x - player.x, target.y - player.y) <= reach) {
       hitMonster = target;
     } else {
       hitMonster = CombatSystem.findMonsterInMeleeArea(player, opts.monsters || [], reach, facing, gridMap);
@@ -883,9 +930,57 @@ export class CombatSystem {
   }
 
   /**
-   * Executes Healing Prayer for Paladin.
+   * Chooses the most-injured friendly actor within `radius` tiles of `actor`,
+   * always including the actor itself. Allies are gated by `isFriendly` (never
+   * heal an enemy) and de-duplicated against the active mirror. Returns null
+   * when nobody is missing HP.
+   *
+   * @param {object} actor
+   * @param {object[]} [allies]
+   * @param {number} [radius] Tiles; <= 0 disables the ally range gate.
+   * @returns {object|null} the actor, an ally, or null.
    */
-  static executeHealingPrayer(player) {
+  static selectHealTarget(actor, allies = [], radius = 0) {
+    if (!actor) return null;
+    let best = null;
+    let bestMissingFraction = 0;
+
+    const consider = (candidate, isSelf) => {
+      if (!candidate || typeof candidate.hp !== 'number' || typeof candidate.max_hp !== 'number') return;
+      if (!isSelf) {
+        if (!CombatSystem.isFriendly(actor, candidate)) return;
+        if (radius > 0 && Math.hypot((candidate.x || 0) - (actor.x || 0), (candidate.y || 0) - (actor.y || 0)) > radius) return;
+      }
+      if (candidate.max_hp <= 0) return;
+      const missing = candidate.max_hp - candidate.hp;
+      if (missing <= 0) return;
+      const fraction = missing / candidate.max_hp;
+      if (fraction > bestMissingFraction) {
+        bestMissingFraction = fraction;
+        best = candidate;
+      }
+    };
+
+    consider(actor, true);
+    if (Array.isArray(allies)) {
+      for (const ally of allies) {
+        if (!ally || CombatSystem.sameActor(actor, ally)) continue;
+        consider(ally, false);
+      }
+    }
+    return best;
+  }
+
+  /**
+   * Executes Healing Prayer for Paladin. Ally-aware (LIV-11): with a party, the
+   * prayer lands on the most-injured friendly actor within the catalog
+   * `paladin_heal.healRadius` (`targetsAllies`), falling back to self. A
+   * one-member call behaves exactly as before.
+   *
+   * @param {object} player The acting member.
+   * @param {object[]} [allies] Party members to consider as heal targets.
+   */
+  static executeHealingPrayer(player, allies = []) {
     if (player.cooldowns?.healing_prayer > 0) {
       return { success: false, message: 'Healing Prayer is on cooldown.' };
     }
@@ -894,7 +989,14 @@ export class CombatSystem {
       return { success: false, message: 'Not enough Mana for Healing Prayer.' };
     }
 
-    if (player.hp >= player.max_hp) {
+    const spec = ABILITIES_CATALOG.paladin_heal || {};
+    const radius = Number(spec.healRadius) || 0;
+    const targetsAllies = spec.targetsAllies === true || radius > 0;
+    const target = targetsAllies
+      ? CombatSystem.selectHealTarget(player, allies, radius)
+      : (player.hp < player.max_hp ? player : null);
+
+    if (!target) {
       return { success: false, message: 'Health is already full!' };
     }
 
@@ -907,13 +1009,22 @@ export class CombatSystem {
     const healBoost = 1 + (healPowerPct || 0) / 100;
     const baseHeal = CombatSystem.randomBetween(CONFIG.PALADIN_HEAL_MIN, CONFIG.PALADIN_HEAL_MAX);
     const healAmount = Math.round(baseHeal * mult * healBoost);
-    const restored = Math.min(healAmount, player.max_hp - player.hp);
-    player.hp = Math.min(player.max_hp, player.hp + healAmount);
+    const restored = Math.min(healAmount, target.max_hp - target.hp);
+    target.hp = Math.min(target.max_hp, target.hp + healAmount);
+
+    const healedAlly = !CombatSystem.sameActor(player, target);
+    const message = healedAlly
+      ? `Healing Prayer channeled! Restored +${restored} HP to ${target.name || target.vocation || 'an ally'} (${target.hp}/${target.max_hp}).`
+      : `Healing Prayer channeled! Restored +${restored} HP (${player.hp}/${player.max_hp}).`;
 
     return {
       success: true,
-      message: `Healing Prayer channeled! Restored +${restored} HP (${player.hp}/${player.max_hp}).`,
+      message,
       healAmount: restored,
+      healedAlly,
+      targetId: target.memberId || target.id || null,
+      targetX: target.x,
+      targetY: target.y,
     };
   }
 
@@ -955,6 +1066,7 @@ export class CombatSystem {
 
     for (const m of monsters) {
       if (!m || m.hp <= 0) continue;
+      if (!CombatSystem.isHostile(player, m)) continue; // never shove an ally
       const distManhattan = Math.abs(m.x - player.x) + Math.abs(m.y - player.y);
       if (distManhattan !== 1) continue;
 
@@ -1074,7 +1186,7 @@ export class CombatSystem {
    * scaled by the equipped `healPowerPct` and restores `mpRestore` MP. Refuses
    * to cast when both pools are already full.
    */
-  static executeBenediction(player, item = null) {
+  static executeBenediction(player, item = null, allies = []) {
     if (!item) {
       return { success: false, message: 'No relic equipped for Benediction.' };
     }
@@ -1086,7 +1198,17 @@ export class CombatSystem {
     if (player.mana < manaCost) {
       return { success: false, message: `Not enough Mana to cast Benediction (${manaCost} MP).` };
     }
-    if (player.hp >= player.max_hp && player.mana >= player.max_mana) {
+
+    // Ally-aware (LIV-11): the HP restore lands on the most-injured friendly
+    // actor within the item's `healRadius` (falling back to self); the MP
+    // restore always refills the caster. One-member calls are unchanged.
+    const radius = Number(item.healRadius) || 0;
+    const targetsAllies = item.targetsAllies === true || radius > 0;
+    const healTarget = targetsAllies
+      ? CombatSystem.selectHealTarget(player, allies, radius)
+      : (player.hp < player.max_hp ? player : null);
+    const mpMissing = Math.max(0, player.max_mana - player.mana);
+    if (!healTarget && mpMissing <= 0) {
       return { success: false, message: 'Benediction finds nothing to restore — HP and MP are full.' };
     }
 
@@ -1101,18 +1223,26 @@ export class CombatSystem {
     const heal = Math.round(baseHeal * healBoost);
     const mpRestore = item.mpRestore || 15;
 
-    const hpRestored = Math.min(heal, Math.max(0, player.max_hp - player.hp));
+    const hpRestored = healTarget ? Math.min(heal, Math.max(0, healTarget.max_hp - healTarget.hp)) : 0;
     const mpRestored = Math.min(mpRestore, Math.max(0, player.max_mana - player.mana));
-    player.hp = Math.min(player.max_hp, player.hp + heal);
+    if (healTarget) healTarget.hp = Math.min(healTarget.max_hp, healTarget.hp + heal);
     player.mana = Math.min(player.max_mana, player.mana + mpRestore);
 
+    const healedAlly = Boolean(healTarget) && !CombatSystem.sameActor(player, healTarget);
+    const hpPart = healedAlly
+      ? `+${hpRestored} HP to ${healTarget.name || healTarget.vocation || 'an ally'}`
+      : `+${hpRestored} HP`;
     return {
       success: true,
-      message: `Benediction! Restored +${hpRestored} HP and +${mpRestored} MP (${manaCost} MP, ${effectiveCooldown}s CD).`,
+      message: `Benediction! Restored ${hpPart} and +${mpRestored} MP (${manaCost} MP, ${effectiveCooldown}s CD).`,
       hpRestored,
       mpRestored,
       manaCost,
       cooldownSet: effectiveCooldown,
+      healedAlly,
+      targetId: healTarget ? (healTarget.memberId || healTarget.id || null) : null,
+      targetX: healTarget ? healTarget.x : player.x,
+      targetY: healTarget ? healTarget.y : player.y,
     };
   }
 
@@ -1290,8 +1420,11 @@ export class CombatSystem {
    * Applies one catalog `onHit` status descriptor. Returns false (safe no-op)
    * when the status has no registered applier.
    */
-  static applyPlayerStatus(player, effect) {
+  static applyPlayerStatus(player, effect, attacker = null) {
     if (!player || !effect || !effect.status) return false;
+    // Same-faction statuses never land: an ally cannot burn, poison, slow or
+    // stun another party member.
+    if (attacker && CombatSystem.isFriendly(attacker, player)) return false;
     const handler = CombatSystem.STATUS_EFFECT_APPLIERS[effect.status];
     if (!handler) return false;
     handler(player, effect);
@@ -1410,6 +1543,7 @@ export class CombatSystem {
     let totalDrained = 0;
     for (const m of monsters) {
       if (!m || m.hp <= 0) continue;
+      if (!CombatSystem.isHostile(player, m)) continue; // siphon only drains enemies
       const dist = Math.hypot(m.x - player.x, m.y - player.y);
       if (dist > radius) continue;
       const drained = Math.min(siphonHp, m.hp);
@@ -1460,6 +1594,7 @@ export class CombatSystem {
     const marked = [];
     for (const m of monsters) {
       if (!m || m.hp <= 0 || m.visible === false) continue;
+      if (!CombatSystem.isHostile(player, m)) continue; // never mark an ally
       const dist = Math.hypot(m.x - player.x, m.y - player.y);
       if (dist > range + 0.5) continue;
       if (gridMap && !LightingSystem.hasLineOfSight(gridMap, player.x, player.y, m.x, m.y)) continue;
@@ -1515,6 +1650,7 @@ export class CombatSystem {
     let totalDamage = 0;
     for (const m of monsters) {
       if (!m || m.hp <= 0) continue;
+      if (!CombatSystem.isHostile(player, m)) continue; // cleave never hits allies
       const dist = Math.hypot(m.x - player.x, m.y - player.y);
       if (dist > reach) continue;
 

@@ -203,11 +203,13 @@ export const combatControllerMethods = {
         }
       },
       benediction: () => {
-        const res = CombatSystem.executeBenediction(this.player, item);
+        const res = CombatSystem.executeBenediction(this.player, item, this.player.party);
         if (res.success) {
           soundFX.play('holyChime');
           this.logCombat(res.message, 'spell');
-          if (res.hpRestored > 0) this.addFloatingText(`+${res.hpRestored} HP`, this.player.x, this.player.y, '#22c55e');
+          const healX = res.targetX ?? this.player.x;
+          const healY = res.targetY ?? this.player.y;
+          if (res.hpRestored > 0) this.addFloatingText(`+${res.hpRestored} HP`, healX, healY, '#22c55e');
           if (res.mpRestored > 0) this.addFloatingText(`+${res.mpRestored} MP`, this.player.x, this.player.y, '#3b82f6');
         } else {
           this.logCombat(res.message, 'warning');
@@ -281,11 +283,11 @@ export const combatControllerMethods = {
         this.handleCombatResult(res, null, null);
       },
       healing_prayer: () => {
-        const res = CombatSystem.executeHealingPrayer(this.player);
+        const res = CombatSystem.executeHealingPrayer(this.player, this.player.party);
         if (res.success) {
           soundFX.play('lightSpell');
           this.logCombat(res.message, 'spell');
-          this.addFloatingText(`+${res.healAmount} HP`, this.player.x, this.player.y, '#22c55e');
+          this.addFloatingText(`+${res.healAmount} HP`, res.targetX ?? this.player.x, res.targetY ?? this.player.y, '#22c55e');
         } else {
           this.logCombat(res.message, 'warning');
         }

@@ -193,3 +193,62 @@ shows **Tower Complete** → **Recruit** → enters the next unlocked tower as t
 new recruit. **Ultimate Victory** fires only when every authored tower is
 complete. Locked towers render disabled in the picker via `towerUnlockInfo`.
 The HUD shows a compact party panel (`HUDManager.renderPartyPanel`).
+
+---
+
+## 7. WS3 combat actor contract (LIV-11)
+
+WS3 generalizes combat from "the one player" to any party actor and makes
+friendly fire impossible. The contract is locked for WS4 (party auto-AI) and WS5.
+
+### 7.1 Faction (`html/engine/faction.js`)
+
+| Symbol | Meaning |
+| :--- | :--- |
+| `PARTY_FACTION` (`"party"`) | Every player-controlled member. |
+| `MONSTER_FACTION` (`"monsters"`) | Every hostile monster (declared per entry in `monsters.json`). |
+| `NEUTRAL_FACTION` (`"neutral"`) | Reserved for inert objects. |
+| `factionOf(entity)` | Normalized tag or `null` when undeclared. |
+| `isFriendly(a, b)` | True **only** when both declare the same non-empty faction. |
+| `isHostile(a, b)` | `!isFriendly`; an undeclared faction is hostile (damage applies). |
+| `sameActor(a, b)` | Identity match, including `memberId`/`activeMemberId` mirroring. |
+
+`party.js` re-exports the constants and helpers, so existing imports keep
+working. `createPlayer`/`createPartyMember` stamp `faction: "party"`.
+
+### 7.2 Actor contract
+
+Every `CombatSystem.executeX` method takes the **acting member** as its first
+argument — the manual active member or an auto ally. An actor is any
+`createPlayer`-shaped object plus `{ faction, memberId? }`, and owns its
+`cooldowns`, `hp/max_hp`, `mana/max_mana`, gear and position. No combat method
+reads a global player. `CombatSystem.tickActorTimers(actor, dt)` /
+`decrementCooldowns` advance timers per member.
+
+### 7.3 Friendly fire
+
+- `applyIncomingDamage(target, damage, attacker)` returns a zeroed,
+  `friendlyFire: true` result when `attacker` and `target` are friendly — the
+  single guaranteed seam for melee, projectile, AoE, dash and status damage.
+- Target selection filters by `CombatSystem.isHostile(actor, candidate)` in
+  `findMonsterInMeleeArea`, `executeSlash`/`executeHolyStrike`,
+  `executeCleave`, `executeShieldBash`, `executeLifeSiphon`, `executeHuntersMark`.
+- `projectile-collision.js` `firstMonsterOnSegment` / `monstersCaughtByBeam`
+  accept an optional `isHostile` predicate; `game-loop.js` passes
+  `(m) => CombatSystem.isHostile(this.player, m)`.
+- `applyPlayerStatus(target, effect, attacker)` refuses same-faction statuses.
+
+### 7.4 Ally healing
+
+- `CombatSystem.selectHealTarget(actor, allies, radius)` returns the
+  most-injured friendly actor within `radius` of `actor`, always considering
+  self and de-duplicating the active mirror via `sameActor`. Out-of-range or
+  enemy actors are ignored.
+- `executeHealingPrayer(actor, allies)` uses catalog
+  `paladin_heal.healRadius` / `targetsAllies`; `executeBenediction(actor, item,
+  allies)` uses the item's `healRadius` / `targetsAllies` for the HP restore,
+  always restoring MP to the caster.
+- Both fall back to self and, when nobody is hurt, refuse to cast, so
+  one-member calls are unchanged. The app passes `player.party`.
+
+T0 coverage: `html/tests/liv11-combat-actors.test.mjs`.

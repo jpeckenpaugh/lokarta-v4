@@ -535,7 +535,8 @@ export const gameLoopMethods = {
             this.monsters,
             wave.tiles,
             { originX: p.sourceX, originY: p.sourceY, fX, fY, frontIndex: stepIdx },
-            carriedIds
+            carriedIds,
+            (m) => CombatSystem.isHostile(this.player, m)
           );
           for (const hitMonster of caughtThisStep) {
             // Stunned while riding the wave; marked so it rides this tile.
@@ -678,7 +679,8 @@ export const gameLoopMethods = {
         startGY,
         tileX,
         tileY,
-        (x, y) => this.gridMap.isWall(x, y)
+        (x, y) => this.gridMap.isWall(x, y),
+        (m) => CombatSystem.isHostile(this.player, m)
       );
 
       if (sweep && sweep.stoppedByWall) {

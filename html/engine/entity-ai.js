@@ -6,6 +6,7 @@ import { CONFIG } from './config.js';
 import { LightingSystem } from './lighting-system.js';
 import { MONSTERS_CATALOG } from '../data/index.js';
 import { CombatSystem } from './combat-system.js';
+import { MONSTER_FACTION } from './faction.js';
 
 /**
  * Attack-pattern dispatch (catalog `attacks[].kind` -> handler). Every handler
@@ -729,6 +730,7 @@ export class EntityAI {
       id: `${source.id}_summon_${source.summonCount}`,
       type,
       name: base.name,
+      faction: base.faction || MONSTER_FACTION,
       room: source.room,
       x: sx,
       y: sy,
