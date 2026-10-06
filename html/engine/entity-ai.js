@@ -226,7 +226,10 @@ export class EntityAI {
       monster.facing = EntityAI.getFacing(monster.x, monster.y, player.x, player.y);
       if (monster.attackCooldown <= 0) {
         monster.attackCooldown = monster.attackCadence || 1.5;
-        const damage = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
+        const damage = EntityAI.scaleDamage(
+          monster,
+          Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg
+        );
         // LOK-12 damage-intercept seam: dodge / fortify / mitigation / bubble absorb.
         const hit = CombatSystem.applyIncomingDamage(player, damage, monster);
         let message;
@@ -282,7 +285,10 @@ export class EntityAI {
       cultist.attackCooldown = cultist.attackCadence || 2.0;
       const minDmg = mData?.damageMin ?? 1;
       const maxDmg = mData?.damageMax ?? minDmg;
-      const damage = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
+      const damage = EntityAI.scaleDamage(
+        cultist,
+        Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg
+      );
       // LOK-12 damage-intercept seam: dodge / fortify / mitigation / bubble absorb.
       const hit = CombatSystem.applyIncomingDamage(player, damage, cultist);
 
@@ -364,6 +370,20 @@ export class EntityAI {
     const lo = Math.min(minDmg, maxDmg);
     const hi = Math.max(minDmg, maxDmg);
     return Math.floor(Math.random() * (hi - lo + 1)) + lo;
+  }
+
+  /**
+   * Applies a monster's floor damage multiplier (resolved by the floor
+   * generator onto `damageScale`, the same `statScale.atk` used for
+   * `monster.attack`) to a catalog-rolled damage value. Catalog
+   * `damageMin`/`damageMax` stay floor-agnostic base values, mirroring
+   * `baseHp`/`statScale.hp`. A missing scale means 1.0, so hand-built and
+   * launch monsters are unchanged.
+   */
+  static scaleDamage(monster, damage) {
+    const scale = monster && monster.damageScale;
+    if (!scale || scale === 1) return damage;
+    return Math.round(damage * scale);
   }
 
   /** Integer-keyed occupancy set (grid hashing, §3) for a monster list. */
@@ -497,7 +517,7 @@ export class EntityAI {
     monster.attackCooldown = atk.cooldownSec || monster.attackCadence || 1.5;
     const minDmg = atk.damageMin ?? mData?.damageMin ?? 1;
     const maxDmg = atk.damageMax ?? mData?.damageMax ?? minDmg;
-    const damage = EntityAI.rollDamage(minDmg, maxDmg);
+    const damage = EntityAI.scaleDamage(monster, EntityAI.rollDamage(minDmg, maxDmg));
     const hit = CombatSystem.applyIncomingDamage(player, damage, monster);
     return EntityAI.buildHitResult(hit, monster, damage, atk, mData);
   }
@@ -507,7 +527,7 @@ export class EntityAI {
     monster.attackCooldown = atk.cooldownSec || monster.attackCadence || 2;
     const minDmg = atk.damageMin ?? mData?.damageMin ?? 1;
     const maxDmg = atk.damageMax ?? mData?.damageMax ?? minDmg;
-    const damage = EntityAI.rollDamage(minDmg, maxDmg);
+    const damage = EntityAI.scaleDamage(monster, EntityAI.rollDamage(minDmg, maxDmg));
     const hit = CombatSystem.applyIncomingDamage(player, damage, monster);
     const spec = atk.projectile || {};
     const projectile = {
@@ -600,7 +620,7 @@ export class EntityAI {
 
     const minDmg = atk.damageMin ?? 1;
     const maxDmg = atk.damageMax ?? minDmg;
-    const damage = EntityAI.rollDamage(minDmg, maxDmg);
+    const damage = EntityAI.scaleDamage(monster, EntityAI.rollDamage(minDmg, maxDmg));
     const hit = CombatSystem.applyIncomingDamage(player, damage, monster);
     return EntityAI.buildHitResult(hit, monster, damage, atk, null, { projectiles: [burst] });
   }
@@ -655,7 +675,7 @@ export class EntityAI {
 
     const minDmg = atk.damageMin ?? 1;
     const maxDmg = atk.damageMax ?? minDmg;
-    const damage = EntityAI.rollDamage(minDmg, maxDmg);
+    const damage = EntityAI.scaleDamage(monster, EntityAI.rollDamage(minDmg, maxDmg));
     const hit = CombatSystem.applyIncomingDamage(player, damage, monster);
     const result = EntityAI.buildHitResult(hit, monster, damage, atk, null, { projectiles: [dashFx] });
     result.dashMoved = moved;
@@ -715,6 +735,7 @@ export class EntityAI {
       hp,
       max_hp: hp,
       attack: base.baseAttack,
+      damageScale: source.damageScale ?? 1,
       defense: base.baseDefense,
       facing: 'down',
       isAggroed: true,

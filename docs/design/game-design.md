@@ -163,11 +163,12 @@ signature attack. Status is the `onHit` descriptor.
   reads. Keeping a single source of truth for each opponent's kit avoids dead data. If the
   board wants a shared, referenceable enemy-ability library (`attacks[].abilityId`), that
   is a schema + resolver change and should be a Tech Lead task.
-* **Floor damage scaling gap (Tech Lead follow-up):** `floor-generator.js` scales
-  `baseHp` by `statScale.hp`, but catalog `attacks[].damageMin/Max` are read base-only in
-  `entity-ai.js`. The bestiary therefore carries its damage curve through base stats per
-  floor. If per-floor attack scaling is wanted, the LIV-2 handlers must multiply
-  `atk.damageMin/Max` by the floor `atkScale`.
+* **Floor damage scaling (resolved, LIV-6):** `floor-generator.js` stamps each
+  generated monster with `damageScale` (the floor `statScale.atk`, times
+  `keyHolderModifier.atk` for key holders), and the LIV-2 attack handlers multiply
+  their rolled `attacks[].damageMin/Max` by it. Catalog damage stays floor-agnostic
+  base data, mirroring `baseHp`/`statScale.hp`; floor 1 remains scale 1.0. Summons
+  inherit their summoner's `damageScale`.
 * **Tower roster wiring is LIV-5.** `tower_levels.json` monster pools still list the launch
   five; this bestiary is the pool source for LIV-5 to assign per tower/floor.
 * **Boss wiring handoff:** `tidebound_king` is authored and ready, but the
