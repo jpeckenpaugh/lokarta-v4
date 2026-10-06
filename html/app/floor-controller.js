@@ -95,15 +95,27 @@ export const floorControllerMethods = {
       anim: createAnimState(s.facing || 'down'),
     }));
     if (this.player) this.player.anim = createAnimState(this.player.facing || 'down');
-    this.layoutPartyOnFloor();
+
+    // A new floor identity is a tower/level transition: the whole party must be
+    // transported to the active member's arrival tile. Merely honoring a
+    // member's old coordinates when they happen to be walkable on the new floor
+    // (LIV-17) would leave a recruit behind at its previous map position.
+    const floorKey = `${floorData.tower_id || this.towerId || ''}#${floorData.floor_number || ''}`;
+    const floorChanged = this._partyFloorKey !== floorKey;
+    this._partyFloorKey = floorKey;
+    this.layoutPartyOnFloor(floorChanged);
   },
   /**
    * Places and revives the non-active party on a freshly loaded floor
    * (LIV-13/WS4). Allies that fell on the previous floor recover between levels
-   * so the party stays viable, and any member sharing the active member's tile
-   * (e.g. a fresh recruit) is spread to a free adjacent square.
+   * so the party stays viable. On a tower/level transition (`transportAll`) every
+   * non-active member is moved to a free square around the active member's
+   * arrival tile (LIV-17); otherwise a member is only relocated when its stored
+   * coordinates are unusable on this floor (missing, blocked, or occupied).
+   *
+   * @param {boolean} [transportAll=false] - force-relocate every non-active member
    */
-  layoutPartyOnFloor() {
+  layoutPartyOnFloor(transportAll = false) {
     const player = this.player;
     if (!player || !Array.isArray(player.party)) return;
     const grid = this.gridMap;
@@ -121,12 +133,12 @@ export const floorControllerMethods = {
       }
       member.anim = createAnimState(member.facing || 'down');
 
-      const valid =
+      const usable =
         Number.isFinite(member.x) &&
         Number.isFinite(member.y) &&
         grid.isWalkable(member.x, member.y) &&
         !occupied.has(`${member.x},${member.y}`);
-      if (!valid) {
+      if (transportAll || !usable) {
         const spot = this.findPartySpot(player.x, player.y, occupied);
         if (spot) {
           member.x = spot.x;
