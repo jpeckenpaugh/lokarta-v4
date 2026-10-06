@@ -443,19 +443,22 @@ export const combatControllerMethods = {
    */
   handleAllyLevelUps(levelUps) {
     if (!Array.isArray(levelUps) || levelUps.length === 0) return;
+    // Cue copy is catalog-driven (`ui.json` → `party.allyLevelUpCue`, LIV-26)
+    // with a safe fallback so the mechanic never depends on copy landing first.
+    const cueTemplate = UI_CATALOG && UI_CATALOG.party && typeof UI_CATALOG.party.allyLevelUpCue === 'string'
+      ? UI_CATALOG.party.allyLevelUpCue
+      : null;
     for (const { member, result } of levelUps) {
       if (!member || !result) continue;
       // `this.player` holds the shared party backpack (LIV-22), so auto-granted
       // overflow lands in the party stash rather than a per-member grid.
       applyAutoFateGrant(member, result.newLevel, this.gridMap, this.player);
-      this.addFloatingText(
-        `${partyMemberName(member)} Lv.${result.newLevel}`,
-        member.x,
-        member.y,
-        '#e2e8f0',
-        { durationMs: 1500 }
-      );
-      this.logCombat(`${partyMemberName(member)} reached Level ${result.newLevel}.`, 'spell');
+      const name = partyMemberName(member);
+      this.addFloatingText(`${name} Lv.${result.newLevel}`, member.x, member.y, '#e2e8f0', { durationMs: 1500 });
+      const cue = cueTemplate
+        ? cueTemplate.split('{member}').join(name).split('{level}').join(String(result.newLevel))
+        : `${name} reached Level ${result.newLevel}.`;
+      this.logCombat(cue, 'spell');
     }
     this.persistSave();
   },

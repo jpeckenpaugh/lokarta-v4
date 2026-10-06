@@ -178,6 +178,7 @@ test('LIV-20 app wiring: shared XP and an ally-only auto grant, no ally modal', 
   const allyBody = (src.match(/handleAllyLevelUps\(levelUps\)\s*\{([\s\S]*?)\n  \},/) || [])[1] || '';
   assert.ok(allyBody, 'handleAllyLevelUps method is present');
   assert.match(allyBody, /applyAutoFateGrant\(/, 'ally draft is applied automatically');
+  assert.match(allyBody, /UI_CATALOG\.party\.allyLevelUpCue/, 'the level-up cue copy is catalog-driven (LIV-26)');
   assert.doesNotMatch(allyBody, /showFateGrantModal/, 'non-active allies never open the interactive draft');
   assert.match(allyBody, /persistSave\(\)/, 'auto-granted ally progression is persisted');
 });
