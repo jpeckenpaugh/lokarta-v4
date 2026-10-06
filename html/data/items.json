@@ -59,6 +59,9 @@
       "statBonusTextPattern": "+{dmgInc} Dmg, +1 Range (+1 MP)",
       "descriptionPattern": "Level Up Spark Wand (Rank {prevRank} ➔ {nextRank}): +{dmgInc} Damage, +1 Targeting Range, +1 MP Cost."
     },
+    "rankCaps": {
+      "rangeInc": 3
+    },
     "lootTier": 1,
     "lootTierEligible": true,
     "solidGear": true,
@@ -84,6 +87,10 @@
       "manaCostInc": 5,
       "statBonusTextPattern": "+5 Wave Dmg, +1 Range (+5 MP)",
       "descriptionPattern": "Level Up Beam Staff (Rank {prevRank} ➔ {nextRank}): +5 Wave Dmg, +1 Wave Range, +5 MP Cost."
+    },
+    "rankCaps": {
+      "rangeInc": 3,
+      "manaCostInc": 20
     },
     "lootTier": 2,
     "lootTierEligible": true,
@@ -140,6 +147,9 @@
       "statBonusTextPattern": "+{dmgInc} Dmg, +1 Range",
       "descriptionPattern": "Level Up Composite Longbow (Rank {prevRank} ➔ {nextRank}): +{dmgInc} Damage, +1 Targeting Range."
     },
+    "rankCaps": {
+      "rangeInc": 3
+    },
     "lootTier": 2,
     "lootTierEligible": true,
     "solidGear": true,
@@ -172,6 +182,9 @@
       "statBonusTextPattern": "Poison +1 Dmg/s, +5 Cap, Faster Regen",
       "descriptionPattern": "Level Up Grey Stalker Quiver (Rank {prevRank} ➔ {nextRank}): Poison Tip deals +1 poison damage per second; +5 Arrow Capacity, Arrow Regen interval reduced by 0.5s."
     },
+    "rankCaps": {
+      "ammoRegenSecReduction": 2.5
+    },
     "lootTier": 2,
     "lootTierEligible": true,
     "solidGear": true,
@@ -198,6 +211,9 @@
       "siphonHpInc": 1,
       "statBonusTextPattern": "+2% Dodge, +1 Siphon HP",
       "descriptionPattern": "Level Up Vampiric Cloak (Rank {prevRank} ➔ {nextRank}): +2% Dodge chance, Life Siphon drains +1 HP per enemy."
+    },
+    "rankCaps": {
+      "dodgePctInc": 20
     },
     "lootTier": 1,
     "lootTierEligible": true,
@@ -230,6 +246,11 @@
       "markDurationInc": 1,
       "statBonusTextPattern": "+1% Crit, +2 Ranged, +1s Mark",
       "descriptionPattern": "Level Up Ranger's Talisman (Rank {prevRank} ➔ {nextRank}): +1% Crit Chance, +0.05 Crit Multiplier, +2 Ranged Damage, Hunter's Mark lasts +1s."
+    },
+    "rankCaps": {
+      "critChanceInc": 25,
+      "critMultInc": 0.5,
+      "markDurationInc": 6
     },
     "lootTier": 2,
     "lootTierEligible": true,
@@ -306,6 +327,10 @@
       "statBonusTextPattern": "+1% Mitigation, -1s Fortify CD",
       "descriptionPattern": "Level Up Vanguard Battleplate (Rank {prevRank} ➔ {nextRank}): +1% Damage Mitigation, Fortify Stance recharges 1s faster."
     },
+    "rankCaps": {
+      "mitigationPctInc": 15,
+      "cooldownReductionSec": 8
+    },
     "lootTier": 2,
     "lootTierEligible": true,
     "solidGear": true,
@@ -333,6 +358,11 @@
       "statBonusTextPattern": "+1% Crit, +0.05 Crit Mult, -0.25s Cleave CD",
       "descriptionPattern": "Level Up Berserker's Sigil (Rank {prevRank} ➔ {nextRank}): +1% Crit Chance, +0.05 Crit Multiplier, Whirlwind Cleave recharges 0.25s faster."
     },
+    "rankCaps": {
+      "critChanceInc": 25,
+      "critMultInc": 0.5,
+      "cooldownReductionSec": 1.5
+    },
     "lootTier": 2,
     "lootTierEligible": true,
     "solidGear": true,
@@ -357,6 +387,10 @@
       "cooldownReductionSec": 1,
       "statBonusTextPattern": "+0.5s Stun, -1s Cooldown",
       "descriptionPattern": "Level Up Vanguard Shield (Rank {prevRank} ➔ {nextRank}): +0.5s Bash Stun, -1s Shield Bash Cooldown."
+    },
+    "rankCaps": {
+      "stunInc": 1.5,
+      "cooldownReductionSec": 5
     },
     "lootTier": 2,
     "lootTierEligible": true,
@@ -411,6 +445,9 @@
       "statBonusTextPattern": "+10 Max MP, +3% Heal Power",
       "descriptionPattern": "Level Up Holy Crown (Rank {prevRank} ➔ {nextRank}): +10 Max MP, +3% Healing Power."
     },
+    "rankCaps": {
+      "healPowerPctInc": 30
+    },
     "lootTier": 1,
     "lootTierEligible": true,
     "solidGear": true,
@@ -439,6 +476,11 @@
       "shieldManaCostReduction": 2,
       "statBonusTextPattern": "+1% Mitigation, +5 Absorb, +4s, -2 MP",
       "descriptionPattern": "Level Up Sanctuary Plate (Rank {prevRank} ➔ {nextRank}): +1% Damage Mitigation, +5 Sanctuary absorb, +4s duration, -2 MP cost."
+    },
+    "rankCaps": {
+      "mitigationPctInc": 15,
+      "shieldAbsorbInc": 40,
+      "shieldDurationInc": 12
     },
     "lootTier": 2,
     "lootTierEligible": true,
@@ -472,6 +514,10 @@
       "statBonusTextPattern": "+10 Max MP, +3% Heal, -2s Benediction CD",
       "descriptionPattern": "Level Up Dawnlight Reliquary (Rank {prevRank} ➔ {nextRank}): +10 Max MP, +3% Healing Power, Benediction recharges 2s faster."
     },
+    "rankCaps": {
+      "healPowerPctInc": 30,
+      "cooldownReductionSec": 8
+    },
     "lootTier": 2,
     "lootTierEligible": true,
     "solidGear": true,
@@ -498,6 +544,10 @@
       "statBonusTextPattern": "+5 Absorb, +4s Duration, -2 MP",
       "descriptionPattern": "Level Up Aegis Shield (Rank {prevRank} ➔ {nextRank}): +5 Bubble Absorb, +4s Bubble Duration, -2 MP Cost."
     },
+    "rankCaps": {
+      "shieldAbsorbInc": 40,
+      "shieldDurationInc": 12
+    },
     "lootTier": 2,
     "lootTierEligible": true,
     "solidGear": true,
@@ -521,6 +571,9 @@
       "mitigationPctInc": 1,
       "statBonusTextPattern": "+1% Damage Mitigation",
       "descriptionPattern": "Level Up Knight Plate Armor (Rank {prevRank} ➔ {nextRank}): +1% Damage Mitigation."
+    },
+    "rankCaps": {
+      "mitigationPctInc": 15
     },
     "lootTier": 2,
     "lootTierEligible": true,
@@ -548,6 +601,10 @@
       "cooldownReductionSec": 1,
       "statBonusTextPattern": "Shock Shield +1s Stun, -1s CD",
       "descriptionPattern": "Level Up Apprentice's Cape (Rank {prevRank} ➔ {nextRank}): Shock Shield stuns +1s longer and recharges 1s faster; Power Pulse restores +{nextRank} MP every {cooldownSec}s."
+    },
+    "rankCaps": {
+      "stunInc": 1,
+      "cooldownReductionSec": 5
     },
     "lootTier": 1,
     "lootTierEligible": true,
@@ -577,6 +634,9 @@
       "cooldownReductionSec": 2,
       "statBonusTextPattern": "+5 HP/MP, +2 Auto-Prayer, -2s Prayer CD",
       "descriptionPattern": "Level Up Luminous Amulet (Rank {prevRank} ➔ {nextRank}): +5 Max HP/MP, Auto-Prayer restores +2 combined HP/MP, Luminous Prayer recharges 2s faster."
+    },
+    "rankCaps": {
+      "cooldownReductionSec": 10
     },
     "lootTier": 2,
     "lootTierEligible": true,

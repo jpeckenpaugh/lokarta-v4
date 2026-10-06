@@ -5,7 +5,7 @@
 import { CONFIG } from './config.js';
 import { LightingSystem } from './lighting-system.js';
 import { ABILITIES_CATALOG, MONSTERS_CATALOG, ITEMS_CATALOG } from '../data/index.js';
-import { getEffectiveDamage, getEffectiveRange, getEffectiveManaCost } from './item-stats.js';
+import { getEffectiveDamage, getEffectiveRange, getEffectiveManaCost, getEffectiveCooldown as projectCooldown } from './item-stats.js';
 import { isFriendly, isHostile, sameActor, factionOf } from './faction.js';
 
 /**
@@ -104,10 +104,9 @@ export class CombatSystem {
    */
   static getEffectiveCooldown(item) {
     if (!item || typeof item.cooldown !== 'number') return null;
-    const rank = item.itemLevel || 1;
-    const spec = ITEMS_CATALOG[item.item_id]?.upgradeSpec || item.upgradeSpec || {};
-    const perRank = spec.cooldownReductionSec || 0;
-    return Math.max(1, item.cooldown - perRank * (rank - 1));
+    // Delegate to the single rank-scaled projection so the authored
+    // `rankCaps.cooldownReductionSec` ceiling is honored in one place.
+    return projectCooldown(item);
   }
 
   /** Public alias so app code shares the engine's rank-scaled projection. */

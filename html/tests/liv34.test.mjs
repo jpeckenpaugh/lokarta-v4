@@ -177,13 +177,13 @@ test("Shock Shield (Apprentice's Cape, E key)", async t => {
     assert.equal(player.hp, player.max_hp);
   });
 
-  await t.test('rank scaling reaches 9s stun / 6s cooldown at Rank 5', () => {
+  await t.test('rank scaling caps stun (rankCaps 1s) and reaches 6s cooldown at Rank 5', () => {
     const player = createPlayer('magician');
     const cape = JSON.parse(JSON.stringify(ITEMS_CATALOG.apprentice_cape));
     for (let i = 0; i < 4; i++) applyItemRankUp(player, cape);
 
     assert.equal(cape.itemLevel, 5);
-    assert.equal(cape.stunSec, 9, '+1s stun per rank');
+    assert.equal(cape.stunSec, 6, '+1s stun per rank, held at the rankCaps.stunInc ceiling of 1');
     assert.equal(CombatSystem.getEffectiveCooldown(cape), 6, '-1s cooldown per rank');
   });
 });

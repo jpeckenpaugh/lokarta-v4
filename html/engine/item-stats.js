@@ -23,6 +23,54 @@ function averageInt(min, max) {
 }
 
 /**
+ * Resolves the authored `rankCaps` ceiling table for an item instance.
+ * The catalog entry wins (single source of truth); a looted/hand-built
+ * instance may carry its own copy via `item.rankCaps`.
+ *
+ * @param {object} catalog - ITEMS_CATALOG entry (may be `{}`)
+ * @param {object} item
+ * @returns {object}
+ */
+function rankCapsFor(catalog, item) {
+  return catalog.rankCaps || item?.rankCaps || {};
+}
+
+/**
+ * Clamps a rank-scaled *total* bonus by an authored ceiling. A missing or
+ * non-numeric cap means uncapped (core power keeps scaling to rank 20).
+ *
+ * @param {number} total
+ * @param {number|undefined} cap
+ * @returns {number}
+ */
+function cappedTotal(total, cap) {
+  return typeof cap === 'number' ? Math.min(total, cap) : total;
+}
+
+/**
+ * Resolves the rank-1 baseline a projection scales from.
+ *
+ * `applyItemRankUp` writes `catalogValue + accruedRankBonus` into the instance
+ * field, so a naive `item.<field> + rankBonus` double-counts the rank. When the
+ * instance field exactly matches that accumulated shape we strip it back to the
+ * catalog baseline, making the projection idempotent on a ranked instance.
+ * Any other explicit (e.g. hand-authored) value is honored as the baseline.
+ *
+ * @param {number|undefined} catalogValue
+ * @param {number|undefined} itemValue
+ * @param {number} accrued rank bonus already materialized on the instance
+ * @param {number} fallback
+ * @returns {number}
+ */
+function resolveBase(catalogValue, itemValue, accrued, fallback) {
+  if (typeof catalogValue === 'number') {
+    if (typeof itemValue === 'number' && itemValue !== catalogValue + accrued) return itemValue;
+    return catalogValue;
+  }
+  return typeof itemValue === 'number' ? itemValue : fallback;
+}
+
+/**
  * Effective damage for a weapon/staff at its current rank.
  * Rank-1 weapons roll `damageMin`..`damageMax`; each rank adds the midpoint of
  * `upgradeSpec.randomDamageInc` (fixed specs contribute their exact delta).
@@ -59,10 +107,12 @@ export function getEffectiveRange(item) {
   if (!item) return 0;
   const catalog = ITEMS_CATALOG[item.item_id] || {};
   const rank = Math.max(1, item.itemLevel || 1);
-  const base = typeof item.range === 'number' ? item.range : (catalog.range || 0);
   const spec = catalog.upgradeSpec || item.upgradeSpec || {};
   const perRank = typeof spec.rangeInc === 'number' ? spec.rangeInc : 0;
-  return base + perRank * (rank - 1);
+  const rankCaps = rankCapsFor(catalog, item);
+  const accrued = cappedTotal(perRank * (rank - 1), rankCaps.rangeInc);
+  const base = resolveBase(catalog.range, item.range, accrued, 0);
+  return base + accrued;
 }
 
 /**
@@ -86,12 +136,14 @@ export function getEffectiveManaCost(item) {
   if (!item) return CONFIG.MAGICIAN_SPARK_MANA_COST;
   const catalog = ITEMS_CATALOG[item.item_id] || {};
   const rank = Math.max(1, item.itemLevel || 1);
-  const base = typeof item.manaCost === 'number' ? item.manaCost : (catalog.manaCost || 0);
   const spec = catalog.upgradeSpec || item.upgradeSpec || {};
   const perRank = typeof spec.manaCostInc === 'number' ? spec.manaCostInc : 0;
   const shieldPerRank = typeof spec.shieldManaCostReduction === 'number' ? spec.shieldManaCostReduction : 0;
+  const rankCaps = rankCapsFor(catalog, item);
   const promotionDiscount = Math.max(0, rank - 1);
-  return Math.max(0, base + (perRank - shieldPerRank) * (rank - 1) - promotionDiscount);
+  const manaCostInc = cappedTotal(perRank * (rank - 1), rankCaps.manaCostInc);
+  const base = resolveBase(catalog.manaCost, item.manaCost, manaCostInc, 0);
+  return Math.max(0, base + manaCostInc - shieldPerRank * (rank - 1) - promotionDiscount);
 }
 
 /**
@@ -111,5 +163,7 @@ export function getEffectiveCooldown(item, fallback = 1.5) {
   const rank = Math.max(1, item?.itemLevel || 1);
   const spec = catalog.upgradeSpec || item?.upgradeSpec || {};
   const perRank = typeof spec.cooldownReductionSec === 'number' ? spec.cooldownReductionSec : 0;
-  return Math.max(1, base - perRank * (rank - 1));
+  const rankCaps = rankCapsFor(catalog, item);
+  const reduction = cappedTotal(perRank * (rank - 1), rankCaps.cooldownReductionSec);
+  return Math.max(1, base - reduction);
 }

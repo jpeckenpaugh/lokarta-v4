@@ -115,6 +115,24 @@ export function applyItemRankUp(player, item, opts = {}) {
   const rank = item.itemLevel;
   const notes = [];
 
+  // Authored utility ceilings (FIX-15b). Catalog wins; a looted/hand-built
+  // instance may carry its own `rankCaps`. A missing key is uncapped.
+  const rankCaps = catalogEntry.rankCaps || item.rankCaps || {};
+  const capFor = key => (typeof rankCaps[key] === 'number' ? rankCaps[key] : Infinity);
+
+  /**
+   * Applies a rank-scaled increment with an authored ceiling. The base stat is
+   * recovered from the live instance field (subtracting the pre-rank capped
+   * total) so the early ranks stay numerically identical to the former
+   * incremental path while later ranks hold the ceiling instead of running away.
+   */
+  const applyCappedInc = (field, inc, capKey, fallback) => {
+    const prevTotal = Math.min(inc * (prevRank - 1), capFor(capKey));
+    const nextTotal = Math.min(inc * (rank - 1), capFor(capKey));
+    const base = (typeof item[field] === 'number' ? item[field] : fallback) - prevTotal;
+    item[field] = base + nextTotal;
+  };
+
   // --- Offense escalations (weapons / staff / wand) ---
   if (spec.randomDamageInc) {
     const [min, max] = spec.randomDamageInc;
@@ -129,11 +147,11 @@ export function applyItemRankUp(player, item, opts = {}) {
     notes.push(`+${spec.stepDamageInc} Wave Dmg`);
   }
   if (spec.rangeInc) {
-    item.range = (item.range || catalogEntry.range || 5) + spec.rangeInc;
+    applyCappedInc('range', spec.rangeInc, 'rangeInc', catalogEntry.range ?? 5);
     notes.push('+1 Range');
   }
   if (spec.manaCostInc) {
-    item.manaCost = (item.manaCost || catalogEntry.manaCost || 1) + spec.manaCostInc;
+    applyCappedInc('manaCost', spec.manaCostInc, 'manaCostInc', catalogEntry.manaCost ?? 1);
     notes.push(`+${spec.manaCostInc} MP`);
   }
 
@@ -155,50 +173,53 @@ export function applyItemRankUp(player, item, opts = {}) {
 
   // --- Golden spec keys ---
   if (spec.arrowCapacityInc) {
-    item.arrowCapacity = (item.arrowCapacity || 25) + spec.arrowCapacityInc;
+    applyCappedInc('arrowCapacity', spec.arrowCapacityInc, 'arrowCapacityInc', 25);
     notes.push(`+${spec.arrowCapacityInc} Cap`);
   }
   if (spec.ammoRegenSecReduction) {
-    item.ammoRegenSec = Math.max(2.5, (item.ammoRegenSec || 5) - spec.ammoRegenSecReduction);
+    const prevReduction = Math.min(spec.ammoRegenSecReduction * (prevRank - 1), capFor('ammoRegenSecReduction'));
+    const nextReduction = Math.min(spec.ammoRegenSecReduction * (rank - 1), capFor('ammoRegenSecReduction'));
+    const baseRegen = (typeof item.ammoRegenSec === 'number' ? item.ammoRegenSec : 5) + prevReduction;
+    item.ammoRegenSec = Math.max(2.5, baseRegen - nextReduction);
     notes.push(`Regen ${item.ammoRegenSec.toFixed(1)}s`);
   }
   if (spec.dodgePctInc) {
-    item.dodgePct = (item.dodgePct || 0) + spec.dodgePctInc;
+    applyCappedInc('dodgePct', spec.dodgePctInc, 'dodgePctInc', 0);
     notes.push(`+${spec.dodgePctInc}% Dodge`);
   }
   if (spec.critChanceInc) {
-    item.critChance = (item.critChance || 0) + spec.critChanceInc;
+    applyCappedInc('critChance', spec.critChanceInc, 'critChanceInc', 0);
     notes.push(`+${spec.critChanceInc}% Crit`);
   }
   if (spec.critMultInc) {
-    item.critMult = (item.critMult || 0) + spec.critMultInc;
+    applyCappedInc('critMult', spec.critMultInc, 'critMultInc', 0);
     notes.push(`+${spec.critMultInc.toFixed(2)} Crit Mult`);
   }
   if (spec.mitigationPctInc) {
-    item.mitigationPct = (item.mitigationPct || 0) + spec.mitigationPctInc;
+    applyCappedInc('mitigationPct', spec.mitigationPctInc, 'mitigationPctInc', 0);
     notes.push(`+${spec.mitigationPctInc}% Mitig`);
   }
   if (spec.healPowerPctInc) {
-    item.healPowerPct = (item.healPowerPct || 0) + spec.healPowerPctInc;
+    applyCappedInc('healPowerPct', spec.healPowerPctInc, 'healPowerPctInc', 0);
     notes.push(`+${spec.healPowerPctInc}% Heal`);
   }
   if (spec.stunInc) {
-    item.stunSec = (item.stunSec || 0) + spec.stunInc;
+    applyCappedInc('stunSec', spec.stunInc, 'stunInc', 0);
     notes.push(`+${spec.stunInc.toFixed(1)}s Stun`);
   }
   if (spec.shieldAbsorbInc) {
-    item.shieldAbsorb = (item.shieldAbsorb || 0) + spec.shieldAbsorbInc;
+    applyCappedInc('shieldAbsorb', spec.shieldAbsorbInc, 'shieldAbsorbInc', 0);
     notes.push(`+${spec.shieldAbsorbInc} Absorb`);
   }
   if (spec.shieldDurationInc) {
-    item.shieldDuration = (item.shieldDuration || 0) + spec.shieldDurationInc;
+    applyCappedInc('shieldDuration', spec.shieldDurationInc, 'shieldDurationInc', 0);
     notes.push(`+${spec.shieldDurationInc}s Bubble`);
   }
   if (spec.shieldManaCostReduction) {
     notes.push(`-${spec.shieldManaCostReduction} MP`);
   }
   if (spec.cooldownReductionSec) {
-    item.cooldownReductionSec = spec.cooldownReductionSec;
+    item.cooldownReductionSec = Math.min(spec.cooldownReductionSec, capFor('cooldownReductionSec'));
     notes.push(`-${spec.cooldownReductionSec}s CD`);
   }
 
@@ -212,7 +233,7 @@ export function applyItemRankUp(player, item, opts = {}) {
     notes.push(`+${spec.siphonHpInc} Siphon HP`);
   }
   if (spec.markDurationInc) {
-    item.markDurationSec = (item.markDurationSec || catalogEntry.markDurationSec || 6) + spec.markDurationInc;
+    applyCappedInc('markDurationSec', spec.markDurationInc, 'markDurationInc', catalogEntry.markDurationSec ?? 6);
     notes.push(`+${spec.markDurationInc}s Mark`);
   }
   if (spec.rangedDamageBonusInc) {

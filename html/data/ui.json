@@ -108,6 +108,14 @@
     "towerContinueLabel": "Continue",
     "towerReturnToTownLabel": "Return to Havenreach"
   },
+  "party": {
+    "description": "Auto-ally feedback copy (FIX-11 / LIV-26). {member}, {level}, {cards}, {item} and {ability} are substituted with display names, never catalog ids. Cues are subtle and non-blocking; no dark patterns.",
+    "allyLevelUpCue": "{member} reached Level {level}",
+    "allyAutoGrantCue": "{member} drafted {cards}.",
+    "allyPotionCue": "{member} drinks a {item}.",
+    "allySupportCue": "{member} casts {ability}.",
+    "recruitJoinCue": "{member} joins the party at Level 1."
+  },
   "pause": {
     "returnToTownEnabled": false,
     "description": "The pause menu does not offer a direct town return; use the tower's stair exits or Tower Gate."

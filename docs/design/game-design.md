@@ -307,25 +307,69 @@ The active member is player-controlled exactly as today; every other member is
 driven by the profile in `party_ai.json` and resolves through the existing
 catalog dispatch tables. No vocation name is hardcoded in engine logic.
 
-### 8.1 Party auto-AI profiles (`party_ai.json`)
+### 8.1 Party auto-AI profiles (`party_ai.json`, schema v2)
 
 `PARTY_AI_CATALOG.profiles[vocation]` is read for every non-active member.
 `default` is the safe fallback for any vocation without a profile (and for
-hand-built units).
+hand-built units). Schema v2 (FIX-11 / LIV-26) adds the nested `movement`,
+`support` and `potion` blocks per profile plus a party-wide top-level
+`autoFateGrant` policy; every v2 key is optional and resolves over `default`, so
+a v1 profile still runs unchanged.
 
-Field semantics (the contract WS4 implements against):
+Field semantics (the contract the engine implements against):
 
 | Field | Meaning |
 | :--- | :--- |
-| `preferredAbilities` | Ordered ability ids; the first usable one (off cooldown, in range, resources available) wins. |
+| `preferredAbilities` | Ordered combat ability ids; the first usable one (off cooldown, in range, resources available) wins. |
 | `followDistance` | Tiles the member trails the active member while no target is acquired. |
 | `engageRadius` | Distance (tiles, from the member) at which it acquires the nearest hostile and closes to fight. |
 | `castRange` | Preferred combat distance; the member closes to / retreats to this while engaged. |
 | `retreatHpPct` | HP fraction (0–1) below which the member disengages and returns to formation. |
 | `retargetSec` | Minimum seconds the member commits to a target before switching. |
-| `healAlliesWhenHurt` | Support flag: prefer a heal when any party member is below the hurt threshold. |
+| `healAlliesWhenHurt` | Legacy v1 support flag, kept `true` on the Paladin for back-compat; `support.enabled` supersedes it. |
 
-Authored profiles:
+**v2 movement naturalness (FIX-8 / [LIV-23](/LIV/issues/LIV-23))**
+
+| Field | Meaning |
+| :--- | :--- |
+| `movement.cadenceSec` | Minimum seconds between this member's move steps (lower = more responsive). |
+| `movement.staggerSec` | Initial phase offset before its first step so allies do not step in lockstep. |
+| `movement.jitterSec` | Random `0..jitterSec` added to each cadence interval for organic variance. |
+| `movement.wanderChance` | Probability rolled once per `wanderCooldownSec` window that an idle, in-formation member takes a short wander step. |
+| `movement.wanderRadius` | Max tiles a wander step may stray from the active member. |
+| `movement.wanderCooldownSec` | Minimum seconds between wander steps. |
+
+**v2 support casting (FIX-10 / [LIV-25](/LIV/issues/LIV-25))**
+
+| Field | Meaning |
+| :--- | :--- |
+| `support.enabled` | Master switch; non-support vocations are `false`. |
+| `support.healPct` | Cast a heal when the most-injured living ally is at/below this HP fraction. |
+| `support.shieldPct` | Shield the most-injured living ally at/below this fraction (while mana allows). |
+| `support.minManaFrac` | Never begin a support cast below this mana fraction. |
+| `support.cooldownSec` | Minimum seconds between this member's support casts (anti-spam). |
+| `support.order` | Support kinds evaluated in order (`["heal","shield"]`). |
+| `support.abilities` | Allowed support ability ids for this vocation. |
+
+**v2 auto-potion (FIX-9 / [LIV-24](/LIV/issues/LIV-24))**
+
+| Field | Meaning |
+| :--- | :--- |
+| `potion.enabled` | Master switch. |
+| `potion.hpPct` | Drink `itemId` from the shared party backpack at/below this HP fraction. Pinned to `0.50` to match the Board rule. |
+| `potion.manaPct` | Else, drink `manaItemId` at/below this mana fraction (HP is checked first). |
+| `potion.cooldownSec` | Minimum seconds between this member's auto-drinks. |
+| `potion.itemId` | HP consumable catalog id (`health_potion`). |
+| `potion.manaItemId` | Mana consumable catalog id (`mana_potion`). |
+
+**v2 deterministic auto-Fate-Grant (FIX-5 / [LIV-20](/LIV/issues/LIV-20))** — read once at the catalog top level, not per profile:
+
+| Field | Meaning |
+| :--- | :--- |
+| `autoFateGrant.picks` | Cards the auto ally drafts per level-up (2, matching the manual draft). |
+| `autoFateGrant.priority` | Ordered rule tokens (highest first) used as tie-breakers: `upgrade`, `main_hand`, `off_hand`, `affinity`, `rarity`, `offer_order`. An unknown token is skipped; an empty list falls back to offer order. |
+
+Authored profiles (v1 values unchanged):
 
 | Vocation | Preferred abilities | Follow | Engage | Cast | Retreat | Retarget | Heals allies |
 | :--- | :--- | ---: | ---: | ---: | ---: | ---: | :--- |
@@ -333,6 +377,18 @@ Authored profiles:
 | **Archer** | `archer_power_shot` → `archer_bow_shot` | 3 | 7 | 6 | 0.30 | 1.2s | no |
 | **Fighter** | `fighter_cleave` → `fighter_slash` | 1 | 3 | 1 | 0.20 | 1.0s | no |
 | **Paladin** | `paladin_heal` → `paladin_holy_strike` | 1 | 3 | 1 | 0.25 | 1.2s | yes |
+
+v2 tuning:
+
+| Vocation | Move cadence / stagger / jitter | Wander % / radius / cd | Support (enabled, heal/shield %, min MP) | Potion (HP%/MP%/cd) | Auto Fate policy |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Magician** | 0.22 / 0.12 / 0.07 | 40% / 2 / 3.5s | no | 50/50/8s | `picks 2` |
+| **Archer** | 0.15 / 0.08 / 0.06 | 35% / 2 / 3.0s | no | 50/50/8s | `picks 2` |
+| **Fighter** | 0.16 / 0.00 / 0.05 | 15% / 1 / 4.0s | no | 50/50/8s | `picks 2` |
+| **Paladin** | 0.20 / 0.04 / 0.06 | 15% / 1 / 4.0s | **yes**, 65/55, 20% | 50/50/8s | `picks 2` |
+| **default** | 0.20 / 0.00 / 0.06 | 20% / 2 / 4.0s | no | 50/50/8s | — |
+
+`autoFateGrant` (party-wide): `picks: 2`, `priority: upgrade → main_hand → off_hand → affinity → rarity → offer_order`.
 
 * **Two postures, one line.** Fighter/Paladin (`followDistance 1`, `castRange 1`)
   hold the line; Archer/Magician (`followDistance 3`) fight from behind. A player
@@ -346,14 +402,152 @@ Authored profiles:
   4s-cooldown Power Shot before the free Bow Shot so the auto-AI does not drain
   the party's arrow stock; the Magician opens with Beam (burst) and fills with
   Spark. *Lenses: economy & reward pacing, MDA.*
-* **Paladin is the only healer.** With `healAlliesWhenHurt: true` and
-  `paladin_heal.healRadius: 6` / `targetsAllies: true`, it finds the most-injured
-  ally, else fights with Holy Strike. This makes recruitment order matter: an
-  early Paladin is a sustain delighter. *Lenses: Kano model, replayability.*
+* **Paladin is the only support.** With `support.enabled: true` and
+  `paladin_heal.healRadius: 6` / `targetsAllies: true`, it heals the most-injured
+  ally at ≤65%, then bulwarks the lowest ally with the Aegis shield at ≤55% while
+  mana stays above 20%, else fights with Holy Strike. This makes recruitment
+  order matter: an early Paladin is a sustain delighter. *Lenses: Kano model,
+  replayability.*
 * **`preferredAbilities` only lists combat-castable abilities.** The Magician's
   `magician_light` vision buff is intentionally excluded: auto-casting a long
   buff needs buff-cast handling in WS4 and is not worth a one-off code path.
   *Lenses: reach for what exists first; no bespoke branch without a contract.*
+
+#### 8.1.1 v2 movement: break the lockstep (FIX-8)
+
+Round-1 allies moved on the same 10 Hz tick in a single file, which read as a
+"conga line" rather than companions. Three small levers fix the feel without
+touching the decision logic:
+
+* **Per-member cadence + stagger.** `cadenceSec` (0.15–0.22) makes each member
+  step at its own rate, and a deterministic `staggerSec` offsets the first step
+  so no two members share a tick. Front to back, the order is Fighter → Paladin →
+  Archer → Magician, which preserves the formation read.
+  *Lenses: game feel / juice, readability.*
+* **Jitter.** `jitterSec` (0.05–0.07) adds bounded variance to each interval so
+  the party never re-syncs into a rhythm. *Lenses: game feel.*
+* **Occasional wander.** Once per `wanderCooldownSec`, an idle, in-formation
+  member rolls `wanderChance` to take a short step inside `wanderRadius` of the
+  active member. The backline wanders more (Archer 35%, Magician 40%) because it
+  repositions for line of sight; the frontline barely moves (15%, radius 1) so
+  the line reads as a wall. *Lenses: MDA (liveliness), readability (front stays
+  put), balance levers (one radius bounds every wander).*
+* **Guard rails.** Cadence never slows a genuine engage/retreat step; the
+  cadence gate only applies to routine follow/wander steps. `wanderRadius`
+  bounds drift so the party never strands a member. *Lenses: mastery vs.
+  frustration, readability.*
+
+#### 8.1.2 v2 support: shields and heals, no spam (FIX-10)
+
+Support is a **separate budgeted cast**, evaluated before combat casts:
+
+1. If `support.enabled` and mana fraction ≥ `support.minManaFrac` and the
+   member's support cooldown is ready: evaluate `support.order`.
+2. `heal` — if the most-injured living ally is at/below `support.healPct` and a
+   heal in `support.abilities` is ready, heal that ally.
+3. `shield` — else if the most-injured living ally is at/below
+   `support.shieldPct` and a shield in `support.abilities` is ready, shield that
+   ally.
+4. Otherwise fall through to the normal `preferredAbilities` combat cast.
+
+Anti-spam is two-layer: the `support.cooldownSec` (4s) global gate plus each
+ability's own cooldown (`paladin_heal` 6s). `minManaFrac` keeps the Paladin from
+healing itself out of offensive mana. Only the Paladin profile is enabled, which
+keeps the party's single point of support legible. *Lenses: balance levers
+(cooldowns, not lower healing), game feel (readable support beats), Kano
+(recruit-order value).*
+
+#### 8.1.3 v2 auto-potion: shared-backpack sustain (FIX-9)
+
+When an auto ally's HP fraction is at/below `potion.hpPct` (`0.50`) and its
+`potion.cooldownSec` (`8s`) is ready, it consumes `potion.itemId`
+(`health_potion`) from the **shared party backpack**; when no HP drink is due and
+mana is at/below `potion.manaPct` (`0.50`), it drinks `potion.manaItemId`
+(`mana_potion`) instead. HP is checked first so a low-HP caster does not burn a
+mana drink on a losing trade. `hpPct` is pinned to `0.50` to match the Board rule
+exactly; the 8s per-ally cooldown plus each member's own resource gate prevents a
+four-member potion dump in one tick. Both potions carry `effect.scope: 'party'`
+in `items.json`, so one drink restores every eligible member (the Board's
+party-wide item 7). *Lenses: economy & reward pacing, balance levers, player
+wellbeing (no forced resource bleed).*
+
+#### 8.1.4 v2 deterministic auto-Fate-Grant (FIX-5)
+
+An auto ally that levels up banks the party's shared XP and drafts **2 cards**
+without pausing the run. The *policy* is deterministic — no player input, no
+modal, and the same offer always yields the same picks:
+
+1. **Offer.** `FateGrantSystem.generateDraftOffer(member, level)` produces the
+   ally's 5-card offer from its vocation pool (unchanged draft roll). A future
+   hardening step can seed this per `memberId + level` for cross-run
+   reproducibility; it is not required for the Board item.
+2. **Pick.** `FateGrantSystem.selectAutoDraft(offer, member, policy)` ranks the
+   offer by `autoFateGrant.priority` tokens — `upgrade` → `main_hand` →
+   `off_hand` → `affinity` → `rarity` → `offer_order` — and takes the top
+   `autoFateGrant.picks` (2). `offer_order` (then offer index) is the stable
+   final tie-break, so ties never fall back to randomness.
+
+Rationale: allies silently gaining power should follow a *plan* — rank up gear,
+then secure a main-hand weapon, then an off-hand, then vocation-fit rarity —
+rather than a lucky roll. The manual active member's interactive draft is
+unchanged. *Lenses: MDA (growing power is felt, not random), balance levers,
+replayability (build diversity).*
+
+#### 8.1.5 v2 copy (`ui.json` → `party`)
+
+| Key | Copy | Shown |
+| :--- | :--- | :--- |
+| `allyLevelUpCue` | `{member} reached Level {level}` | Subtle, non-blocking auto-ally level-up |
+| `allyAutoGrantCue` | `{member} drafted {cards}.` | Auto-Fate-Grant result |
+| `allyPotionCue` | `{member} drinks a {item}.` | Auto-potion (optional, low priority) |
+| `allySupportCue` | `{member} casts {ability}.` | Support cast (optional, low priority) |
+| `recruitJoinCue` | `{member} joins the party at Level 1.` | Recruit confirmation |
+
+`{member}`, `{item}`, `{ability}` substitute display names, never catalog ids. The
+level-up cue is the only one the Board asked for; the rest are optional and must
+stay subtle and non-blocking. *Lenses: readability, no dark patterns.*
+
+#### 8.1.6 Tech Lead implementation contract (FIX-8/9/10/5)
+
+The engine resolves each v2 block field-wise over `default` and the code-owned
+baseline (`resolveMovement` / `resolveSupport` / `resolvePotion`), so a partial
+catalog entry can never drop a baseline. Per-member transient state the engine
+owns (never the catalog):
+
+1. `_stepTimer` — armed to `movement.cadenceSec + rng()*movement.jitterSec` after
+   every step, so routine follow/wander steps are paced and never lockstep.
+2. `_followDelayTimer` — reaction delay sampled with `movement` jitter when the
+   ally settles back into formation, so allies do not all bolt on one tick.
+3. `_wanderCooldown` — gates wandering; reset to `movement.wanderCooldownSec`.
+4. `_supportTimer` — gates support casts; reset to `support.cooldownSec`; a
+   support cast additionally requires `support.enabled`, mana fraction above
+   `support.minManaFrac`, and a valid target at/below the kind's threshold.
+5. `_potionTimer` — gates auto-drinks; reset to `potion.cooldownSec`.
+
+Dispatch seams (all existing handlers, no bespoke branches):
+
+* **Shield support** uses the new `abilities.json` → `holy_shield` entry
+  (`type: "shield"`, `actionKey: "force_shield"`, `executeForceShield`) routed
+  through `CombatSystem.selectShieldTarget`; the Paladin's `support.abilities`
+  lists `["paladin_heal", "holy_shield"]` and `support.order` renders the kind
+  ranking. Heals reuse `CombatSystem.selectHealTarget` + `executeHealingPrayer`.
+* **Auto-potion** routes through `InventorySystem.consumeItem` against the
+  shared party backpack, then applies the `restore` effect to the drinking
+  member (and, per the Board's party-wide rule, to every eligible member in
+  range — see [LIV-24](/LIV/issues/LIV-24)).
+* **Auto-Fate-Grant** reuses `FateGrantSystem.generateDraftOffer` +
+  `FateGrantSystem.selectAutoDraft(offer, member, resolveAutoFateGrantPolicy())`
+  + `FateGrantSystem.applyDraftedCards` (see `party-progression.js`).
+
+Acceptance (T0, content-shaped):
+
+* `profileForVocation` resolves `movement`/`support`/`potion` over `default` for
+  every vocation; `support.enabled` is true **only** for Paladin;
+  `potion.hpPct` is exactly `0.50`; Paladin `support.abilities` includes both
+  `paladin_heal` and `holy_shield`.
+* `resolveAutoFateGrantPolicy()` returns `picks: 2` and the authored
+  `priority`; `selectAutoDraft` is stable for a fixed offer (no random tie-break).
+* No v2 value changes the manual active member's behaviour.
 
 ### 8.2 Auto-mode balance: `campaign.partyScale` (`tower_levels.json`)
 
@@ -459,3 +653,154 @@ Linear campaign chain, keyed by `order` and gated by `unlockRequires`:
 * **No new monsters, abilities, towers, or bespoke code paths** are introduced by
   this section. It is content plus one catalog field (`partyScale`) with an
   existing-handler integration.
+
+## 9. Equipment Rank Curve, ranks 6–20 (FIX-13 / FIX-15)
+
+**Issue:** [LIV-30](/LIV/issues/LIV-30) · **Related:** [LIV-28](/LIV/issues/LIV-28) ·
+**Owner:** Game Designer · **Date:** 2026-10-06
+
+### 9.1 Why
+
+Board T2 round 3 item 2: equipment capped at Rank 5 for the whole game. With a
+4-vocation campaign, a player who keeps a golden set should be able to push it
+further as the party grows — **1 vocation → 5, 2 → 10, 3 → 15, 4 → 20** — with
+stats continuing the Rank 1–5 upgrade path. Item 2 of the same round asked the
+AI to raise shields more often. This section pins both.
+
+### 9.2 Rank cap scales with party size (`economy.json`)
+
+`shop.maxRankByParty` is keyed by live member/vocation count; `shop.maxRank` is
+the solo/legacy fallback.
+
+| Party size | Max rank |
+| ---: | ---: |
+| 1 | 5 |
+| 2 | 10 |
+| 3 | 15 |
+| 4 | 20 |
+
+The engine resolves this via `EconomySystem.maxRankForParty(player)` and threads
+it through `canUpgradeItem(item, player)`, `EconomySystem.canUpgrade(item,
+player)`, and `applyItemRankUp(player, item)` (Tech Lead / [LIV-28](/LIV/issues/LIV-28)).
+Sizes above 4 clamp to the largest authored entry; a malformed/absent party
+falls back to `maxRank` (5), so legacy solo saves are balance-neutral.
+*Lenses: balance levers, replayability, save compatibility.*
+
+### 9.3 The rank curve principle: core power scales, utility plateaus
+
+Every upgradeable item's `upgradeSpec` is an authored **per-rank delta**; ranks
+6–20 apply the *same* delta as ranks 1–5, so the two halves of the curve read as
+one continuous path (the Board's "following similar upgrade path"). Two classes
+of field behave differently once the cap rises to 20:
+
+* **Core power — keeps scaling linearly to Rank 20.** Weapon damage
+  (`randomDamageInc` / `stepDamageInc`), `maxHpInc`, `maxMpInc`,
+  `healPowerPctInc`, `poisonDpsInc`, `siphonHpInc`, `rangedDamageBonusInc`,
+  `arrowCapacityInc`. This is the reward the player chases; a Rank 20 weapon
+  should hit noticeably harder. *Lenses: economy & reward pacing, game feel.*
+* **Utility / control / defensive — plateaus at an authored ceiling.** Range,
+  mana cost, stun, dodge, crit, mitigation, shield absorb/duration, mark
+  duration, cooldown reduction. Left linear to 20 they break the game (a
+  `+1 range/rank` wand would reach **24** tiles; `+1s stun/rank` on the cape
+  would stun-lock **24s**; `-1s CD/rank` on a 10s ability reaches the 1s floor
+  and becomes infinite CC). Each is clamped by a new per-item catalog field,
+  `rankCaps`, so the stat rises during the early ranks and then holds a
+  deliberate ceiling while core power keeps growing.
+
+### 9.4 `rankCaps` — the authored ceiling table
+
+`items.json.<item>.rankCaps.<incKey>` = the **maximum total bonus** that
+increment may contribute across all ranks. The engine applies
+`min(incKey × (rank−1), rankCaps.incKey)`. Omitting a key means uncapped (core
+power).
+
+| Item | Capped field (`incKey`) | Delta/rank | Cap | Cap reached | Rank-20 result |
+| :--- | :--- | ---: | ---: | ---: | :--- |
+| Spark Wand (`apprentice_wand`) | `rangeInc` | 1 | 3 | 4 | Range 8 (was 5) |
+| Beam Staff (`astral_scepter`) | `rangeInc` | 1 | 3 | 4 | Range 7 (was 4) |
+| Beam Staff (`astral_scepter`) | `manaCostInc` | 5 | 20 | 5 | ~6 MP after promo discount |
+| Composite Longbow (`composite_bow`) | `rangeInc` | 1 | 3 | 4 | Range 9 (was 6) |
+| Grey Stalker Quiver | `ammoRegenSecReduction` | 0.5 | 2.5 | 6 | Regen floored at 2.5s |
+| Vampiric Cloak (`hunter_leathers`) | `dodgePctInc` | 2 | 20 | 11 | +20% dodge |
+| Ranger's Talisman | `critChanceInc` / `critMultInc` / `markDurationInc` | 1 / 0.05 / 1 | 25 / 0.5 / 6 | 26/11/7 | +19% crit, +0.5 mult, 12s mark |
+| Vanguard Battleplate | `mitigationPctInc` / `cooldownReductionSec` | 1 / 1 | 15 / 8 | 16/9 | +15% mitig, Fortify ≥6s |
+| Berserker's Sigil | `critChanceInc` / `critMultInc` / `cooldownReductionSec` | 1 / 0.05 / 0.25 | 25 / 0.5 / 1.5 | 26/11/7 | +19% crit, +0.5 mult, Cleave ≥1.5s |
+| Vanguard Shield | `stunInc` / `cooldownReductionSec` | 0.5 / 1 | 1.5 / 5 | 4/6 | 2.5s stun, Bash ≥5s |
+| Sanctuary Plate | `mitigationPctInc` / `shieldAbsorbInc` / `shieldDurationInc` | 1 / 5 / 4 | 15 / 40 / 12 | 16/9/4 | +15%, 55 absorb, 32s |
+| Aegis Shield | `shieldAbsorbInc` / `shieldDurationInc` | 5 / 4 | 40 / 12 | 9/4 | 50 absorb, 42s |
+| Holy Crown | `healPowerPctInc` | 3 | 30 | 11 | +45% heal |
+| Dawnlight Reliquary | `healPowerPctInc` / `cooldownReductionSec` | 3 / 2 | 30 / 8 | 11/5 | +42% heal, Benediction ≥10s |
+| Knight Plate Armor | `mitigationPctInc` | 1 | 15 | 16 | +15% mitig |
+| Apprentice's Cape | `stunInc` / `cooldownReductionSec` | 1 / 1 | 1 / 5 | 2/6 | 6s stun, Shield ≥5s |
+| Luminous Amulet | `cooldownReductionSec` | 2 | 10 | 6 | Prayer ≥10s (from 20s) |
+
+*No `rankCaps` are authored for pure damage/HP/MP items (Tempered Broadsword,
+Consecrated Warhammer, Iron Helm) — they are uncapped by design.*
+*Lenses: readability & legibility (numbers stay bounded and legible), balance
+levers (change the smallest field that fixes the break).*
+
+### 9.5 Economy curve for the long ranks
+
+The upgrade cost formula is unchanged and simply extends past Rank 5:
+`cost(rank) = upgradeBaseCost + upgradeCostPerRank × (rank − 1)` =
+`40 + 35 × (rank − 1)`.
+
+| Rank → next | 1 | 2 | 3 | 4 | 5 | 6 | 8 | 10 | 12 | 15 | 18 | 19→20 |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Gold | 40 | 75 | 110 | 145 | 180 | 215 | 285 | 355 | 425 | 530 | 635 | 670 |
+
+Ranks 1–5 are byte-identical to the shipped curve (the Golden-set tests pin
+`40 + 35×3 = 145` at Rank 4), so the existing early game is untouched. Beyond
+Rank 5 the linear curve is already a rising sink — a single item taken from
+Rank 1 to Rank 20 costs **7,410 gold**, and a four-item set costs ≈30k — which
+tracks the campaign's monster/chest/boss gold without a new curve type. If
+playtesting later shows upgrades too cheap or too expensive, the one lever to
+turn is `shop.upgradeCostPerRank`; do not add a per-rank table.
+*Lenses: economy & reward pacing, scope discipline.*
+
+### 9.6 AI shield frequency (FIX-15, board item 4)
+
+Board: shields/force fields should trigger more often on AI mode. The AI's hard
+gate is the **ability's own cooldown** (`actor.cooldowns[actionKey]`), not just
+the shared support cadence, so both moved:
+
+| Lever | Before | After | Why |
+| :--- | ---: | ---: | :--- |
+| `abilities.holy_shield.cooldownSec` | 12 | 6 | Hard recast gate; halves downtime so the bubble rotates across the party. |
+| `abilities.holy_shield.manaCost` | 18 | 12 | Keeps the rotation sustainable on the Paladin's 90 mana. |
+| `party_ai.paladin.support.shieldPct` | 0.55 | 0.90 | Shields proactively (the lowest un-warded ally at ≤90% HP) instead of only in emergencies. |
+| `party_ai.paladin.support.cooldownSec` | 4.0 | 2.0 | Shared anti-spam cadence shortened to match. |
+| `party_ai.paladin.support.minManaFrac` | 0.20 | 0.15 | Lets the shield fire a little deeper into the mana bar. |
+
+`healPct` (0.65) and the ability cooldowns for `paladin_heal` are unchanged, so
+the heal-over-shield priority and the heal cadence are untouched. Spam is still
+structurally prevented by three existing rules: `selectShieldTarget` **never
+re-wards an already-warded ally**, the 6s ability cooldown, and the 2s shared
+cadence. Only the Paladin carries a shield ability, so no other vocation gains
+support casting. *Lenses: game feel/juice, enemy-role-support readability,
+Kano performance.*
+The ability cooldown/mana are global (the player's Aegis shield shares them) —
+a small deliberate buff, since the board's ask is about felt responsiveness.
+
+### 9.7 Remaining Tech Lead contract — honor `rankCaps` (FIX-15b)
+
+`rankCaps` is authored data; the rank projection must clamp before the cap is
+exposed (i.e. in the same integration as [LIV-28](/LIV/issues/LIV-28)'s
+`maxRankByParty`). Delegate: [LIV-30](/LIV/issues/LIV-30) FIX-15b.
+
+1. `item-stats.js` — for each capped key, effective total =
+   `min(incKey × (rank − 1), rankCaps.incKey)`:
+   `getEffectiveRange` (`rangeInc`), `getEffectiveManaCost` (`manaCostInc`),
+   `getEffectiveCooldown` (`cooldownReductionSec`, before the 1s floor).
+2. `item-progression.js` `applyItemRankUp` — when mutating instance fields, clamp
+   the accumulated bonus to the item's `rankCaps` total (read from the catalog
+   entry), for every capped key (range, manaCost, stun, dodge, crit, critMult,
+   mitigation, healPower, shieldAbsorb, shieldDuration, arrowCapacity,
+   ammoRegenSec, cooldownReductionSec). Uncapped keys keep accumulating.
+3. Acceptance (T0): a Rank-20 Spark Wand has range **8**; a Rank-20 Astral
+   Scepter range **7** and ≤ ~15 MP; a Rank-20 Vanguard Shield stun **2.5s**,
+   bash cooldown **≥5s**; a Rank-20 Apprentice's Cape stun **6s**, cooldown
+   **≥5s**; uncapped Tempered Broadsword damage still
+   `16 + avg(4..6) × 19`; every Rank 1–5 projection is byte-identical to the
+   current baseline; the full T0 suite stays green.
+

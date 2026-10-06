@@ -10,7 +10,7 @@
     "retargetSec": "Minimum seconds the member commits to a target before switching.",
     "healAlliesWhenHurt": "Legacy support flag (v1): prefer a heal when any party member is below the hurt threshold. Superseded by `support.enabled` but kept true on the Paladin for back-compat.",
     "movement": "v2 movement naturalness (FIX-8 / LIV-23). `cadenceSec` = minimum seconds between this member's move steps (lower = more responsive); `staggerSec` = initial phase offset before its first step so allies do not step in lockstep; `jitterSec` = random 0..jitterSec added to each cadence interval for organic variance; `wanderChance` = probability rolled once per `wanderCooldownSec` window that an idle, in-formation member takes a short wander step; `wanderRadius` = max tiles a wander step may stray from the active member; `wanderCooldownSec` = minimum seconds between wander steps.",
-    "support": "v2 support casting (FIX-10 / LIV-25). Casts only when `enabled`. `healPct` = cast a heal when the most-injured living ally is at or below this HP fraction; `shieldPct` = shield the most-injured ally at or below this fraction; `minManaFrac` = never begin a support cast below this mana fraction; `cooldownSec` = minimum seconds between this member's support casts (anti-spam); `order` = support kinds evaluated in order ('heal' before 'shield' or vice versa); `abilities` = allowed support ability ids for this vocation.",
+    "support": "v2 support casting (FIX-10 / LIV-25; enlarged FIX-15 / LIV-30). Casts only when `enabled`. `healPct` = cast a heal when the most-injured living ally is at or below this HP fraction; `shieldPct` = shield the most-injured un-warded ally at or below this fraction; `minManaFrac` = never begin a support cast below this mana fraction; `cooldownSec` = minimum seconds between this member's support casts (anti-spam); `order` = support kinds evaluated in order ('heal' before 'shield' or vice versa); `abilities` = allowed support ability ids for this vocation. FIX-15 raises `shieldPct` to 0.9 and shortens the cadence so auto allies keep a bubble rolling across the party; the ability's own cooldown (`holy_shield.cooldownSec`) is the hard gate it must also clear.",
     "potion": "v2 auto-potion (FIX-9 / LIV-24). When HP fraction is at or below `hpPct`, the member consumes `itemId` from the shared party backpack if off `cooldownSec`; when no HP drink is due and mana fraction is at or below `manaPct`, it consumes `manaItemId` instead. `hpPct` is pinned to 0.50 to match the Board rule (auto-drink below 50%). The consumed potion's authored `effect.scope: 'party'` makes the restore land on every eligible party member, not just the drinker.",
     "autoFateGrant": "v2 deterministic auto-Fate-Grant policy (FIX-5 / LIV-20), read once for the whole party. Non-active allies that level up auto-draft `picks` cards without pausing; `priority` is an ordered list of rule tokens (highest first) used as tie-breakers. Valid tokens: upgrade, main_hand, off_hand, affinity, rarity, offer_order. The offer itself is generated per member per level; the policy picks deterministically from whatever is offered."
   },
@@ -38,9 +38,9 @@
     "support": {
       "enabled": false,
       "healPct": 0.6,
-      "shieldPct": 0.55,
-      "minManaFrac": 0.2,
-      "cooldownSec": 4.0,
+      "shieldPct": 0.9,
+      "minManaFrac": 0.15,
+      "cooldownSec": 2.0,
       "order": ["heal", "shield"],
       "abilities": []
     },
@@ -178,9 +178,9 @@
       "support": {
         "enabled": true,
         "healPct": 0.65,
-        "shieldPct": 0.55,
-        "minManaFrac": 0.2,
-        "cooldownSec": 4.0,
+        "shieldPct": 0.9,
+        "minManaFrac": 0.15,
+        "cooldownSec": 2.0,
         "order": ["heal", "shield"],
         "abilities": ["paladin_heal", "holy_shield"]
       },
@@ -192,7 +192,7 @@
         "itemId": "health_potion",
         "manaItemId": "mana_potion"
       },
-      "_note": "Melee anchor and the party's only support: Holy Prayer (healRadius 6) heals the most-injured ally at <=65% HP, then Aegis Holy Shield (range 6) bulwarks the lowest ally at <=55% while mana stays above 20%; a 4s support cooldown plus the heal's own 6s / shield's 12s cooldown means no spam. Holds the line (wander 0.15, radius 1) so the heal radius stays on the front. Mana powers heals, so it drinks mana at 50%."
+      "_note": "Melee anchor and the party's only support: Holy Prayer (healRadius 6) heals the most-injured ally at <=65% HP, then Aegis Holy Shield (range 6, cooldown 6s) bulwarks the most-injured un-warded ally at <=90% while mana stays above 15%; a 2s cadence plus the shield's own 6s cooldown and its never-ward-an-ally-already-warded rule means the bubble stays up without spam (FIX-15 / LIV-30: shield frequency was too low). Holds the line (wander 0.15, radius 1) so the heal radius stays on the front. Mana powers heals and shields, so it drinks mana at 50%."
     }
   }
 }

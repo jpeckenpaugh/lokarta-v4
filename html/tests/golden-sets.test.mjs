@@ -155,7 +155,7 @@ describe('LOK-15 Golden Sets — Data & Drafts', () => {
     }
     assert.equal(bow.itemLevel, 5);
     assert.equal(bow.damage, before + 24, `Composite Longbow reaches rank-5 damage +24 (${before} -> ${bow.damage})`);
-    assert.equal(bow.range, 6 + 4, 'Composite Longbow +4 range at rank 5 (range 10)');
+    assert.equal(bow.range, 6 + 3, 'Composite Longbow +3 range at rank 5 (rangeInc rankCaps ceiling 3)');
   });
 });
 
@@ -272,14 +272,14 @@ describe('LOK-15 Golden Sets — Fighter (Iron Vanguard)', () => {
     assert.equal(m3.stunTimer, 0, 'a monster 2 tiles away is neither pushed nor stunned');
   });
 
-  it('vanguard shield ranks to 5: stun 3.0s, effective cooldown 6s', () => {
+  it('vanguard shield ranks to 5: stun 2.5s (rankCaps), effective cooldown 6s', () => {
     const fgt = equipGoldenSet('fighter');
     const shield = fgt.paperdoll.off_hand;
     for (let r = 1; r < 5; r++) {
       FateGrantSystem.applyDraftedCards(fgt, [{ isUpgrade: true, targetItemId: 'vanguard_shield', item: { item_id: 'vanguard_shield' } }], makeFloorGrid());
     }
     assert.equal(shield.itemLevel, 5);
-    assert.equal(shield.stunSec, 3.0);
+    assert.equal(shield.stunSec, 2.5);
     assert.equal(CombatSystem.getEffectiveCooldown(shield), 6, 'rank-5 shield bash effective cooldown is 6s');
     assert.equal(CombatSystem.getEffectiveCooldown(fgt.paperdoll.off_hand).constructor === Number, true);
   });
@@ -361,7 +361,7 @@ describe('LOK-15 Golden Sets — Paladin (Radiant Crusader)', () => {
     assert.equal(pal.shieldAbsorb, 0, 'bubble pops when fully absorbed');
   });
 
-  it('bubble pops on expiry (duration decay) and aegis ranks to 5 (absorb 30 / 46s / 7 MP)', () => {
+  it('bubble pops on expiry (duration decay) and aegis ranks to 5 (absorb 30 / 42s / 7 MP)', () => {
     const pal = equipGoldenSet('paladin');
     const shield = pal.paperdoll.off_hand;
     pal.mana = 200;
@@ -377,7 +377,7 @@ describe('LOK-15 Golden Sets — Paladin (Radiant Crusader)', () => {
     }
     assert.equal(shield.itemLevel, 5);
     assert.equal(shield.shieldAbsorb, 30);
-    assert.equal(shield.shieldDuration, 46);
+    assert.equal(shield.shieldDuration, 42, 'shieldDurationInc rankCaps ceiling 12 (base 30 + 12)');
     assert.equal(CombatSystem.getEffectiveManaCost(shield), 3, 'rank-5 holy shield costs 3 MP (-2/rank shield spec plus the promoted-label discount)');
   });
 
