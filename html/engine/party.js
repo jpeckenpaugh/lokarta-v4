@@ -60,9 +60,10 @@ export const MAX_PARTY_SIZE = Math.max(1, Object.keys(VOCATIONS_CATALOG || {}).l
  * member. Every other top-level player field is active-member state that is
  * mirrored into the active `party` entry on capture.
  *
- * `backpack` is the single **shared party backpack** (LIV-22): it stays on the
- * top-level player and is never swapped per member, so loot picked up by the
- * active member or an auto ally always lands in one stash. `action_bar` (the
+ * `backpack` is the single **shared party backpack** (LIV-22) and `levelKeys`
+ * is the single **shared party key ring** (LIV-33): both stay on the top-level
+ * player and are never swapped per member, so loot/keys picked up by the active
+ * member or an auto ally always land in one stash. `action_bar` (the
  * per-character quick-use hotbar) and `paperdoll` (equipped gear) stay per
  * member.
  */
@@ -75,6 +76,8 @@ const MEMBER_EXCLUDED_KEYS = new Set([
   'current_floor', 'towerId', 'location', 'townVisits',
   // Shared party backpack: one grid for the whole party (LIV-22).
   'backpack',
+  // Shared party key ring: one earned-key store for the whole party (LIV-33).
+  'levelKeys',
   // Member identity / meta (owned by the member entry, not copied from top level).
   'id', 'memberId', 'vocation', 'aiMode', 'faction', 'anim',
 ]);
@@ -155,6 +158,42 @@ function consolidateSharedInventory(player, members, activeId) {
   return changed;
 }
 
+/**
+ * Folds per-member `levelKeys` from pre-LIV-33 saves into the shared top-level
+ * key ring, then strips the per-member copies. `player.levelKeys` (the active
+ * member's live mirror) is authoritative; every non-active member's earned
+ * tiers are unioned in per level so a key earned by *any* member survives the
+ * upgrade and is never lost when control cycles. Keys stay non-inventory and
+ * one-per-tier (`=== true`), so the union is idempotent. Returns true when
+ * anything changed.
+ */
+function consolidatePartyKeys(player, members) {
+  let changed = false;
+  if (!player.levelKeys || typeof player.levelKeys !== 'object' || Array.isArray(player.levelKeys)) {
+    player.levelKeys = {};
+    changed = true;
+  }
+  for (const member of members) {
+    if (!member || typeof member !== 'object' || !('levelKeys' in member)) continue;
+    const memberKeys = member.levelKeys;
+    if (memberKeys && typeof memberKeys === 'object' && !Array.isArray(memberKeys)) {
+      for (const [level, tiers] of Object.entries(memberKeys)) {
+        if (!tiers || typeof tiers !== 'object') continue;
+        const dest = player.levelKeys[level] || (player.levelKeys[level] = {});
+        for (const [tier, earned] of Object.entries(tiers)) {
+          if (earned === true && dest[tier] !== true) {
+            dest[tier] = true;
+            changed = true;
+          }
+        }
+      }
+    }
+    delete member.levelKeys;
+    changed = true;
+  }
+  return changed;
+}
+
 function normalizeVocation(vocation) {
   const key = String(vocation || '').toLowerCase();
   return VOCATIONS_CATALOG && VOCATIONS_CATALOG[key] ? key : null;
@@ -194,9 +233,11 @@ export function createPartyMember(vocation, overrides = {}) {
   member.vocation = key;
   member.aiMode = DEFAULT_AI_MODE;
   member.faction = PARTY_FACTION;
-  // The party shares one backpack held on the top-level player (LIV-22); a
-  // member never carries its own copy. The hotbar and equipment stay per member.
+  // The party shares one backpack (LIV-22) and one key ring (LIV-33) held on
+  // the top-level player; a member never carries its own copy. The hotbar and
+  // equipment stay per member.
   delete member.backpack;
+  delete member.levelKeys;
   for (const [field, value] of Object.entries(overrides || {})) {
     if (field === 'memberId' || field === 'vocation' || field === 'faction') continue;
     member[field] = clone(value);
@@ -470,7 +511,9 @@ export function migratePlayerParty(player) {
     // Fold any legacy per-member backpack/hotbar into the shared party stash
     // (LIV-22) and strip the per-member copies.
     const inventoryChanged = consolidateSharedInventory(player, members, activeId);
-    if (!membersChanged && !progressChanged && !activeIdChanged && !inventoryChanged) return player;
+    // Fold any per-member key ring into the shared top-level store (LIV-33).
+    const keysChanged = consolidatePartyKeys(player, members);
+    if (!membersChanged && !progressChanged && !activeIdChanged && !inventoryChanged && !keysChanged) return player;
     return { ...player, party: members, activeMemberId: activeId, towerProgress: progress };
   }
 
@@ -488,8 +531,10 @@ export function migratePlayerParty(player) {
     activeMemberId: member.memberId,
     towerProgress: progress,
   };
-  // Normalize the shared containers (LIV-22) so a rerun is an idempotent no-op.
+  // Normalize the shared containers (LIV-22 backpack, LIV-33 key ring) so a
+  // rerun is an idempotent no-op.
   consolidateSharedInventory(result, result.party, member.memberId);
+  consolidatePartyKeys(result, result.party);
   return result;
 }
 

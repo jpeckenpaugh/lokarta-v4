@@ -266,7 +266,8 @@ test('LIV-14 integration: a legacy single-character save migrates to a one-membe
   assert.equal(migrated.party[0].vocation, 'fighter');
   assert.equal(migrated.party[0].level, 7, 'level survives migration');
   assert.equal(migrated.party[0].gold, 999);
-  assert.deepEqual(migrated.party[0].levelKeys, { 1: { copper: true } });
+  assert.deepEqual(migrated.levelKeys, { 1: { copper: true } }, 'keys live on the shared party store');
+  assert.equal(migrated.party[0].levelKeys, undefined, 'keys are party-shared, not per member');
   assert.equal(migrated.activeMemberId, migrated.party[0].memberId);
   assert.deepEqual(migrated.towerProgress.unlockedTowerIds, [firstTowerId()]);
   assert.equal(migratePlayerParty(migrated), migrated, 'migration is idempotent');

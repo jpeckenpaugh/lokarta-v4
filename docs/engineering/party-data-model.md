@@ -41,6 +41,12 @@ Shared run state (`current_floor`, `towerId`, `location`, `townVisits`) and the
 save envelope (`slotId`, `slotIndex`, `saveVersion`, `playtimeMs`, timestamps,
 `floorEntry`) live on the top level, **not** on members.
 
+Two resources are **party-shared** and live only on the top level: `backpack`
+(the shared party backpack, LIV-22) and `levelKeys` (the shared party key ring,
+LIV-33). Both are in `MEMBER_EXCLUDED_KEYS`, so `captureActiveMember` /
+`applyActiveMember` never copy them in or out of a member; cycling the active
+member cannot hide loot or an earned key.
+
 ### Sync contract (`html/engine/party.js`)
 
 - The **top level is authoritative** for the active member while playing.
@@ -66,6 +72,9 @@ tower migration, guarded by `game_settings/migration_party_v4`:
 - Initializes `towerProgress` with **only the first tower unlocked**.
 - Preserves level, xp, gold, backpack, paperdoll, action bar, `levelKeys`, and
   `springCharges`; drops nothing and resets no floor caches.
+- Folds any pre-LIV-33 per-member `levelKeys` copies into the shared top-level
+  key ring (union per level/tier) and strips them, so keys earned before the
+  upgrade survive and can never be hidden by a later active-member cycle.
 - Backfills `towerProgress` onto slot metadata for the tower picker.
 - Idempotent: a rerun is a no-op once the guard exists.
 
@@ -280,7 +289,14 @@ Per-member decision order each tick (all catalog-driven):
    `healAlliesWhenHurt`); gates are per-actor cooldown, mana, range, LOS and (for
    the Beam line attack) rough cardinal alignment.
 3. **Engage** — close to `castRange` with A* (`EntityAI.findNextStepAStar`).
-4. **Follow** — trail the active member at `followDistance`.
+   Target acquisition holds a committed target for `retargetSec`; a profile with
+   `protect.enabled` first retaliates against the hostile attacking another
+   party member before defaulting to `nearestHostile` (LIV-33).
+4. **Search** — out of combat (`protect`/combat found no target) and
+   `itemSearch.enabled`, step toward the nearest ground item within
+   `itemSearch.radius`; the app's walk-over pipeline banks it in the shared
+   backpack (LIV-33).
+5. **Follow** — trail the active member at `followDistance`.
 
 Movement never enters an occupied tile (monster, ally or active member) and
 always uses `gridMap.isWalkable`; `blockersFor` passes integer-keyed occupancy
@@ -355,3 +371,60 @@ backpack**; no member carries its own backpack.
   Empty tiles are a no-op.
 
 T0 coverage: `html/tests/liv22-ally-pickup.test.mjs`.
+
+---
+
+## 10. WS8 shared keys, ally item search & protector targeting (LIV-33)
+
+Sprint 001 close tweaks. All three are catalog-driven; values live in
+`party_ai.json` and no vocation/ability name is hardcoded.
+
+### 10.1 Shared party key ring (`html/engine/party.js`)
+
+- `levelKeys` joins `MEMBER_EXCLUDED_KEYS`: it lives on the **top-level player**
+  (the party key ring) and is never copied into or out of a member. A key picked
+  up by the controlled member *or* an auto ally credits the one store.
+- A `PartyMember` carries **no** `levelKeys`. `createPartyMember` strips it, and
+  `captureActiveMember` / `applyActiveMember` skip it, so
+  `setActiveMember`/`cycleActiveMember` can never hide or lose an earned key.
+- Tier gates (`DoorSystem.hasKey`/`syncPlayerGates`, `floor-controller.js`,
+  `game-loop.js`) read the top-level store, so a gate opens regardless of which
+  member is active. Keys stay non-inventory, one-per-tier (`=== true`), and the
+  grant/union is idempotent.
+- `migratePlayerParty` folds legacy per-member `levelKeys` into the top-level
+  store (union per level/tier) and strips the per-member copies; the fold is a
+  reference no-op on rerun.
+
+### 10.2 Ally ground-item search (`party_ai.json` → `itemSearch`)
+
+| Field | Meaning |
+| :--- | :--- |
+| `itemSearch.enabled` | Master switch for out-of-combat looting. |
+| `itemSearch.radius` | Search leash in tiles (0 disables scanning). |
+
+When a member has no engaged target, `PartyAI` scans a bounded
+`radius`-tile window for the nearest walkable ground item with LOS and steps
+toward it with `EntityAI.findNextStepAStar` (paced by `movement.cadenceSec`).
+The step is a normal `move` event, so the app's existing
+`handleAllyWalkoverPickup` → `handlePickUp` pipeline banks the drop in the shared
+party backpack. Combat, retreat and support decisions run first, so looting
+never competes with survival. Engine baseline: `DEFAULT_AI_ITEM_SEARCH`.
+
+### 10.3 Protector/retaliate targeting (`party_ai.json` → `protect`)
+
+| Field | Meaning |
+| :--- | :--- |
+| `protect.enabled` | Prioritize the hostile attacking a party member over the nearest hostile. |
+| `protect.radius` | Max tiles the member will leave formation to reach that attacker. |
+
+`EntityAI.updateMonsters` records `monster.aggroTarget` when a hostile engages a
+party member. On retarget, a protector profile locks the hostile attacking
+another member (target-locked, or adjacent — the fallback for hand-built
+monsters) when it is within `protect.radius`; otherwise it falls back to
+`nearestHostile` under the usual `retargetSec`/leash rules. Only front-line
+profiles (fighter/paladin) enable it; backline/support profiles keep their
+`followDistance`/`support` posture. Engine baseline: `DEFAULT_AI_PROTECT`
+(`enabled: false`).
+
+T0 coverage: `html/tests/liv33-party-tweaks.test.mjs` (shared keys + cycle +
+gate, key migration, item-search pathing/pickup, protector targeting).

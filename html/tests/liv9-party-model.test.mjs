@@ -253,7 +253,10 @@ test('LIV-9 migration: legacy single-character save wraps without data loss', ()
   assert.equal(member.xp, 210, 'xp preserved');
   assert.equal(member.hp, 41, 'hp preserved');
   assert.equal(member.gold, 512, 'gold preserved');
-  assert.deepEqual(member.levelKeys, LEGACY_PLAYER.levelKeys, 'level keys preserved');
+  // LIV-33 changed the key contract: keys are a shared party store on the top
+  // level and members never carry their own key ring.
+  assert.deepEqual(migrated.levelKeys, LEGACY_PLAYER.levelKeys, 'level keys preserved on the shared party store');
+  assert.equal(member.levelKeys, undefined, 'a member carries no key ring of its own');
   assert.deepEqual(member.springCharges, LEGACY_PLAYER.springCharges, 'spring charges preserved');
   assert.deepEqual(member.paperdoll, LEGACY_PLAYER.paperdoll, 'paperdoll preserved');
   // LIV-22 changed the backpack contract: the party shares one top-level
@@ -404,7 +407,8 @@ test('LIV-9 migration: migratePartySave wraps legacy saves and is idempotent', a
   assert.equal(character.party.length, 1);
   assert.equal(character.activeMemberId, makeMemberId('archer'));
   assert.deepEqual(character.towerProgress, { completedTowerIds: [], unlockedTowerIds: [firstTowerId()] });
-  assert.deepEqual(character.party[0].levelKeys, LEGACY_PLAYER.levelKeys, 'keys survive migration');
+  assert.deepEqual(character.levelKeys, LEGACY_PLAYER.levelKeys, 'keys survive migration on the shared party store');
+  assert.equal(character.party[0].levelKeys, undefined, 'members carry no key ring of their own');
   assert.deepEqual(character.party[0].springCharges, LEGACY_PLAYER.springCharges, 'spring charges survive migration');
 
   const slot = await read(STORES.SAVE_SLOTS, 'slot_1');

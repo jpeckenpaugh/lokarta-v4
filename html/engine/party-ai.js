@@ -30,7 +30,7 @@ import { CombatSystem } from './combat-system.js';
 import { EntityAI } from './entity-ai.js';
 import { InventorySystem } from './inventory-system.js';
 import { LightingSystem } from './lighting-system.js';
-import { isHostile, sameActor } from './faction.js';
+import { isFriendly, isHostile, sameActor } from './faction.js';
 
 /** Safe baseline profile when a vocation has no authored entry. */
 export const DEFAULT_AI_PROFILE = Object.freeze({
@@ -43,6 +43,8 @@ export const DEFAULT_AI_PROFILE = Object.freeze({
   healAlliesWhenHurt: false,
   movement: null,
   potion: null,
+  itemSearch: null,
+  protect: null,
 });
 
 /**
@@ -151,6 +153,58 @@ function resolvePotion(catalogDefault, profile) {
 }
 
 /**
+ * LIV-33 ally ground-item search baseline. Catalog `party_ai.json` `itemSearch`
+ * objects are authoritative; this only covers a missing / partial entry.
+ * `enabled` gates out-of-combat looting and `radius` is the search leash in
+ * tiles (0 disables scanning). Combat/retreat/support decisions always run
+ * first, so item finding never competes with survival.
+ */
+export const DEFAULT_AI_ITEM_SEARCH = Object.freeze({
+  enabled: true,
+  radius: 6,
+});
+
+/** Merge `itemSearch` blocks (defaults <- catalog default <- vocation). */
+function resolveItemSearch(catalogDefault, profile) {
+  const out = { ...DEFAULT_AI_ITEM_SEARCH };
+  const sources = [catalogDefault, profile];
+  for (let s = 0; s < sources.length; s++) {
+    const search = sources[s] && sources[s].itemSearch;
+    if (!search || typeof search !== 'object') continue;
+    if (typeof search.enabled === 'boolean') out.enabled = search.enabled;
+    const radius = Number(search.radius);
+    if (Number.isFinite(radius)) out.radius = radius;
+  }
+  return out;
+}
+
+/**
+ * LIV-33 protector/retaliate baseline. Catalog `party_ai.json` `protect` objects
+ * are authoritative; this only covers a missing / partial entry. When `enabled`,
+ * a member prioritizes the hostile attacking another party member over the
+ * nearest hostile. `radius` bounds how far it leaves formation to reach that
+ * attacker. Only front-line protectors enable it.
+ */
+export const DEFAULT_AI_PROTECT = Object.freeze({
+  enabled: false,
+  radius: 8,
+});
+
+/** Merge `protect` blocks (defaults <- catalog default <- vocation). */
+function resolveProtect(catalogDefault, profile) {
+  const out = { ...DEFAULT_AI_PROTECT };
+  const sources = [catalogDefault, profile];
+  for (let s = 0; s < sources.length; s++) {
+    const protect = sources[s] && sources[s].protect;
+    if (!protect || typeof protect !== 'object') continue;
+    if (typeof protect.enabled === 'boolean') out.enabled = protect.enabled;
+    const radius = Number(protect.radius);
+    if (Number.isFinite(radius)) out.radius = radius;
+  }
+  return out;
+}
+
+/**
  * Resolved auto-AI profile for a vocation. Missing vocations fall back to the
  * catalog `default` overlaid on `DEFAULT_AI_PROFILE`. The nested `movement`
  * block is resolved field-wise so a partial catalog entry cannot drop a baseline.
@@ -166,6 +220,8 @@ export function profileForVocation(vocation) {
   resolved.movement = resolveMovement(catalogDefault, profile);
   resolved.support = resolveSupport(catalogDefault, profile);
   resolved.potion = resolvePotion(catalogDefault, profile);
+  resolved.itemSearch = resolveItemSearch(catalogDefault, profile);
+  resolved.protect = resolveProtect(catalogDefault, profile);
   return resolved;
 }
 
@@ -369,8 +425,64 @@ function nearestHostile(actor, ctx, radius) {
 }
 
 /**
+ * The living party member a hostile is currently attacking, or null. A monster
+ * that `EntityAI.updateMonsters` target-locked onto an ally counts, as does a
+ * monster standing adjacent to one (the adjacency fallback keeps protection
+ * working when a hand-built or test monster carries no target metadata).
+ */
+function protectVictim(monster, self, ctx) {
+  const locked = monster.aggroTarget;
+  if (
+    locked
+    && monster.isAggroed !== false
+    && locked.hp > 0
+    && !sameActor(locked, self)
+    && isFriendly(self, locked)
+  ) {
+    return locked;
+  }
+  const allies = ctx.allies;
+  for (let i = 0; i < allies.length; i++) {
+    const a = allies[i];
+    if (!a || a.hp <= 0 || sameActor(a, self)) continue;
+    if (!isFriendly(self, a)) continue;
+    if (Math.abs(a.x - monster.x) + Math.abs(a.y - monster.y) <= 1) return a;
+  }
+  return null;
+}
+
+/**
+ * LIV-33 protector targeting. When a profile enables `protect`, returns the
+ * hostile currently attacking another party member that is closest to this
+ * member within `protect.radius`, or null. A support/backline profile disables
+ * `protect` and keeps its `support`/`followDistance` posture untouched.
+ */
+function protectorTarget(member, profile, ctx) {
+  const protect = profile.protect;
+  if (!protect || protect.enabled !== true) return null;
+  const radius = Number(protect.radius);
+  if (!(radius > 0)) return null;
+  let best = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  const monsters = ctx.monsters;
+  for (let i = 0; i < monsters.length; i++) {
+    const m = monsters[i];
+    if (!m || m.hp <= 0 || m.visible === false) continue;
+    if (!isHostile(member, m)) continue;
+    if (!protectVictim(m, member, ctx)) continue;
+    const d = Math.hypot(m.x - member.x, m.y - member.y);
+    if (d > radius || d >= bestDist) continue;
+    best = m;
+    bestDist = d;
+  }
+  return best;
+}
+
+/**
  * Acquires/keeps an engagement target. A committed target (still alive and in
  * leash range) is held until `retargetSec` expires so allies do not thrash.
+ * LIV-33: a protector profile first retaliates against a hostile attacking a
+ * party member before defaulting to the nearest hostile.
  */
 function acquireTarget(actor, profile, ctx) {
   if (actor.aiRetargetTimer > 0) {
@@ -382,6 +494,14 @@ function acquireTarget(actor, profile, ctx) {
   const leash = (Number(profile.engageRadius) || DEFAULT_AI_PROFILE.engageRadius) * 1.5;
   if (committed && actor.aiRetargetTimer > 0 && Math.hypot(committed.x - actor.x, committed.y - actor.y) <= leash) {
     return committed;
+  }
+  // Protector/retaliate: front-liners seek the attacker threatening a party
+  // member before falling back to the nearest hostile (LIV-33).
+  const protector = protectorTarget(actor, profile, ctx);
+  if (protector) {
+    actor.aiTargetId = protector.id;
+    actor.aiRetargetTimer = Number(profile.retargetSec) || DEFAULT_AI_PROFILE.retargetSec;
+    return protector;
   }
   const next = nearestHostile(actor, ctx, Number(profile.engageRadius) || DEFAULT_AI_PROFILE.engageRadius);
   if (next) {
@@ -454,6 +574,59 @@ function stepAwayFrom(member, threat, ctx) {
     }
   }
   return best;
+}
+
+/**
+ * LIV-33 ground-item search. Scans a bounded window of `radius` tiles around the
+ * member for the nearest reachable ground item, or null. Reads the live
+ * `gridMap` (no per-tick list allocation) and requires the item tile to be
+ * walkable with line of sight so a wall cannot bait the ally. Items on the
+ * member's own tile are ignored because walk-over pickup only fires on a step.
+ */
+function findNearestGroundItem(member, ctx, radius) {
+  const grid = ctx.gridMap;
+  if (!grid || !(radius > 0)) return null;
+  const r = Math.ceil(radius);
+  const minX = Math.max(0, member.x - r);
+  const maxX = Math.min(grid.width - 1, member.x + r);
+  const minY = Math.max(0, member.y - r);
+  const maxY = Math.min(grid.height - 1, member.y + r);
+  let best = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      const items = grid.getItems(x, y);
+      if (!items || items.length === 0) continue;
+      const d = Math.hypot(x - member.x, y - member.y);
+      if (d > radius || d < 0.001 || d >= bestDist) continue;
+      if (!grid.isWalkable(x, y)) continue;
+      if (!LightingSystem.hasLineOfSight(grid, member.x, member.y, x, y)) continue;
+      best = { x, y };
+      bestDist = d;
+    }
+  }
+  return best;
+}
+
+/**
+ * One step toward the nearest ground item when out of combat, or null. The step
+ * is a normal `move` event, so the app's existing walk-over pipeline
+ * (`handleAllyWalkoverPickup` -> `handlePickUp`) banks the drop in the shared
+ * party backpack. Paced by the same `movement.cadenceSec` gate as following.
+ */
+function tryItemSearch(member, profile, ctx) {
+  const search = profile.itemSearch;
+  if (!search || search.enabled !== true) return null;
+  if (!canStep(member)) return null;
+  const radius = Number(search.radius);
+  const item = findNearestGroundItem(member, ctx, radius);
+  if (!item) return null;
+  const step = stepToward(member, item.x, item.y, ctx);
+  if (!step) return null;
+  const fromX = member.x;
+  const fromY = member.y;
+  commitStep(member, step, profile, ctx);
+  return moveEvent(member, fromX, fromY);
 }
 
 /**
@@ -668,6 +841,15 @@ function updateMember(member, ctx) {
         result,
       };
     }
+  }
+
+  // 2b. Out of combat: seek nearby ground items into the shared backpack
+  //     (LIV-33). Retreat/support/attacks already returned above, so looting
+  //     never competes with survival; the app's walk-over pipeline banks the
+  //     drop in the party stash when the move event lands on the item tile.
+  if (!target) {
+    const looting = tryItemSearch(member, profile, ctx);
+    if (looting) return looting;
   }
 
   // 3. Close to preferred combat distance while engaged.

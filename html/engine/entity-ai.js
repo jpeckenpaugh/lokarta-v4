@@ -178,6 +178,9 @@ export class EntityAI {
 
       const target = (partyTargets && EntityAI.selectTarget(monster, partyTargets)) || player;
       if (!target) continue;
+      // LIV-33: record the actor this hostile engaged so protector allies can
+      // retaliate against the attacker threatening a party member.
+      monster.aggroTarget = target;
 
       // Wind-up: a telegraphed attack holds the monster in place until the
       // timer elapses, then the catalog handler resolves the payload.

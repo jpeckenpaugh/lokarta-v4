@@ -549,6 +549,46 @@ Acceptance (T0, content-shaped):
   `priority`; `selectAutoDraft` is stable for a fixed offer (no random tie-break).
 * No v2 value changes the manual active member's behaviour.
 
+#### 8.1.7 v3 looting & protector aggression (LIV-33)
+
+Two small v3 blocks make the party feel like a party: allies help vacuum the
+floor, and front-liners step in when a companion is hit.
+
+**v3 ally ground-item search (`itemSearch`)**
+
+| Field | Meaning |
+| :--- | :--- |
+| `itemSearch.enabled` | Out-of-combat looting master switch. |
+| `itemSearch.radius` | Search leash in tiles (0 disables scanning). |
+
+When an auto ally has no engaged target it scans a bounded `radius`-tile window
+for the nearest walkable ground item with line of sight and paths it, feeding the
+existing walk-over pickup into the shared party backpack. Combat, retreat and
+support decisions always resolve first, so an ally never loots through a fight;
+the tile window (not a whole-map scan) keeps the hot path bounded. Front-liners
+scan tighter (Fighter/Paladin 4) than the backline (Archer 5, Magician 6) so the
+front does not chase loot out of the line. *Lenses: game feel (party competence),
+economy & reward pacing (loot actually reaches the stash), balance levers (one
+radius bounds it).*
+
+**v3 protector/retaliate targeting (`protect`)**
+
+| Field | Meaning |
+| :--- | :--- |
+| `protect.enabled` | Engage the hostile attacking a party member before the nearest hostile. |
+| `protect.radius` | Max tiles the member leaves formation to reach that attacker. |
+
+Only **Fighter** and **Paladin** enable `protect`: when a hostile targets or
+reaches a companion, they seek *that* attacker instead of hugging the mage,
+bounded by `protect.radius` (8) and the normal `retargetSec`/leash rules so they
+do not thrash. Archer/Magician keep `protect.enabled: false` and hold their
+`followDistance`/`support` posture, so the two-posture line still reads from
+where each member stands. *Lenses: readability (front line protects), MDA
+(protection is felt), balance levers (radius + retarget, not new stats).*
+
+Catalog summary (beyond the v2 columns): all four vocations loot
+(`itemSearch.enabled: true`); only Fighter/Paladin protect.
+
 ### 8.2 Auto-mode balance: `campaign.partyScale` (`tower_levels.json`)
 
 Allies add damage and bodies, so each tower's monster stats scale with the live
@@ -749,14 +789,25 @@ The upgrade cost formula is unchanged and simply extends past Rank 5:
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Gold | 40 | 75 | 110 | 145 | 180 | 215 | 285 | 355 | 425 | 530 | 635 | 670 |
 
-Ranks 1–5 are byte-identical to the shipped curve (the Golden-set tests pin
-`40 + 35×3 = 145` at Rank 4), so the existing early game is untouched. Beyond
-Rank 5 the linear curve is already a rising sink — a single item taken from
-Rank 1 to Rank 20 costs **7,410 gold**, and a four-item set costs ≈30k — which
-tracks the campaign's monster/chest/boss gold without a new curve type. If
-playtesting later shows upgrades too cheap or too expensive, the one lever to
-turn is `shop.upgradeCostPerRank`; do not add a per-rank table.
+The **gold cost curve** for Ranks 1–5 is byte-identical to the shipped curve (the
+Golden-set tests pin `40 + 35×3 = 145` at Rank 4), so the existing early game's
+economy is untouched. Beyond Rank 5 the linear curve is already a rising sink — a
+single item taken from Rank 1 to Rank 20 costs **7,410 gold**, and a four-item set
+costs ≈30k — which tracks the campaign's monster/chest/boss gold without a new
+curve type. If playtesting later shows upgrades too cheap or too expensive, the
+one lever to turn is `shop.upgradeCostPerRank`; do not add a per-rank table.
 *Lenses: economy & reward pacing, scope discipline.*
+
+**Scope of "unchanged":** core power (damage, Max HP/MP, heal power, poison,
+siphon, ranged bonus, ammo capacity) and every gold cost are unchanged at Ranks
+1–5. A handful of *utility* caps in §9.4 bind before Rank 5 by design (e.g. the
+`apprentice_cape` stun ceiling and the `aegis_shield`/`sanctuary_plate` duration
+ceilings), so those specific utility values plateau at their §9.4 "Cap reached"
+rank instead of growing one or two more steps. That is intentional: it removes
+a shipped 9s shock-shield stun and near-permanent 46s shield from the high-rank
+end, and it keeps ranges/CC from trivializing the small tower maps. It does not
+touch damage, survivability, or the cost of any rank.
+*Lenses: balance levers, readability (bounded numbers).*
 
 ### 9.6 AI shield frequency (FIX-15, board item 4)
 
@@ -782,11 +833,11 @@ Kano performance.*
 The ability cooldown/mana are global (the player's Aegis shield shares them) —
 a small deliberate buff, since the board's ask is about felt responsiveness.
 
-### 9.7 Remaining Tech Lead contract — honor `rankCaps` (FIX-15b)
+### 9.7 Tech Lead contract — honor `rankCaps` (FIX-15b) — **delivered**
 
-`rankCaps` is authored data; the rank projection must clamp before the cap is
-exposed (i.e. in the same integration as [LIV-28](/LIV/issues/LIV-28)'s
-`maxRankByParty`). Delegate: [LIV-30](/LIV/issues/LIV-30) FIX-15b.
+`rankCaps` is authored data; the rank projection clamps before the cap is
+exposed, in the same integration as [LIV-28](/LIV/issues/LIV-28)'s
+`maxRankByParty`. Delivered in [LIV-31](/LIV/issues/LIV-31) (`21da209`).
 
 1. `item-stats.js` — for each capped key, effective total =
    `min(incKey × (rank − 1), rankCaps.incKey)`:
@@ -801,6 +852,7 @@ exposed (i.e. in the same integration as [LIV-28](/LIV/issues/LIV-28)'s
    Scepter range **7** and ≤ ~15 MP; a Rank-20 Vanguard Shield stun **2.5s**,
    bash cooldown **≥5s**; a Rank-20 Apprentice's Cape stun **6s**, cooldown
    **≥5s**; uncapped Tempered Broadsword damage still
-   `16 + avg(4..6) × 19`; every Rank 1–5 projection is byte-identical to the
-   current baseline; the full T0 suite stays green.
+   `16 + avg(4..6) × 19`; core power and all ranks' gold costs are unchanged at
+   Ranks 1–5 (utility caps per §9.4 plateau at their authored rank); the full T0
+   suite stays green (**710 pass / 0 fail** at `21da209`).
 

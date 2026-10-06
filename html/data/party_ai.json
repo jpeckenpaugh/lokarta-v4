@@ -12,7 +12,9 @@
     "movement": "v2 movement naturalness (FIX-8 / LIV-23). `cadenceSec` = minimum seconds between this member's move steps (lower = more responsive); `staggerSec` = initial phase offset before its first step so allies do not step in lockstep; `jitterSec` = random 0..jitterSec added to each cadence interval for organic variance; `wanderChance` = probability rolled once per `wanderCooldownSec` window that an idle, in-formation member takes a short wander step; `wanderRadius` = max tiles a wander step may stray from the active member; `wanderCooldownSec` = minimum seconds between wander steps.",
     "support": "v2 support casting (FIX-10 / LIV-25; enlarged FIX-15 / LIV-30). Casts only when `enabled`. `healPct` = cast a heal when the most-injured living ally is at or below this HP fraction; `shieldPct` = shield the most-injured un-warded ally at or below this fraction; `minManaFrac` = never begin a support cast below this mana fraction; `cooldownSec` = minimum seconds between this member's support casts (anti-spam); `order` = support kinds evaluated in order ('heal' before 'shield' or vice versa); `abilities` = allowed support ability ids for this vocation. FIX-15 raises `shieldPct` to 0.9 and shortens the cadence so auto allies keep a bubble rolling across the party; the ability's own cooldown (`holy_shield.cooldownSec`) is the hard gate it must also clear.",
     "potion": "v2 auto-potion (FIX-9 / LIV-24). When HP fraction is at or below `hpPct`, the member consumes `itemId` from the shared party backpack if off `cooldownSec`; when no HP drink is due and mana fraction is at or below `manaPct`, it consumes `manaItemId` instead. `hpPct` is pinned to 0.50 to match the Board rule (auto-drink below 50%). The consumed potion's authored `effect.scope: 'party'` makes the restore land on every eligible party member, not just the drinker.",
-    "autoFateGrant": "v2 deterministic auto-Fate-Grant policy (FIX-5 / LIV-20), read once for the whole party. Non-active allies that level up auto-draft `picks` cards without pausing; `priority` is an ordered list of rule tokens (highest first) used as tie-breakers. Valid tokens: upgrade, main_hand, off_hand, affinity, rarity, offer_order. The offer itself is generated per member per level; the policy picks deterministically from whatever is offered."
+    "autoFateGrant": "v2 deterministic auto-Fate-Grant policy (FIX-5 / LIV-20), read once for the whole party. Non-active allies that level up auto-draft `picks` cards without pausing; `priority` is an ordered list of rule tokens (highest first) used as tie-breakers. Valid tokens: upgrade, main_hand, off_hand, affinity, rarity, offer_order. The offer itself is generated per member per level; the policy picks deterministically from whatever is offered.",
+    "itemSearch": "v3 ally ground-item search (LIV-33). When a member has no engaged target (out of combat) and `enabled`, it scans a square window of `radius` tiles around itself for ground items and paths the nearest one with EntityAI.findNextStepAStar; the walk-over pickup pipeline banks it in the shared party backpack. `radius` is the search leash in tiles (0 disables scanning). Combat, retreat and support decisions always run first, so item finding never competes with survival.",
+    "protect": "v3 protector/retaliate targeting (LIV-33). When `enabled`, a member prioritizes the hostile that is currently attacking another party member (a hostile adjacent to, or target-locked on, a living ally other than itself) before falling back to the nearest hostile. `radius` bounds how far it will leave formation to reach that attacker. Only front-line protectors (fighter/paladin) enable it; supports/backline keep their support distance."
   },
   "_design": "Roles stay distinct: Fighter/Paladin hold the line (follow 1, melee), Archer/Magician fight from the back (follow 3). Retreat thresholds track fragility - Magician (60 HP) disengages earliest at 0.35, Fighter (140 HP) holds latest at 0.20. Paladin is the only support profile. Rationale: docs/design/game-design.md 8.1.",
   "autoFateGrant": {
@@ -51,6 +53,14 @@
       "cooldownSec": 8.0,
       "itemId": "health_potion",
       "manaItemId": "mana_potion"
+    },
+    "itemSearch": {
+      "enabled": true,
+      "radius": 6
+    },
+    "protect": {
+      "enabled": false,
+      "radius": 8
     }
   },
   "profiles": {
@@ -87,6 +97,14 @@
         "itemId": "health_potion",
         "manaItemId": "mana_potion"
       },
+      "itemSearch": {
+        "enabled": true,
+        "radius": 6
+      },
+      "protect": {
+        "enabled": false,
+        "radius": 8
+      },
       "_note": "Squishiest backline (60 HP): disengages earliest so an artillery telegraph cannot one-shot it. Opens with Beam (4-tile, 20 dmg), fills with Spark, and takes the longest to retarget because it commits to a cast. Steps last in formation (stagger 0.12) and is the most mobile wanderer (0.40) so it keeps sightlines for its long casts. Mana-hungry kit: drinks mana at 50% too."
     },
     "archer": {
@@ -121,6 +139,14 @@
         "cooldownSec": 8.0,
         "itemId": "health_potion",
         "manaItemId": "mana_potion"
+      },
+      "itemSearch": {
+        "enabled": true,
+        "radius": 5
+      },
+      "protect": {
+        "enabled": false,
+        "radius": 8
       },
       "_note": "Longest reach (6) and the fastest footwork (cadence 0.15): a marksman repositions quickly but does not body-block. Opens with Power Shot (4s cooldown) before Bow Shot so the auto-AI does not drain the party's arrow stock; that ordering is the ammo-economy guard rail."
     },
@@ -157,6 +183,14 @@
         "itemId": "health_potion",
         "manaItemId": "mana_potion"
       },
+      "itemSearch": {
+        "enabled": true,
+        "radius": 4
+      },
+      "protect": {
+        "enabled": true,
+        "radius": 8
+      },
       "_note": "Frontline anchor (140 HP): intercepts out to 3 tiles, holds to 20% HP, and retargets fastest so Cleave lands on clusters rather than a single body. Steps first (stagger 0.00), holds position tightly (wander 0.15, radius 1) so the line reads as a wall."
     },
     "paladin": {
@@ -191,6 +225,14 @@
         "cooldownSec": 8.0,
         "itemId": "health_potion",
         "manaItemId": "mana_potion"
+      },
+      "itemSearch": {
+        "enabled": true,
+        "radius": 4
+      },
+      "protect": {
+        "enabled": true,
+        "radius": 8
       },
       "_note": "Melee anchor and the party's only support: Holy Prayer (healRadius 6) heals the most-injured ally at <=65% HP, then Aegis Holy Shield (range 6, cooldown 6s) bulwarks the most-injured un-warded ally at <=90% while mana stays above 15%; a 2s cadence plus the shield's own 6s cooldown and its never-ward-an-ally-already-warded rule means the bubble stays up without spam (FIX-15 / LIV-30: shield frequency was too low). Holds the line (wander 0.15, radius 1) so the heal radius stays on the front. Mana powers heals and shields, so it drinks mana at 50%."
     }
