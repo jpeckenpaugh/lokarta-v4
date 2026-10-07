@@ -1173,7 +1173,11 @@ export class ModalManager {
   static showFateGrantModal(modalOverlayEl, app, level = 1) {
     if (app) app.isPaused = true;
 
-    const offer = FateGrantSystem.generateDraftOffer(app.player, level);
+    // `app.player` is the party-bearing top-level player (its `.party` is the live
+    // roster), so pass it as the rank-cap owner explicitly — the interactive path
+    // must resolve the same party-scaled cap (5/10/15/20) as the Merchant's Stall
+    // and the auto Fate Grant path (LIV-40).
+    const offer = FateGrantSystem.generateDraftOffer(app.player, level, { rankCapOwner: app.player });
     const selectedCards = new Set();
     let focusIndex = 0;
 
@@ -1259,7 +1263,7 @@ export class ModalManager {
       soundFX.play('equip');
 
       const chosen = Array.from(selectedCards);
-      const applyResult = FateGrantSystem.applyDraftedCards(app.player, chosen, app.gridMap);
+      const applyResult = FateGrantSystem.applyDraftedCards(app.player, chosen, app.gridMap, { rankCapOwner: app.player });
 
       for (const hotbarItem of applyResult.addedToHotbar) {
         app.logCombat(`Fate granted: ${hotbarItem}`, 'loot');

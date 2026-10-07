@@ -40,9 +40,14 @@ export class FateGrantSystem {
       return allSlots.find(item => item && (item.item_id === itemId || (cardActionKey && (item.actionKey === cardActionKey || ITEMS_CATALOG[item.item_id]?.actionKey === cardActionKey))));
     };
 
-    const chosenCards = [];
+    // Build every candidate first, then order upgrade cards ahead of new-item
+    // filler before taking the 5-card offer. Without this ordering an available
+    // equipment upgrade is only shown when its card happens to land in the first
+    // five of the shuffled pool, so it can be silently crowded out even though
+    // the item is below its party-scaled cap (LIV-40). The cap semantics are
+    // unchanged: a card whose owned item is at the cap is still dropped entirely.
+    const candidates = [];
     for (const c of orderedPool) {
-      if (chosenCards.length >= 5) break;
       const card = JSON.parse(JSON.stringify(c));
       const itemId = card.item?.item_id;
       const catalogEntry = ITEMS_CATALOG[itemId] || {};
@@ -80,19 +85,27 @@ export class FateGrantSystem {
           card.description = `Level Up ${existing.name || card.name} (Rank ${prevRank} ➔ ${nextRank}).`;
           card.statBonusText = `Rank ${nextRank}`;
         }
-      } else {
-        if (catalogEntry.damageMin && catalogEntry.damageMax && !card.item?.damage) {
-          const rolledDmg = Math.floor(Math.random() * (catalogEntry.damageMax - catalogEntry.damageMin + 1)) + catalogEntry.damageMin;
-          if (card.item) card.item.damage = rolledDmg;
-          card.description = `${card.description} (${rolledDmg} Dmg)`;
-        }
-        if (card.item && !card.item.itemLevel) {
-          card.item.itemLevel = 1;
-        }
+
+        candidates.push({ card, isUpgrade: true });
+        continue;
       }
 
-      chosenCards.push(card);
+      if (catalogEntry.damageMin && catalogEntry.damageMax && !card.item?.damage) {
+        const rolledDmg = Math.floor(Math.random() * (catalogEntry.damageMax - catalogEntry.damageMin + 1)) + catalogEntry.damageMin;
+        if (card.item) card.item.damage = rolledDmg;
+        card.description = `${card.description} (${rolledDmg} Dmg)`;
+      }
+      if (card.item && !card.item.itemLevel) {
+        card.item.itemLevel = 1;
+      }
+
+      candidates.push({ card, isUpgrade: false });
     }
+
+    const chosenCards = [
+      ...candidates.filter(entry => entry.isUpgrade),
+      ...candidates.filter(entry => !entry.isUpgrade),
+    ].slice(0, 5).map(entry => entry.card);
 
     // Rule guard: at game start (level 1) every vocation must be OFFERED at
     // least one main_hand card and one off_hand card so the player can always
