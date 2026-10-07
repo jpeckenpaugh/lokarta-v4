@@ -95,10 +95,14 @@ export function findOwnedItem(player, item) {
  * @param {number} [opts.upgradeDmgInc] - pre-rolled damage increment to honor
  *   (fate cards roll this when the offer is generated, then re-apply it here)
  * @param {string} [opts.source] - free-text origin recorded on the display label
+ * @param {object|number} [opts.rankCapOwner] - party-bearing owner (or live party
+ *   size) that resolves the rank cap when the acting `player` carries no `.party`
+ *   (e.g. an auto ally borrowing the shared party's cap)
  * @returns {{ item: object, rank: number, notes: string[] }|null}
  */
 export function applyItemRankUp(player, item, opts = {}) {
-  if (!player || !canUpgradeItem(item, player)) return null;
+  const capOwner = opts.rankCapOwner || player;
+  if (!player || !canUpgradeItem(item, capOwner)) return null;
 
   const catalogEntry = ITEMS_CATALOG[item.item_id] || {};
   const spec = catalogEntry.upgradeSpec || item.upgradeSpec || {};
@@ -111,7 +115,7 @@ export function applyItemRankUp(player, item, opts = {}) {
   };
 
   const prevRank = item.itemLevel || 1;
-  item.itemLevel = Math.min(rankCapFor(player), prevRank + 1);
+  item.itemLevel = Math.min(rankCapFor(capOwner), prevRank + 1);
   const rank = item.itemLevel;
   const notes = [];
 

@@ -97,7 +97,10 @@ export function awardPartyXp(player, amount) {
  * @returns {{ offer: object, chosen: object[], applied: object }}
  */
 export function applyAutoFateGrant(member, level, gridMap = null, stash = null) {
-  const offer = FateGrantSystem.generateDraftOffer(member, level);
+  // Allies carry no `.party` of their own; borrow the shared party's rank cap
+  // from the stash so auto Fate Grants advance past the solo Rank 5 (LIV-38).
+  const rankCapOwner = stash || member;
+  const offer = FateGrantSystem.generateDraftOffer(member, level, { rankCapOwner });
   const chosen = FateGrantSystem.selectAutoDraft(offer, member, resolveAutoFateGrantPolicy());
 
   const hasOwnBackpack = Array.isArray(member && member.backpack);
@@ -106,7 +109,7 @@ export function applyAutoFateGrant(member, level, gridMap = null, stash = null) 
   if (lendShared) member.backpack = lendShared;
   let applied;
   try {
-    applied = FateGrantSystem.applyDraftedCards(member, chosen, gridMap);
+    applied = FateGrantSystem.applyDraftedCards(member, chosen, gridMap, { rankCapOwner });
   } finally {
     if (lendShared) delete member.backpack;
   }
