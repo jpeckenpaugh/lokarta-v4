@@ -443,7 +443,7 @@ export class HUDManager {
       }).join('');
       loadoutEl.innerHTML = `
         <div class="panel-header">LOADOUT <span class="slot-count">${activeKeys.length + equipmentKeys.length} KEYED</span></div>
-        <div class="loadout-grid" style="grid-template-columns: repeat(${columns}, 1fr);">
+        <div class="loadout-grid" style="grid-template-columns: repeat(${columns}, minmax(0, 1fr));">
           ${activeHtml}${equipHtml}
         </div>`;
       grid = loadoutEl.querySelector('.loadout-grid');

@@ -4,14 +4,20 @@
 
 import { CARDS_CATALOG, ITEMS_CATALOG } from '../data/index.js';
 import { InventorySystem } from './inventory-system.js';
+import { EconomySystem } from './economy-system.js';
 import { applyItemRankUp } from './item-progression.js';
 
 export class FateGrantSystem {
   static CARD_DATABASE = CARDS_CATALOG;
 
-  static generateDraftOffer(vocationOrPlayer, level = 1) {
+  static generateDraftOffer(vocationOrPlayer, level = 1, opts = {}) {
     const player = typeof vocationOrPlayer === 'object' ? vocationOrPlayer : null;
     const vocation = player ? (player.vocation || 'magician') : vocationOrPlayer;
+
+    // Rank cap is catalog-driven (`economy.json` → `shop.maxRankByParty`) and
+    // scales with the live party size (LIV-28). `rankCapOwner` lets a caller
+    // whose actor has no `.party` (an auto ally) borrow the shared party's cap.
+    const rankCap = EconomySystem.maxRankForParty(opts.rankCapOwner || player);
 
     const pool = [...FateGrantSystem.CARD_DATABASE];
     // Filter to include ONLY cards matching the player's class OR neutral cards
@@ -44,7 +50,7 @@ export class FateGrantSystem {
 
       if (existing) {
         const currentLevel = existing.itemLevel || 1;
-        if (currentLevel >= 5) continue;
+        if (currentLevel >= rankCap) continue;
 
         card.isUpgrade = true;
         card.targetItemId = existing.item_id;
@@ -229,7 +235,7 @@ export class FateGrantSystem {
     return ranking.slice(0, count).map((entry) => entry.card);
   }
 
-  static applyDraftedCards(player, cards, gridMap) {
+  static applyDraftedCards(player, cards, gridMap, opts = {}) {
     const result = {
       addedToHotbar: [],
       addedToBackpack: [],
@@ -255,6 +261,7 @@ export class FateGrantSystem {
           const upgrade = applyItemRankUp(player, item, {
             source: 'fate_grant',
             upgradeDmgInc: card.upgradeDmgInc,
+            rankCapOwner: opts.rankCapOwner,
           });
           if (upgrade) {
             result.addedToHotbar.push(

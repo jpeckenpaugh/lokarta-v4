@@ -767,6 +767,8 @@
   display: grid;
   gap: 6px;
   padding: 8px;
+  width: 100%;
+  min-width: 0;
 }
 
 .loadout-slot {
@@ -777,6 +779,10 @@
   justify-content: center;
   gap: 2px;
   min-height: 64px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
   padding: 6px 3px 3px;
   background-color: var(--slot-bg);
   border: 1px solid var(--slot-border);
@@ -843,6 +849,8 @@
 }
 
 .loadout-slot .slot-name {
+  width: 100%;
+  min-width: 0;
   max-width: 100%;
   font-size: 0.62rem;
   text-align: center;
