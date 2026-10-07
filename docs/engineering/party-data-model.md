@@ -177,11 +177,11 @@ WS2 layers the non-terminal campaign loop on this model. The pure helpers live i
 
 | Helper | Purpose |
 | :--- | :--- |
-| `partyLevel(player)` | Highest member level (active included); recruit alignment target. |
+| `partyLevel(player)` | Highest member level (active included). |
 | `recruitableVocations(player)` | Catalog vocations not yet on the party. |
 | `canRecruit(player)` | Party has room and a vocation is left. |
 | `alignMemberToLevel(member, level)` | Catalog base + per-level growth, full HP/MP, refreshed boosts. |
-| `recruitMember(player, vocation)` | Appends an aligned member, makes it active; rejects unknown/duplicate/full. |
+| `recruitMember(player, vocation)` | Appends a level-1 recruit (LIV-16), makes it active; rejects unknown/duplicate/full. |
 | `completePlayerTower(player, towerId)` | Records completion, unlocks the next tower, reports `allComplete`/`nextTowerId`. |
 | `towerUnlockInfo(progress, towerId)` | `{ unlocked, requires }` for the picker. |
 

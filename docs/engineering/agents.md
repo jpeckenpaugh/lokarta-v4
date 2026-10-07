@@ -29,7 +29,7 @@ The **board** owns product direction, priorities, final approvals, and browser/g
 
 > [!IMPORTANT]
 > **Never hardcode game constants, entity behaviors, class stats, or drop tables in JavaScript source files.**
-> All game rules must be defined in the decoupled JSON data catalogs located under [`html/data/`](html/data/).
+> All game rules must be defined in the decoupled JSON data catalogs located under [`html/data/`](../../html/data/).
 
 ### Specific Rules:
 1. **Catalog Ground Truth:**
@@ -63,13 +63,13 @@ Lokarta runs a 60 FPS Canvas rendering loop alongside a 10 Hz (100 ms) simulatio
 2. **Integer Coordinate Hashing for Sets and Maps:**
    For grid lookups on a map of width $W$, always use integer hashing (`const hash = y * width + x;`) instead of template strings (`` `${x},${y}` ``). String allocations inside loops cause heavy GC churn.
 3. **Canvas Overdraw Culling:**
-   In [`CanvasRenderer`](html/app/canvas-renderer.js), never draw tiles, items, or decorations that are shrouded in darkness:
+   In [`CanvasRenderer`](../../html/app/canvas-renderer.js), never draw tiles, items, or decorations that are shrouded in darkness:
    ```javascript
    // Always cull unlit coordinates before making Canvas 2D calls
    if (!tile.isLit) continue;
    ```
 4. **Data Structures for Pathfinding:**
-   A\* pathfinding in [`EntityAI`](html/engine/entity-ai.js) must use a binary `MinHeap` for $O(\log N)$ extraction and an integer-keyed `openMap` (`Map<number, Node>`) for $O(1)$ coordinate lookup. Never do linear array searches (`openSet.find(...)` or `openSet.splice(...)`).
+   A\* pathfinding in [`EntityAI`](../../html/engine/entity-ai.js) must use a binary `MinHeap` for $O(\log N)$ extraction and an integer-keyed `openMap` (`Map<number, Node>`) for $O(1)$ coordinate lookup. Never do linear array searches (`openSet.find(...)` or `openSet.splice(...)`).
 5. **Precomputed Spatial Lookups:**
    Precompute monster occupancy hashes (`blockedMonsterSet = new Set()`) once per tick before looping through monsters rather than running `monsters.some(...)` inside pathfinding neighbor steps.
 
@@ -100,7 +100,7 @@ Lokarta runs a 60 FPS Canvas rendering loop alongside a 10 Hz (100 ms) simulatio
 ## 5. 🧵 Threading, Web Workers & Storage Guidelines
 
 1. **Keep Heavy Work Off the UI Thread:**
-   Procedural tower floor generation, BFS room connectivity validation, and IndexedDB I/O belong strictly in [`html/worker/game-worker.js`](html/worker/game-worker.js).
+   Procedural tower floor generation, BFS room connectivity validation, and IndexedDB I/O belong strictly in [`html/worker/game-worker.js`](../../html/worker/game-worker.js).
 2. **Debounce Persistence Calls:**
    Do not dispatch `saveCharacter` worker messages on every minor user action. Use a trailing debounce timer (e.g., 500 ms) for rapid actions (potions, looting), reserving immediate saves (`persistSave(true)`) for critical transitions:
    - Floor ascent / descent stairs
@@ -114,11 +114,11 @@ Lokarta runs a 60 FPS Canvas rendering loop alongside a 10 Hz (100 ms) simulatio
 ## 6. 🎲 Determinism & Procedural Generation
 
 1. **Mulberry32 PRNG:**
-   Always use the deterministic Mulberry32 PRNG ([`createPRNG`](html/services/floor-generator.js)) for tower floor carving, room layout, and monster tier selection. Never use `Math.random()` in procedural generation.
+   Always use the deterministic Mulberry32 PRNG ([`createPRNG`](../../html/services/floor-generator.js)) for tower floor carving, room layout, and monster tier selection. Never use `Math.random()` in procedural generation.
 2. **BFS Connectivity Guarantee:**
-   Any modification to tower templates or floor generation algorithms must guarantee and verify full Breadth-First Search (BFS) path connectivity between the arrival spawn tile and the connecting ascent stair tile across all 5 tiers.
+   Any modification to a tower definition (`html/data/tower_levels.json`) or floor generation algorithm must guarantee and verify full Breadth-First Search (BFS) path connectivity between the arrival spawn tile and the connecting ascent stair tile across every level of the active tower (each tower authors its own `levelCount`).
 3. **Consistent Floor Seeds:**
-   Use the canonical formula `(1337 + floorId * 42)` for floor seeds unless an explicit seed parameter is provided.
+   Use the canonical formula `(1337 + levelId * 42)` for floor seeds unless an explicit seed parameter is provided.
 
 ---
 
@@ -166,7 +166,7 @@ Three tiers:
    The glob covers every `html/tests/*.test.mjs` file. CI (`test.yml`) runs the same command on every push.
    **Acceptance Criteria:** All test suites must pass with zero failures.
 2. **Synchronize Catalog Tests:**
-   When adding or modifying entries in `html/data/*.json`, always update or verify the corresponding schema test assertions in [`html/tests/data-catalogs.test.mjs`](html/tests/data-catalogs.test.mjs).
+   When adding or modifying entries in `html/data/*.json`, always update or verify the corresponding schema test assertions in [`html/tests/data-catalogs.test.mjs`](../../html/tests/data-catalogs.test.mjs).
 3. **Regression Safety:**
    Never remove existing tests to make a build pass; adapt the test only when the explicit specification for that behavior was updated.
 
