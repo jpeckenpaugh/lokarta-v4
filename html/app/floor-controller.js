@@ -112,21 +112,30 @@ export const floorControllerMethods = {
     const floorKey = `${floorData.tower_id || this.towerId || ''}#${floorData.floor_number || ''}`;
     const floorChanged = this._partyFloorKey !== floorKey;
     this._partyFloorKey = floorKey;
+    // LIV-76: a genuine teleport back into a tower/floor (town -> tower return
+    // spot, tower select, portal entry) can land on a floor key we already
+    // recorded, so `floorChanged` is false even though the party was relocated
+    // across scenes. Callers flag those entries with `transportAll: true` so the
+    // cluster is rebuilt and no member is stranded in a different room. A plain
+    // same-floor reload (save/load, re-render) does NOT pass the flag and keeps
+    // the party exactly where it stands.
+    const transportAll = floorChanged || options.transportAll === true;
     // LIV-44: the between-floor mercy valve revives downed members on a genuine
     // floor transition only — never on a load/reload of the same floor. Callers
     // opt in explicitly (`handleFloorClear` / tower entry); the catalog
     // `revive.reviveOnFloorTransition` can turn the whole valve off.
     const config = ReviveSystem.resolveReviveConfig(this.player?.vocation);
     const reviveDowned = options.reviveDowned === true && config.reviveOnFloorTransition === true;
-    this.layoutPartyOnFloor(floorChanged, reviveDowned);
+    this.layoutPartyOnFloor(transportAll, reviveDowned);
   },
   /**
    * Places and revives the non-active party on a freshly loaded floor
    * (LIV-13/WS4). Allies that fell on the previous floor recover between levels
-   * so the party stays viable. On a tower/level transition (`transportAll`) every
-   * non-active member is moved to a free square around the active member's
-   * arrival tile (LIV-17); otherwise a member is only relocated when its stored
-   * coordinates are unusable on this floor (missing, blocked, or occupied).
+   * so the party stays viable. On a genuine tower/level entry (`transportAll`)
+   * every non-active member is moved to a free square hugging the active
+   * member's arrival tile (LIV-17/LIV-76); otherwise a member is only relocated
+   * when its stored coordinates are unusable on this floor (missing, blocked, or
+   * occupied), so a plain same-floor reload never shuffles a valid formation.
    *
    * @param {boolean} [transportAll=false] - force-relocate every non-active member
    * @param {boolean} [reviveDowned=false] - true only on a genuine floor
@@ -178,18 +187,41 @@ export const floorControllerMethods = {
       occupied.add(`${member.x},${member.y}`);
     }
   },
-  /** Nearest free walkable tile in a ring around (cx, cy), or null. */
+  /**
+   * Nearest free walkable tile that hugs the active member (LIV-76).
+   *
+   * A breadth-first flood from (cx, cy) returns the closest tile **reachable
+   * through walkable ground**, so every placed member is in the active member's
+   * own connected room and the party reads as a contiguous group rather than a
+   * scatter of Chebyshev-near-but-walled-off squares. Occupied tiles are walked
+   * through (allies stand there) but never returned, and the caller accumulates
+   * each placed member into `occupied` so successive members fan out cleanly.
+   *
+   * Runs only on floor load — allocations here are off the per-tick hot path.
+   *
+   * @param {number} cx active member x
+   * @param {number} cy active member y
+   * @param {Set<string>} occupied `"x,y"` tiles already claimed
+   * @returns {{x:number,y:number}|null}
+   */
   findPartySpot(cx, cy, occupied) {
     const grid = this.gridMap;
-    const isFree = (x, y) => grid.isWalkable(x, y) && !occupied.has(`${x},${y}`);
-    for (let r = 1; r <= 4; r++) {
-      for (let dy = -r; dy <= r; dy++) {
-        for (let dx = -r; dx <= r; dx++) {
-          if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
-          const x = cx + dx;
-          const y = cy + dy;
-          if (isFree(x, y)) return { x, y };
-        }
+    const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]];
+    const seen = new Set([`${cx},${cy}`]);
+    const queue = [{ x: cx, y: cy }];
+    for (let head = 0; head < queue.length; head++) {
+      const { x, y } = queue[head];
+      for (let d = 0; d < dirs.length; d++) {
+        const nx = x + dirs[d][0];
+        const ny = y + dirs[d][1];
+        const key = `${nx},${ny}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        if (!grid.isWalkable(nx, ny)) continue;
+        if (!occupied.has(key)) return { x: nx, y: ny };
+        // A tile held by another ally is walkable: expand past it so later
+        // members can still wrap the group without crossing a wall.
+        queue.push({ x: nx, y: ny });
       }
     }
     return null;
@@ -264,7 +296,7 @@ export const floorControllerMethods = {
       await this.transition.run('floorAdvance', async () => {
         const transition = await this.gameClient.advanceFloor(this.player, nextFloor);
         this.player = transition.player;
-        this.applyDungeonData(transition.floor, { reviveDowned: true });
+        this.applyDungeonData(transition.floor, { reviveDowned: true, transportAll: true });
         LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
         this.updateHUD();
         await this.persistSave(true);
@@ -377,7 +409,7 @@ export const floorControllerMethods = {
     try {
       const data = await this.gameClient.selectTower(this.player.slotIndex, nextTowerId);
       this.player = data.player;
-      this.applyDungeonData(data.floor, { reviveDowned: true });
+      this.applyDungeonData(data.floor, { reviveDowned: true, transportAll: true });
       LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
       this.updateHUD();
       await this.persistSave(true);
@@ -497,7 +529,7 @@ export const floorControllerMethods = {
         try {
           const data = await this.gameClient.selectTower(this.player.slotIndex, towerId);
           this.player = data.player;
-          this.applyDungeonData(data.floor, { reviveDowned: true });
+          this.applyDungeonData(data.floor, { reviveDowned: true, transportAll: true });
           LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
           this.updateHUD();
           await this.persistSave(true);
@@ -564,7 +596,7 @@ export const floorControllerMethods = {
       this.scene = null;
       this.player.scene = null;
       this.npcs = [];
-      this.applyDungeonData(data.floor, { reviveDowned: false });
+      this.applyDungeonData(data.floor, { reviveDowned: false, transportAll: true });
       LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
       this.updateHUD();
       await this.persistSave(true);

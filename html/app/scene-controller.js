@@ -473,7 +473,7 @@ export const sceneControllerMethods = {
       this.scene = null;
       this.player.scene = null;
       this.npcs = [];
-      this.applyDungeonData(data.floor, { reviveDowned: true });
+      this.applyDungeonData(data.floor, { reviveDowned: true, transportAll: true });
       LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
       this.updateHUD();
       await this.persistSave(true);
