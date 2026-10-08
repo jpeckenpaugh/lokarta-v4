@@ -1165,5 +1165,196 @@
         "stat_bonus": 30
       }
     ]
+  },
+  "salt_hound": {
+    "type": "salt_hound",
+    "faction": "monsters",
+    "name": "Salt Hound",
+    "baseHp": 26,
+    "baseAttack": 6,
+    "baseDefense": 1,
+    "moveCadence": 0.55,
+    "attackCadence": 1.0,
+    "damageMin": 5,
+    "damageMax": 8,
+    "damageType": "physical",
+    "aiType": "charger",
+    "spriteId": "giant_rat",
+    "baseXp": 18,
+    "xpFloorScale": 4,
+    "svgCode": "1F43A",
+    "lore": "A lean, salt-crusted pack hunter of the western wilds. Fast and fragile, but its bite leaves a bleeding wound that keeps the pressure on: break the pack before the bleed stacks.",
+    "attacks": [
+      {
+        "key": "salt_bite",
+        "kind": "melee",
+        "label": "Salting Bite",
+        "cooldownSec": 1.0,
+        "range": 1,
+        "minRange": 1,
+        "requiresLOS": true,
+        "damageMin": 5,
+        "damageMax": 8,
+        "damageType": "physical",
+        "onHit": { "status": "bleed", "durationSec": 3, "dps": 2 }
+      }
+    ],
+    "lootTable": [
+      {
+        "minRoll": 0.0,
+        "maxRoll": 0.35,
+        "item_id": "health_potion",
+        "name": "Health Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 30
+      }
+    ]
+  },
+  "mudlark_wrecker": {
+    "type": "mudlark_wrecker",
+    "faction": "monsters",
+    "name": "Mudlark Wrecker",
+    "baseHp": 44,
+    "baseAttack": 9,
+    "baseDefense": 2,
+    "moveCadence": 1.0,
+    "attackCadence": 2.4,
+    "damageMin": 6,
+    "damageMax": 10,
+    "damageType": "physical",
+    "aiType": "ranged",
+    "standoffMin": 2,
+    "standoffMax": 4,
+    "spriteId": "shadow_cultist",
+    "baseXp": 34,
+    "xpFloorScale": 6,
+    "svgCode": "1F9D1",
+    "lore": "A human looter who waylays travellers along the wreck-road. Hangs back and throws a weighted fishing net to root a target in the open, then falls back on a knife when you close the gap.",
+    "attacks": [
+      {
+        "key": "mudlark_net",
+        "kind": "projectile",
+        "label": "Weighted Net",
+        "cooldownSec": 2.4,
+        "range": 5,
+        "minRange": 2,
+        "requiresLOS": true,
+        "damageMin": 6,
+        "damageMax": 10,
+        "damageType": "physical",
+        "projectile": {
+          "type": "mudlark_net",
+          "speedTilesPerSec": 8,
+          "color": "#8a9a5b",
+          "visual": { "trailType": "solid", "headRadius": 6, "glowColor": "#c2cc9a" }
+        },
+        "onHit": { "status": "root", "durationSec": 1.5 }
+      },
+      {
+        "key": "wrecker_knife",
+        "kind": "melee",
+        "label": "Wrecker's Knife",
+        "cooldownSec": 1.4,
+        "range": 1,
+        "minRange": 1,
+        "requiresLOS": true,
+        "damageMin": 6,
+        "damageMax": 10,
+        "damageType": "physical"
+      }
+    ],
+    "lootTable": [
+      {
+        "minRoll": 0.0,
+        "maxRoll": 0.6,
+        "item_id": "health_potion",
+        "name": "Health Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 30
+      },
+      {
+        "minRoll": 0.6,
+        "maxRoll": 1.0,
+        "item_id": "arrows",
+        "name": "Arrows",
+        "type": "ammo",
+        "quantity": 10,
+        "stat_bonus": 0
+      }
+    ]
+  },
+  "barnacle_brute": {
+    "type": "barnacle_brute",
+    "faction": "monsters",
+    "name": "Barnacle Brute",
+    "isElite": true,
+    "baseHp": 110,
+    "baseAttack": 18,
+    "baseDefense": 5,
+    "moveCadence": 0.85,
+    "attackCadence": 1.8,
+    "damageMin": 16,
+    "damageMax": 22,
+    "damageType": "physical",
+    "aiType": "charger",
+    "spriteId": "elite_cultist",
+    "baseXp": 85,
+    "xpFloorScale": 0,
+    "svgCode": "1F980",
+    "lore": "A barnacle-armoured hulk of the eastern shoals. Closes to smash, and when you try to kite it slams the ground with a telegraphed tide-crash that knocks you back. Read the 0.7s wind-up, step out of the ring, and punish the recovery.",
+    "attacks": [
+      {
+        "key": "brute_smash",
+        "kind": "melee",
+        "label": "Barnacle Smash",
+        "cooldownSec": 1.8,
+        "range": 1,
+        "minRange": 1,
+        "requiresLOS": true,
+        "damageMin": 16,
+        "damageMax": 22,
+        "damageType": "physical"
+      },
+      {
+        "key": "tide_slam",
+        "kind": "aoe",
+        "label": "Tide Slam",
+        "cooldownSec": 4.5,
+        "range": 2,
+        "minRange": 1,
+        "requiresLOS": false,
+        "telegraphSec": 0.7,
+        "radius": 2,
+        "burstDurationMs": 340,
+        "telegraphColor": "#38bdf8",
+        "damageMin": 9,
+        "damageMax": 13,
+        "damageType": "frost",
+        "projectile": { "type": "tide_slam", "color": "#38bdf8" },
+        "knockbackTiles": 2,
+        "onHit": { "status": "slow", "durationSec": 2, "factor": 0.5 }
+      }
+    ],
+    "lootTable": [
+      {
+        "always": true,
+        "item_id": "health_potion",
+        "name": "Health Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 30
+      },
+      {
+        "minRoll": 0.0,
+        "maxRoll": 1.0,
+        "item_id": "mana_potion",
+        "name": "Mana Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 40
+      }
+    ]
   }
 }

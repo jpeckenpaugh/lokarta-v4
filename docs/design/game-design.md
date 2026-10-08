@@ -88,11 +88,11 @@ branches; a new kit is a new catalog value plus an existing handler.
 
 | Role | Threat it poses | Player response it demands | Current roster |
 | :--- | :--- | :--- | :--- |
-| **Chaser** | Fast, relentless melee pressure. | Kite, body-block, or trade with a defensive cooldown. | `giant_rat`, `crypt_skeleton`, `mire_hound` |
-| **Zoner / standoff** | Holds a ring and punishes straight-line approaches with ranged pressure. | Break line of sight, use cover, or commit to a gap-closer. | `shadow_cultist`, `rime_acolyte`, `brine_witch` |
+| **Chaser** | Fast, relentless melee pressure. | Kite, body-block, or trade with a defensive cooldown. | `giant_rat`, `crypt_skeleton`, `mire_hound`, `salt_hound` |
+| **Zoner / standoff** | Holds a ring and punishes straight-line approaches with ranged pressure. | Break line of sight, use cover, or commit to a gap-closer. | `shadow_cultist`, `rime_acolyte`, `brine_witch`, `mudlark_wrecker` |
 | **Artillery** | Outranges the player and threatens a large telegraphed area. | Read the telegraph and leave the blast footprint; close the distance. | `sepulcher_mortar` |
 | **Controller / debuffer** | Low damage, but applies stun/slow that enables other threats to land. | Prioritize the controller before the pack closes; dodge the telegraph. | `chime_wraith` |
-| **Elite** | High HP/damage anchor with a multi-range kit. | Isolate, burst, or fight at the range where its second attack cannot gate on. | `elite_cultist`, `barrow_knight` |
+| **Elite** | High HP/damage anchor with a multi-range kit. | Isolate, burst, or fight at the range where its second attack cannot gate on. | `elite_cultist`, `barrow_knight`, `barnacle_brute` |
 | **Summoner** | Converts time into board pressure by adding bodies. | Race the summoner or clear adds at the spawn cap. | `bone_summoner`, `ossuary_priest` |
 | **Boss** | Stat check plus a signature mechanic that reshapes the arena. | Learn the telegraph, manage adds, then commit to a damage window. | `abyssal_overlord`, `tidebound_king` |
 
@@ -164,10 +164,11 @@ signature attack. Status is the `onHit` descriptor.
   silhouette, so their color language carries the read — frost `#7dd3fc`, poison `#65a30d`,
   bell-purple `#a855f7`, mortar-orange `#fb923c`, tidal `#38bdf8`. Boss uses the 48×48
   `abyssal_overlord` rig. This preserves the ≥3:1 rim-contrast bar against the dark floors.
-* **OpenMoji `svgCode`** is drawn only from assets already committed under
+* **OpenMoji `svgCode`** is drawn from assets already committed under
   `html/assets/openmoji/` (`1F407`, `1F52E`, `1F32A`, `1F539`, `2694`, `1F4D6`, `1F9E5`,
-  `1F451`), so `packaging.test.mjs` needs no new assets. Bespoke OpenMoji/monster art is a
-  follow-up for the Tech Lead / CEO, not a launch blocker.
+  `1F451`, and the I5 additions `1F43A` wolf, `1F9D1` person, `1F980` crab), so
+  `packaging.test.mjs` resolves every reference to a committed asset. Bespoke
+  monster art is a follow-up for the Tech Lead / CEO, not a launch blocker.
 
 ### 6.5 Design decisions & open handoffs
 
@@ -189,6 +190,68 @@ signature attack. Status is the `onHit` descriptor.
 * **Boss wiring handoff (done).** `sunken_catacombs` now points `tower.boss.type`
   at `tidebound_king`; the two new towers carry their own bosses
   (`forgemaster_kol`, `frostbound_choirmaster`). Four distinct bosses total.
+
+### 6.6 Dawnreach overworld roster (I5)
+
+The wilds taught only the chaser (`drowned_crawler`) and the zoner (`tide_thrall`).
+I5 adds three data-only overworld opponents so the outdoor isle teaches the pack-chaser,
+the rooting human zoner, and the telegraphed elite **before** the towers assume them.
+All values are base (pre-floor-scale); `islands.json` `spawnZones` place them.
+
+| Opponent (`key`) | Role | `aiType` | Attack (`kind`) | Status | HP | Atk | CD | Range | XP base/+floor | Gold |
+| :--- | :--- | :--- | :--- | :--- | ---: | --- | ---: | --- | ---: | --- |
+| **Salt Hound** (`salt_hound`) | Pack chaser | `charger` | melee | bleed 3s @2 | 26 | 5–8 | 1.0s | 1 | 18 / +4 | 3–8 |
+| **Mudlark Wrecker** (`mudlark_wrecker`) | Human zoner | `ranged` | projectile **+** melee fallback | root 1.5s | 44 | 6–10 | 2.4s / 1.4s | 5 (min 2) / 1 | 34 / +6 | 6–14 |
+| **Barnacle Brute** (`barnacle_brute`) | Elite | `charger` | melee **+** aoe (0.7s telegraph, r2) | slow 2.0s ×0.50 | 110 | 16–22 / 9–13 | 1.8s / 4.5s | 1 / 2 | 85 (elite) | 30–50 |
+
+**Spawn placement (`islands.json` `spawnZones`).** West (`west_wilds`,
+`approach_meadow`) is the pack-chaser classroom: `drowned_crawler` + `salt_hound`.
+East (`east_field`, `east_wilds`) adds the human zoner `mudlark_wrecker` to the
+existing `tide_thrall`; a dedicated `barnacle_shoals` zone (`maxAlive: 1`) holds a
+single landmark `barnacle_brute` on the shrine road, so the elite is a chosen fight
+rather than a swarm. Deterministic respawn is unchanged (LIV-68).
+
+**Balance rationale (per foe).**
+
+* **Salt Hound — pack chaser with a bleed.** 26 HP (2 over the crawler) and a fast
+  `moveCadence 0.55` make it a swarm, not a tank; the 1.0s cadence lets a pack refresh
+  the 3s bleed. Bleed at 2 dps = 6 unmitigated total per application — deliberately
+  below the Brine Witch's 24 — so the *lesson* is spacing and focus-fire, not a hidden
+  nuke. *Lenses: enemy role taxonomy, balance levers (speed + DoT, not HP/damage).*
+* **Mudlark Wrecker — human zoner that roots.** 44 HP and 6–10 damage are modest; the
+  threat is the `root` 1.5s net, which turns a bad approach into a pinned target for
+  the pack. The net's `minRange 2` and the knife's `range 1` make the melee fallback
+  automatic when the player closes, and `standoffMin 2` makes it back off again — a
+  readable "hold the ring, punish the approach" loop. As the isle's only human foe it
+  also grounds the "wreckers prey on pilgrims" theme. *Lenses: readability (travelling
+  net telegraphs itself), MDA (the root converts over-extension into tension).*
+* **Barnacle Brute — telegraphed elite.** 110 HP / 5 defence is an anchor, and the
+  two range-gated attacks (melee at 1, `tide_slam` at 2) punish kiting exactly like the
+  Barrow Knight. The 0.7s telegraph + radius 2 is a one-tile dodge; the knockback is
+  the cost of ignoring it. It is the eastern wilds' landmark fight between quest beats.
+  *Lenses: difficulty curve & flow (a deliberate spike outdoors), mastery vs frustration
+  (the slam is always telegraphed).*
+
+**Design decisions & handoffs.**
+
+* **`aiType: ranged`, not `standoff`, for the human zoner.** The issue table listed
+  `standoff`, but in the LIV-2 framework `standoff` is the *frozen legacy* cultist
+  handler (`updateCultist`) that hardcodes a Shadow Bolt and ignores `attacks[]`. The
+  catalog-driven "zoner" personality is `ranged` → `updateCatalogCombatant` (standoff
+  positioning + `attacks[]` dispatch), the same handler `tide_thrall`/`rime_acolyte` use.
+  Authoring `standoff` would have required a bespoke JS branch, so `ranged` is the
+  data-only realization of the intent. Flagged for the board.
+* **Three new engine contracts (Tech Lead).** The kits need handlers the catalog can
+  dispatch to; all three follow the existing extension patterns and are safe no-ops
+  until wired:
+  * `onHit.status: "bleed"` — a DoT status with the same shape as `burn`/`poison`
+    (`{ durationSec, dps }`); one `STATUS_EFFECT_APPLIERS` entry + one ticker branch.
+  * `onHit.status: "root"` — a movement-lock status with the same shape as `slow`/`stun`
+    (`{ durationSec }`); one applier entry + ticker branch + the movement gate in
+    `game-loop.js` `processMovementInput` (a `rootTimer > 0` return beside `stunTimer`).
+  * `attacks[].knockbackTiles` — a generic AoE displacement field (integer, default 0);
+    the `resolveAoeAttack` resolver pushes the player away from the blast centre up to
+    N walkable tiles. Ignored safely if unhandled.
 
 ---
 
