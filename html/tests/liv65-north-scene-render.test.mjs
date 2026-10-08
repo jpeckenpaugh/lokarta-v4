@@ -71,7 +71,7 @@ function renderIslandAt(playerY) {
   renderer.ctx = ctx;
   renderer.canvas = ctx.canvas;
   renderer.scene = scene;
-  const player = { x: 24, y: playerY, current_floor: 1, hp: 10, max_hp: 10, paperdoll: {}, action_bar: [] };
+  const player = { x: 48, y: playerY, current_floor: 1, hp: 10, max_hp: 10, paperdoll: {}, action_bar: [] };
   renderer.render(grid, player, [], [], [], [], null, [], [], [], [], []);
   return ctx;
 }
@@ -79,11 +79,11 @@ function renderIslandAt(playerY) {
 test('LIV-65 north Dawnreach Isle renders (regression)', async (t) => {
   await t.test('composed island authors the Tide Gate as GATED_DOOR', () => {
     const { grid } = islandContext();
-    for (const x of [23, 24, 25]) {
-      assert.equal(grid.tiles[10][x].type, TILE_TYPES.GATED_DOOR, `Tide Gate tile (${x},10)`);
+    for (const x of [47, 48, 49]) {
+      assert.equal(grid.tiles[20][x].type, TILE_TYPES.GATED_DOOR, `Tide Gate tile (${x},20)`);
     }
     // The Spire base north of the gate stays reachable in the tile data.
-    assert.equal(grid.tiles[3][24].type, TILE_TYPES.TOWER_ENTRANCE);
+    assert.equal(grid.tiles[8][48].type, TILE_TYPES.TOWER_ENTRANCE);
   });
 
   await t.test('scene theme omits the tower `door` block but the gate still draws', () => {
@@ -110,9 +110,9 @@ test('LIV-65 north Dawnreach Isle renders (regression)', async (t) => {
   });
 
   await t.test('every frame from the Tide Gate into the north renders without a throw', () => {
-    // Player y = 11..2 walks the gate (row 10) into the Spire base (row 3);
+    // Player y = 21..7 walks the gate (row 20) into the Spire base (row 8);
     // the gate tiles are inside the viewport across this whole band.
-    for (let y = 11; y >= 2; y--) {
+    for (let y = 21; y >= 7; y--) {
       const ctx = renderIslandAt(y);
       const tileFills = ctx.calls.filter((c) => c.name === 'fillRect').length;
       assert.ok(tileFills > 0, `frame at y=${y} must draw tiles (not just the black clear)`);

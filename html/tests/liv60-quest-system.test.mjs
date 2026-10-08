@@ -174,7 +174,7 @@ test('LIV-60 quest system', async (t) => {
 
     // --- Q2 ---
     assert.equal(acceptQuest(state, player, 'the_lantern_wreck').ok, true);
-    recordEvent(state, { type: 'reach', sceneId: 'island_dawnreach', x: 9, y: 20 });
+    recordEvent(state, { type: 'reach', sceneId: 'island_dawnreach', x: 9, y: 40 });
     recordEvent(state, { type: 'kill', monsterType: 'tide_thrall' });
     recordEvent(state, { type: 'kill', monsterType: 'tide_thrall' });
     recordEvent(state, { type: 'kill', monsterType: 'drowned_crawler' });
@@ -190,7 +190,7 @@ test('LIV-60 quest system', async (t) => {
     // --- Q3 (levelGuard minLevel 3 now satisfied) ---
     const acceptQ3 = acceptQuest(state, player, 'rite_of_the_beacon');
     assert.equal(acceptQ3.ok, true);
-    recordEvent(state, { type: 'reach', sceneId: 'island_dawnreach', x: 39, y: 22 });
+    recordEvent(state, { type: 'reach', sceneId: 'island_dawnreach', x: 78, y: 44 });
     recordEvent(state, { type: 'interact', targetId: 'drowned_shrine_rite' });
     recordEvent(state, { type: 'kill', monsterType: 'shrine_warden' });
     assert.equal(getQuestStatus(state, 'rite_of_the_beacon'), QUEST_STATUS.COMPLETE, 'Q3 complete');
