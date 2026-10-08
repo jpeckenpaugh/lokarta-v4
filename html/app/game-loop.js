@@ -356,6 +356,7 @@ export const gameLoopMethods = {
     // 5. Party step (LIV-44): hand control off a downed active member, tick
     //    revive channels + self-stabilize, then evaluate the party wipe. Only a
     //    true simultaneous full-party knockout ends the run.
+    const handoffFrom = { x: this.player.x, y: this.player.y };
     const partyStep = ReviveSystem.evaluateParty(this.player, {
       deltaSec,
       elapsedSec: this.elapsedSec,
@@ -364,7 +365,7 @@ export const gameLoopMethods = {
       floor: this.player.current_floor,
       gridMap: this.gridMap,
     });
-    if (partyStep.handoff) this.handleActiveHandoff(partyStep.handoff);
+    if (partyStep.handoff) this.handleActiveHandoff(partyStep.handoff, handoffFrom);
     for (const ev of partyStep.events) this.applyPartyEvent(ev);
     if (partyStep.wiped && !this.isGameOver) {
       this.isGameOver = true;
@@ -458,18 +459,51 @@ export const gameLoopMethods = {
   /**
    * LIV-44: a downed active member hands control to a living ally with no modal.
    * Drops held keys and any stale monster target so the new actor does not
-   * inherit the previous member's input.
+   * inherit the previous member's input. LIV-50 layers the dramatic `beat` +
+   * distinct cue, fluid position/camera move and destination flash on top.
    */
-  handleActiveHandoff(member) {
+  handleActiveHandoff(member, from = {}) {
     this.keysDown.clear();
     this.selectedMonsterId = null;
     setAnimState(this.player, 'idle');
     const voc = VOCATIONS_CATALOG?.[member && member.vocation];
     const label = (voc && (voc.name || voc.renderTheme?.classLabel)) || (member && member.vocation) || 'an ally';
     this.logCombat(`The Light passes — control goes to ${label}.`, 'warning');
-    this.addFloatingText('CONTROL → ALLY', this.player.x, this.player.y, '#fde68a');
-    soundFX.play('holyChime');
+    const fx = Number.isFinite(from.x) ? from.x : this.player.x;
+    const fy = Number.isFinite(from.y) ? from.y : this.player.y;
+    this.addFloatingText('CONTROL → ALLY', fx, fy, '#fde68a');
+    this.beginSwapFeedback(member, from, 'handoff');
     this.updateHUD();
+  },
+  /**
+   * LIV-50: arm the control-swap presentation for the incoming `member`. Reads
+   * all tuning from `ui.json.knockout.swap` (beat, position/camera durations,
+   * easing, flash, cue names); `from` is the outgoing member's tile so the
+   * camera can glide and the locator can travel instead of snapping. No-op when
+   * the swap state object is absent (legacy/unit harnesses).
+   */
+  beginSwapFeedback(member, from = {}, kind = 'controlSwap') {
+    const fb = this.swapFeedback;
+    if (!fb || !member) return;
+    const now = this.nowMs();
+    const sx = Number.isFinite(from.x) ? from.x : this.player.x;
+    const sy = Number.isFinite(from.y) ? from.y : this.player.y;
+    fb.begin({
+      kind,
+      fromX: sx,
+      fromY: sy,
+      toX: member.x,
+      toY: member.y,
+      memberId: member.memberId,
+      nowMs: now,
+    });
+    // A camera glide makes the swap read fluidly; the renderer clamps to zero
+    // duration under reduced motion (snap).
+    if (this.renderer && typeof this.renderer.startCameraGlide === 'function') {
+      this.renderer.startCameraGlide(fb.cameraMs, fb.cfg.easing, now);
+    }
+    const cue = kind === 'handoff' ? fb.cfg.sfx.koHandoff : fb.cfg.sfx.controlSwap;
+    if (cue) soundFX.play(cue);
   },
   /**
    * LIV-27 / FIX-12: hand control to the next (`direction` +1) or previous
@@ -478,6 +512,7 @@ export const gameLoopMethods = {
    * `party_ai.json` auto-AI profile. Returns true when control actually moved.
    */
   cycleControlledMember(direction) {
+    const from = { x: this.player.x, y: this.player.y };
     const member = cycleActiveMember(this.player, direction);
     if (!member) return false;
     // Held keys belong to the previous actor; drop them, and clear any stale
@@ -488,7 +523,7 @@ export const gameLoopMethods = {
     const voc = VOCATIONS_CATALOG?.[member.vocation];
     const label = (voc && (voc.name || voc.renderTheme?.classLabel)) || member.vocation;
     this.logCombat(`Now controlling ${label}.`, 'system');
-    soundFX.play('click');
+    this.beginSwapFeedback(member, from, 'controlSwap');
     this.updateHUD();
     this.persistSave();
     return true;
@@ -642,6 +677,10 @@ export const gameLoopMethods = {
     // Player control statuses (catalog `onHit`): stun skips input entirely;
     // slow accumulates toward a full step so cadence drops by `slowFactor`.
     if (this.player.stunTimer > 0) return;
+
+    // LIV-50 KO-handoff beat: the incoming actor's input is held for the
+    // dramatic beat while the world keeps simulating around them.
+    if (this.swapFeedback && this.swapFeedback.inputLocked(this.nowMs())) return;
 
     let dx = 0;
     let dy = 0;
@@ -803,6 +842,9 @@ export const gameLoopMethods = {
   },
   updateAnimations(dtMs) {
     const dtSec = dtMs / 1000;
+
+    // LIV-50: retire the control-swap presentation once every sub-timeline ends.
+    if (this.swapFeedback) this.swapFeedback.update(this.nowMs());
 
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const p = this.projectiles[i];
