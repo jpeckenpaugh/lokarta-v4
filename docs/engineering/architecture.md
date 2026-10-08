@@ -59,7 +59,7 @@ All client application code resides under `html/` and is structured as native ES
 | Directory | Layer | Key Submodules & Responsibilities |
 | :--- | :--- | :--- |
 | [`html/app/`](../html/app/) | UI & Controllers | `app-controller.js` (orchestrator), `game-loop.js` (10 Hz ticker & swept projectile physics), `save-controller.js` (slots/flow), `combat-controller.js`, `inventory-controller.js`, `floor-controller.js`, `shop-controller.js`, `canvas-renderer.js`, `sprite-renderer.js`, `hud-manager.js`, `modal-manager.js`, `input-controller.js`, `ability-bar.js`, `autofire.js`, `animation-state.js`, `swap-feedback.js`, `hud-fx.js`, `splash-screen.js`, `title-ambient.js`, `transition-controller.js`. |
-| [`html/engine/`](../html/engine/) | Core Simulation | `config.js`, `party.js`, `grid-map.js`, `lighting-system.js`, `progression-system.js`, `combat-system.js`, `inventory-system.js`, `entity-ai.js`, `fate-grant-system.js`, `economy-system.js`, `item-progression.js`, `item-stats.js`, `gesture-engine.js`, `projectile-collision.js`, `chest-system.js`, `door-system.js`, `stair-system.js`. |
+| [`html/engine/`](../html/engine/) | Core Simulation | `config.js`, `party.js`, `grid-map.js`, `lighting-system.js`, `progression-system.js`, `combat-system.js`, `revive-system.js`, `inventory-system.js`, `entity-ai.js`, `fate-grant-system.js`, `economy-system.js`, `item-progression.js`, `item-stats.js`, `gesture-engine.js`, `projectile-collision.js`, `chest-system.js`, `door-system.js`, `stair-system.js`. |
 | [`html/services/`](../html/services/) | Services | `floor-generator.js` (procedural generation), `storage.js` (IndexedDB layer), `save-slots.js` (multi-slot persistence & migration), `build-version.js` (cache-busting guard). |
 | [`html/worker/`](../html/worker/) | Worker RPC | `game-worker.js` (stateless RPC dispatcher) and `game-client.js` (Promise-based client wrapper). |
 | [`html/audio/`](../html/audio/) | Audio Engine | `audio-system.js` (Web Audio procedural synthesizer driven by `sounds.json`). |
@@ -100,7 +100,7 @@ Communication between the main thread and `game-worker.js` uses a structured Pro
 | `loadSlot` | Loads the character and floor cache for an existing occupied slot. |
 | `deleteSlot` | Clears character, metadata, and cached floors for a slot. |
 | `restartFloor` | Restores character to the arrival snapshot (`floorEntry`) on the active floor. |
-| `respawnAfterDeath` | Sets entrance coordinates and restores vitals for town respawn. |
+| `respawnAfterDeath` | Legacy single-hero respawn (descends one floor, full restore). The LIV-44 party wipe uses `onPartyWipe` instead: the Temple of the Dawn revives the party and resets re-entry to the tower's entry floor. |
 | `newGame` | Legacy single-save slot initializer. |
 | `saveCharacter` | Debounced or immediate persistence of player state and slot metadata. |
 | `getFloor` | Retrieves cached floor or invokes `floor-generator.js` to create a new level. |
