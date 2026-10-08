@@ -118,7 +118,32 @@
     "selfReviveCue": "{member} steadies themselves.",
     "handoffCue": "Control passes to {member}.",
     "partyWipeTitle": "THE LIGHT FAILS",
-    "partyWipeBody": "The last of your party falls on Floor {floor}. The Temple of the Dawn draws you back and restores you at the tower gate."
+    "partyWipeBody": "The last of your party falls on Floor {floor}. The Temple of the Dawn draws you back and restores you at the tower gate.",
+    "visuals": {
+      "description": "Phase 4 knockout/revive presentation (LIV-45). Behavior lives in party_ai.revive (enabled/color/pulseHz/radius); these are the geometry + palette tokens the renderers read. `downed.tintAmount` is the ~40% desaturate/darken wash; the beacon is the E1 'Call for Help' ring; the channel tokens draw the revive tether + progress arc.",
+      "downed": {
+        "tint": "#5b6069",
+        "tintAmount": 0.4,
+        "alpha": 0.85,
+        "glyph": "✚",
+        "glyphColor": "#cbd5e1"
+      },
+      "beacon": {
+        "ringMinTiles": 0.45,
+        "ringMaxTiles": 1.7,
+        "lineWidthPx": 3,
+        "baseAlpha": 0.75,
+        "pipSizeTiles": 0.3
+      },
+      "channel": {
+        "color": "#fde68a",
+        "coreColor": "#fffbeb",
+        "beamWidthPx": 4,
+        "tetherAlpha": 0.5,
+        "progressRadiusTiles": 0.42,
+        "progressLineWidthPx": 4
+      }
+    }
   },
   "party": {
     "description": "Auto-ally feedback copy (FIX-11 / LIV-26). {member}, {level}, {cards}, {item} and {ability} are substituted with display names, never catalog ids. Cues are subtle and non-blocking; no dark patterns.",

@@ -9,7 +9,7 @@
 
 import { InventorySystem, LightingSystem, DoorSystem, CombatSystem, EconomySystem } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
-import { ITEMS_CATALOG, DOORS_CATALOG, UI_CATALOG, VOCATIONS_CATALOG } from '../data/index.js';
+import { ITEMS_CATALOG, DOORS_CATALOG, UI_CATALOG, VOCATIONS_CATALOG, PARTY_AI_CATALOG } from '../data/index.js';
 import { EQUIPMENT_KEY_MAP, ACTIVE_SLOT_KEYS, INVENTORY_CONFIG } from '../engine/config.js';
 
 const EMOJI_TO_SVG_MAP = {
@@ -253,6 +253,7 @@ export class HUDManager {
     HUDManager.renderStatusBars(statusBarsEl, app.player, app.currentFloorName);
     HUDManager.renderLoadout(loadoutEl, app);
     HUDManager.renderBackpack(backpackEl, app);
+    HUDManager.updateKnockoutPrompt(app);
   }
 
   static renderStatusBars(statusBarsEl, player, currentFloorName) {
@@ -367,6 +368,12 @@ export class HUDManager {
     const party = Array.isArray(player?.party) ? player.party : null;
     if (!party || party.length === 0) return '';
     const activeId = player.activeMemberId;
+    const knockout = UI_CATALOG?.knockout || {};
+    const downedToken = knockout.visuals?.downed || {};
+    const help = PARTY_AI_CATALOG?.revive?.callForHelp || {};
+    const glyph = downedToken.glyph || '✚';
+    const pipColor = help.color || '#fde68a';
+    const pipEnabled = help.enabled !== false;
     const members = party
       .map((member) => {
         const voc = member.vocation || 'magician';
@@ -382,19 +389,27 @@ export class HUDManager {
         const maxHp = isActive ? player.max_hp : member.max_hp;
         const mp = isActive ? player.mana : member.mana;
         const maxMp = isActive ? player.max_mana : member.max_mana;
-        const hpPct = Math.max(0, Math.min(100, (Number(hp) / Math.max(1, Number(maxHp))) * 100));
-        const mpPct = Math.max(0, Math.min(100, (Number(mp) / Math.max(1, Number(maxMp))) * 100));
+        const downed = member.combatState === 'downed' || member.lifeState === 'downed' || !(Number(hp) > 0);
+        const hpPct = downed ? 0 : Math.max(0, Math.min(100, (Number(hp) / Math.max(1, Number(maxHp))) * 100));
+        const mpPct = downed ? 0 : Math.max(0, Math.min(100, (Number(mp) / Math.max(1, Number(maxMp))) * 100));
         const name = voc.charAt(0).toUpperCase() + voc.slice(1);
+        // Downed chip: greyed, a downed glyph badge, a DOWN tag, and the E1
+        // locator pip (call-for-help) when an ally can still answer.
+        const pip = downed && pipEnabled
+          ? `<span class="party-locator-pip" style="--pip-color:${pipColor}" aria-hidden="true"></span>`
+          : '';
+        const badge = downed ? glyph : label;
         return `
-          <div class="party-chip${isActive ? ' is-active' : ''}" data-member="${member.memberId || voc}" title="${name} · Lv ${member.level || 1}" style="--party-color: ${color}; --party-accent: ${accent};">
-            <span class="party-chip-badge">${label}</span>
+          <div class="party-chip${isActive ? ' is-active' : ''}${downed ? ' is-downed' : ''}" data-member="${member.memberId || voc}" title="${name} · Lv ${member.level || 1}" style="--party-color: ${color}; --party-accent: ${accent}; --pip-color: ${pipColor};">
+            <span class="party-chip-badge">${badge}</span>
             <span class="party-chip-body">
-              <span class="party-chip-name">${name}${isActive ? ' <em>★</em>' : ''}</span>
+              <span class="party-chip-name">${name}${isActive && !downed ? ' <em>★</em>' : ''}${downed ? ' <em class="party-downed-tag">DOWN</em>' : ''}</span>
               <span class="party-chip-bars">
                 <span class="party-hp"><i style="width:${hpPct}%"></i></span>
                 <span class="party-mp"><i style="width:${mpPct}%"></i></span>
               </span>
             </span>
+            ${pip}
           </div>`;
       })
       .join('');
@@ -404,6 +419,73 @@ export class HUDManager {
         <div class="party-chips">${members}</div>
       </div>
     `;
+  }
+
+  /**
+   * On-screen knockout/revive prompt (LIV-45). Shows `reviveStartCue` while a
+   * living ally channels a rescue and `downedCue` while a body waits; hidden
+   * otherwise. Creates the element once inside `.viewport-panel` and only
+   * toggles text/hidden after — no per-frame DOM churn (docs/engineering/agents.md).
+   * @param {object} app
+   */
+  static updateKnockoutPrompt(app) {
+    if (typeof document === 'undefined' || !app) return;
+    const knockout = UI_CATALOG?.knockout;
+    const party = Array.isArray(app.player?.party) ? app.player.party : null;
+    if (!knockout || !party || party.length <= 1) {
+      HUDManager._setKnockoutPrompt(null);
+      return;
+    }
+    const isDowned = (m) => Boolean(m) && (m.combatState === 'downed' || m.lifeState === 'downed' || !(Number(m.hp) > 0));
+    const nameOf = (m) => {
+      const v = VOCATIONS_CATALOG?.[m && m.vocation];
+      return (v && v.name) || (m && m.vocation ? m.vocation.charAt(0).toUpperCase() + m.vocation.slice(1) : 'An ally');
+    };
+    const fill = (tpl, member) => String(tpl || '').replace('{member}', nameOf(member));
+
+    const reviver = party.find((m) => m && !isDowned(m) && m._reviveTargetId);
+    if (reviver) {
+      const target = party.find((m) => m && m.memberId === reviver._reviveTargetId) || reviver;
+      HUDManager._setKnockoutPrompt(fill(knockout.reviveStartCue, target), 'reviving');
+      return;
+    }
+    const downed = party.find((m) => isDowned(m));
+    if (downed) {
+      // Informational only: the auto designee handles the rescue, so do not
+      // imply a non-existent manual binding (`revivePrompt` is reserved for the
+      // player-initiated revive follow-up).
+      HUDManager._setKnockoutPrompt(fill(knockout.downedCue, downed), 'downed');
+      return;
+    }
+    HUDManager._setKnockoutPrompt(null);
+  }
+
+  /** Lazily mounts the prompt element once, then only toggles it. */
+  static _setKnockoutPrompt(text, state) {
+    if (typeof document === 'undefined') return;
+    let el = HUDManager._knockoutPromptEl;
+    if (!el) {
+      el = document.getElementById('knockout-prompt');
+      const host = document.querySelector('.viewport-panel');
+      if (!el && !host) return;
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'knockout-prompt';
+        el.className = 'knockout-prompt';
+        el.setAttribute('role', 'status');
+        el.setAttribute('aria-live', 'polite');
+        el.hidden = true;
+        host.appendChild(el);
+      }
+      HUDManager._knockoutPromptEl = el;
+    }
+    if (!text) {
+      if (!el.hidden) { el.hidden = true; el.textContent = ''; }
+      return;
+    }
+    if (el.hidden) el.hidden = false;
+    if (el.textContent !== text) el.textContent = text;
+    if (el.dataset.state !== state) el.dataset.state = state || '';
   }
 
   /**

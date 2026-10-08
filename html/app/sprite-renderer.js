@@ -876,8 +876,10 @@ export class SpriteRenderer {
     if (dim !== 1) ctx.globalAlpha = Math.max(0, Math.min(1, dim));
 
     // Hit feedback: a static tint under reduced motion, otherwise the same tint
-    // baked into the frame (no per-frame shake, no alpha edge fades).
-    const tint = (!reduced && state === 'hit') ? { hex: HIT_TINT, amount: 0.35 } : null;
+    // baked into the frame (no per-frame shake, no alpha edge fades). An explicit
+    // caller tint (the LIV-45 downed grey wash) wins and is baked the same way.
+    const hitTint = (!reduced && state === 'hit') ? { hex: HIT_TINT, amount: 0.35 } : null;
+    const tint = opts.tint || hitTint;
 
     const canvas = getFrameCanvas(def, frameId, scale, dir === 'side' && !!anim?.flipX, tint);
     if (canvas && typeof ctx.drawImage === 'function') {
@@ -893,12 +895,14 @@ export class SpriteRenderer {
     return { dx, dy, w: nw, h: nh, scale, id };
   }
 
-  static drawPlayer(ctx, player, screenX, screenY, size = CONFIG.GRID_SIZE) {
+  static drawPlayer(ctx, player, screenX, screenY, size = CONFIG.GRID_SIZE, opts = {}) {
     const u = size / 32;
     const cx = screenX + size / 2;
     const cy = screenY + size / 2;
 
-    const geo = SpriteRenderer.drawActor(ctx, player, screenX, screenY, { size });
+    // `opts.dim` + `opts.tint` carry the LIV-45 downed grey-out; a downed body
+    // projects no light, so its halo/glow is suppressed below.
+    const geo = SpriteRenderer.drawActor(ctx, player, screenX, screenY, { size, ...opts });
 
     if (!geo) {
       // Procedural fallback (pre-sprite renderer).
@@ -941,8 +945,9 @@ export class SpriteRenderer {
       SpriteRenderer.drawFacingEyes(ctx, cx, cy - 6 * u, player.facing, eyeColor, u);
     }
 
-    // Paladin halo stays an effect, not baked into sprite pixels.
-    if ((player.vocation || 'magician') === 'paladin') {
+    // Paladin halo stays an effect, not baked into sprite pixels. A downed
+    // member projects no light, so its halo is suppressed (LIV-45 readability).
+    if (!opts.downed && (player.vocation || 'magician') === 'paladin') {
       const hy = geo ? geo.dy - 4 * geo.scale : cy - 14 * u;
       ctx.save();
       ctx.globalAlpha = 0.55;
