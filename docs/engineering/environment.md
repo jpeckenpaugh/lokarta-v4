@@ -42,11 +42,12 @@ The test harness uses Node.js's native test runner without third-party framework
   ```bash
   node --test html/tests/*.test.mjs
   ```
-* **Coverage Scope (31+ Test Suites):**
-  * 5-tier procedural tower ascent, stair traversal, and key-gated locks.
+* **Coverage Scope (114 test suites / 984 cases):**
+  * Procedural tower ascent across all four towers, stair traversal, and key-gated locks.
+  * Island/town scene composition, NPC dialogue, the quest chain, and the Spire access gate.
   * 16-bit sprite & prop asset validation, palette contracts, and preview drift checks.
   * Combat mechanics, Golden Sets, and 4-slot consumable / 4-slot equipment inventory.
-  * Multi-save slots, legacy migrations, and build version cache invalidation.
+  * Multi-save slots, legacy migrations (party/world/tower backfill), and build version cache invalidation.
   * Worker RPC lifecycle and audio synthesizer events.
 
 ---

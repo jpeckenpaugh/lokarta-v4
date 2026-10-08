@@ -33,8 +33,8 @@ The **board** owns product direction, priorities, final approvals, and browser/g
 
 ### Specific Rules:
 1. **Catalog Ground Truth:**
-   All stats, spell radii, weapon types, damage steps, drop tables, sound frequencies, keybindings, monster AI types, party AI profiles, presentation tunables, and room coordinates **must** originate in the 17 JSON catalogs:
-   - `cards.json`, `monsters.json`, `items.json`, `vocations.json`, `sounds.json`, `abilities.json`, `biomes.json`, `encounters.json`, `dungeons.json`, `tower_levels.json`, `doors.json`, `chests.json`, `tile_themes.json`, `keybindings.json`, `ui.json`, `economy.json`, `party_ai.json`.
+   All stats, spell radii, weapon types, damage steps, drop tables, sound frequencies, keybindings, monster AI types, party AI profiles, presentation tunables, and room coordinates **must** originate in the 22 JSON catalogs:
+   - `cards.json`, `monsters.json`, `items.json`, `vocations.json`, `sounds.json`, `abilities.json`, `biomes.json`, `encounters.json`, `dungeons.json`, `tower_levels.json`, `doors.json`, `chests.json`, `tile_themes.json`, `keybindings.json`, `ui.json`, `economy.json`, `party_ai.json`, `islands.json`, `towns.json`, `npcs.json`, `quests.json`, `dialogues.json`.
 2. **No String Heuristics:**
    Never write heuristics like `itemId.includes('bow')`, `name.includes('cultist')`, or `vocation === 'fighter'` in game logic.
    - If an item needs a specific combat handler: declare `"actionKey": "bow_shot"` in `items.json`.
@@ -116,7 +116,7 @@ Lokarta runs a 60 FPS Canvas rendering loop alongside a 10 Hz (100 ms) simulatio
 1. **Mulberry32 PRNG:**
    Always use the deterministic Mulberry32 PRNG ([`createPRNG`](html/services/floor-generator.js)) for tower floor carving, room layout, and monster tier selection. Never use `Math.random()` in procedural generation.
 2. **BFS Connectivity Guarantee:**
-   Any modification to tower templates or floor generation algorithms must guarantee and verify full Breadth-First Search (BFS) path connectivity between the arrival spawn tile and the connecting ascent stair tile across all 5 tiers.
+   Any modification to tower templates or floor generation algorithms must guarantee and verify full Breadth-First Search (BFS) path connectivity between the arrival spawn tile and the connecting ascent stair tile on every authored floor of every tower.
 3. **Consistent Floor Seeds:**
    Use the canonical formula `(1337 + floorId * 42)` for floor seeds unless an explicit seed parameter is provided.
 

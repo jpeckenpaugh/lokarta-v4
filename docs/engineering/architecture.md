@@ -58,12 +58,12 @@ All client application code resides under `html/` and is structured as native ES
 
 | Directory | Layer | Key Submodules & Responsibilities |
 | :--- | :--- | :--- |
-| [`html/app/`](../html/app/) | UI & Controllers | `app-controller.js` (orchestrator), `game-loop.js` (10 Hz ticker & swept projectile physics), `save-controller.js` (slots/flow), `combat-controller.js`, `inventory-controller.js`, `floor-controller.js`, `shop-controller.js`, `canvas-renderer.js`, `sprite-renderer.js`, `hud-manager.js`, `modal-manager.js`, `input-controller.js`, `ability-bar.js`, `autofire.js`, `animation-state.js`, `swap-feedback.js`, `hud-fx.js`, `splash-screen.js`, `title-ambient.js`, `transition-controller.js`. |
-| [`html/engine/`](../html/engine/) | Core Simulation | `config.js`, `party.js`, `grid-map.js`, `lighting-system.js`, `progression-system.js`, `combat-system.js`, `revive-system.js`, `inventory-system.js`, `entity-ai.js`, `fate-grant-system.js`, `economy-system.js`, `item-progression.js`, `item-stats.js`, `gesture-engine.js`, `projectile-collision.js`, `chest-system.js`, `door-system.js`, `stair-system.js`. |
-| [`html/services/`](../html/services/) | Services | `floor-generator.js` (procedural generation), `storage.js` (IndexedDB layer), `save-slots.js` (multi-slot persistence & migration), `build-version.js` (cache-busting guard). |
+| [`html/app/`](../html/app/) | UI & Controllers | `app-controller.js` (orchestrator), `game-loop.js` (10 Hz ticker & swept projectile physics), `save-controller.js` (slots/flow), `combat-controller.js`, `inventory-controller.js`, `floor-controller.js`, `scene-controller.js` (island/town scenes, roamer/quest/NPC events, return spot), `shop-controller.js`, `canvas-renderer.js`, `sprite-renderer.js`, `hud-manager.js`, `modal-manager.js`, `input-controller.js`, `dialogue-bubble.js`, `ability-bar.js`, `autofire.js`, `animation-state.js`, `swap-feedback.js`, `hud-fx.js`, `splash-screen.js`, `title-ambient.js`, `transition-controller.js`. |
+| [`html/engine/`](../html/engine/) | Core Simulation | `config.js`, `party.js`, `grid-map.js`, `lighting-system.js`, `progression-system.js`, `combat-system.js`, `revive-system.js`, `inventory-system.js`, `entity-ai.js`, `fate-grant-system.js`, `economy-system.js`, `item-progression.js`, `item-stats.js`, `gesture-engine.js`, `projectile-collision.js`, `chest-system.js`, `door-system.js`, `stair-system.js`, `faction.js`, `campaign.js`, `access-gate.js` (data-driven tower gate predicates), `npc-system.js`, `quest-system.js`, `return-spot.js`, `party-ai.js`, `party-progression.js`, `party-swap.js`. |
+| [`html/services/`](../html/services/) | Services | `floor-generator.js` (procedural generation), `storage.js` (IndexedDB layer), `save-slots.js` (multi-slot persistence & migration), `scene-composer.js` (island/town catalog → tilemap), `scene-spawner.js` (roamer/NPC/quest placement), `build-version.js` (cache-busting guard). |
 | [`html/worker/`](../html/worker/) | Worker RPC | `game-worker.js` (stateless RPC dispatcher) and `game-client.js` (Promise-based client wrapper). |
 | [`html/audio/`](../html/audio/) | Audio Engine | `audio-system.js` (Web Audio procedural synthesizer driven by `sounds.json`). |
-| [`html/data/`](../html/data/) | Data Catalogs | 17 decoupled JSON catalogs (`cards`, `monsters`, `items`, `vocations`, `sounds`, `abilities`, `biomes`, `encounters`, `dungeons`, `tower_levels`, `doors`, `chests`, `tile_themes`, `keybindings`, `ui`, `economy`, `party_ai`). |
+| [`html/data/`](../html/data/) | Data Catalogs | 22 decoupled JSON catalogs (`cards`, `monsters`, `items`, `vocations`, `sounds`, `abilities`, `biomes`, `encounters`, `dungeons`, `tower_levels`, `doors`, `chests`, `tile_themes`, `keybindings`, `ui`, `economy`, `party_ai`, `islands`, `towns`, `npcs`, `quests`, `dialogues`). |
 | [`html/styles/`](../html/styles/) | Presentation | `styles.css` root bundle and modular sheets (`base.css`, `hud.css`, `modals.css`). |
 | [`html/assets/`](../html/assets/) | Assets | JSON sprite matrices (`sprites/`), OpenMoji SVG icons, and brand graphics. |
 
@@ -71,13 +71,13 @@ All client application code resides under `html/` and is structured as native ES
 
 ## 3. Storage & Save Slots (IndexedDB)
 
-Persistent storage is managed by `html/services/storage.js` and `html/services/save-slots.js` inside the IndexedDB database **`lokarta_browser_db`** (schema version `2`):
+Persistent storage is managed by `html/services/storage.js` and `html/services/save-slots.js` inside the IndexedDB database **`lokarta_browser_db`** (schema version `3`):
 
 * **Object Stores:**
-  1. `save_slots` (keyPath: `'id'`): Metadata records for up to 5 save slots (`slotIndex: 1..5`, `vocation`, `level`, `currentFloor`, `towerProgress`, `playtimeMs`, `saveVersion: 2`).
-  2. `characters` (keyPath: `'id'`): Full player state snapshots (vitals, stats, equipment paperdoll, backpack, gold, location: `'town' | 'tower'`, and the campaign `party` / `activeMemberId` / `towerProgress` model described in [`party-data-model.md`](party-data-model.md)).
+  1. `save_slots` (keyPath: `'id'`): Metadata records for up to 5 save slots (`slotIndex: 1..5`, `vocation`, `level`, `currentFloor`, `towerProgress`, `playtimeMs`, `saveVersion: 5`).
+  2. `characters` (keyPath: `'id'`): Full player state snapshots (vitals, stats, equipment paperdoll, shared backpack, shared party `gold` wallet, `location: 'town' | 'tower' | 'island'` + `scene` pointer, `lastTowerExit` return spot, and the campaign `party` / `activeMemberId` / `towerProgress` model described in [`party-data-model.md`](party-data-model.md)).
   3. `slot_floors` (keyPath: `['slotIndex', 'floor_number']`): Per-slot cached floor tile matrices, entity states, and chest interactions.
-  4. `game_settings` (keyPath: `'key'`): Persisted options and migration guards (`migration_slot_v2`, `migration_tower_v3`, `migration_party_v4`, `last_played_slot`).
+  4. `game_settings` (keyPath: `'key'`): Persisted options and migration guards (`migration_slot_v2`, `migration_tower_v3`, `migration_party_v4`, `migration_world_v5`, `last_played_slot`).
   5. `profile` (keyPath: `'id'`): Global user settings (`soundEnabled`, `volume`, timestamps).
   6. `dungeon_floors` (keyPath: `'floor_number'`): Legacy floor cache store.
 
@@ -90,7 +90,7 @@ Communication between the main thread and `game-worker.js` uses a structured Pro
 * **Request:** `{ id: string, command: string, payload: object }`
 * **Response:** `{ id: string, ok: boolean, data?: any, error?: string }`
 
-### Handled RPC Commands (20 Handlers)
+### Handled RPC Commands (22 Handlers)
 
 | Command | Purpose |
 | :--- | :--- |
@@ -99,6 +99,7 @@ Communication between the main thread and `game-worker.js` uses a structured Pro
 | `createSlot` | Initializes a new character for slot `1..5` and generates Floor 1. |
 | `loadSlot` | Loads the character and floor cache for an existing occupied slot. |
 | `selectTower` | Campaign gate: enters a chosen unlocked tower from the hub, regenerating Floor 1 for that tower. |
+| `enterTowerFloor` | Return-spot gate: re-enters the last-exited tower/floor from the town (LIV-75), enforcing the same `accessGate` as `selectTower`. |
 | `completeTower` | Marks a cleared tower in `towerProgress`, unlocks the next campaign tower, and persists. |
 | `recruitMember` | Recruits a vocation onto the party at level 1 (LIV-16) after a tower clear and makes it active. |
 | `deleteSlot` | Clears character, metadata, and cached floors for a slot. |
@@ -108,6 +109,7 @@ Communication between the main thread and `game-worker.js` uses a structured Pro
 | `saveCharacter` | Debounced or immediate persistence of player state and slot metadata. |
 | `getFloor` | Retrieves cached floor or invokes `floor-generator.js` to create a new level. |
 | `saveFloorState` | Persists chest opened/looted states for the active floor. |
+| `getScene` | Composes an overworld island/town scene descriptor from the catalogs (LIV-59); reads/writes no save state. |
 | `advanceFloor` | Updates player level index, resolves stair arrival coordinates, and saves snapshot. |
 | `getOptions` / `setOptions` / `resetOptions` | Reads, writes, or resets game settings and audio preferences. |
 | `setSoundEnabled` | Toggles audio setting in persistent storage. |

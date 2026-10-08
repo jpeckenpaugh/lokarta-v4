@@ -41,11 +41,13 @@ Shared run state (`current_floor`, `towerId`, `location`, `townVisits`) and the
 save envelope (`slotId`, `slotIndex`, `saveVersion`, `playtimeMs`, timestamps,
 `floorEntry`) live on the top level, **not** on members.
 
-Two resources are **party-shared** and live only on the top level: `backpack`
-(the shared party backpack, LIV-22) and `levelKeys` (the shared party key ring,
-LIV-33). Both are in `MEMBER_EXCLUDED_KEYS`, so `captureActiveMember` /
-`applyActiveMember` never copy them in or out of a member; cycling the active
-member cannot hide loot or an earned key.
+Three resources are **party-shared** and live only on the top level: `backpack`
+(the shared party backpack, LIV-22), `levelKeys` (the shared party key ring,
+LIV-33), and `gold` (the shared party wallet, LIV-72). All are in
+`MEMBER_EXCLUDED_KEYS`, so `captureActiveMember` / `applyActiveMember` never copy
+them in or out of a member; cycling the active member cannot hide loot, an earned
+key, or any gold. `lastTowerExit` is also envelope-only (the town return spot,
+LIV-75), never mirrored onto a member.
 
 ### Sync contract (`html/engine/party.js`)
 
@@ -59,7 +61,8 @@ member cannot hide loot or an earned key.
 
 Full helper surface: `createPartyMember`, `createPartyPlayer`,
 `getActiveMember`, `activeMemberIndex`, `partyVocationIds`, `MAX_PARTY_SIZE`,
-`PARTY_FACTION`, `MONSTER_FACTION`.
+`PARTY_FACTION`, `MONSTER_FACTION`, plus `consolidatePartyGold` (LIV-72, folds
+any legacy per-member wallet into the one top-level pool).
 
 ---
 
@@ -75,14 +78,27 @@ tower migration, guarded by `game_settings/migration_party_v4`:
 - Folds any pre-LIV-33 per-member `levelKeys` copies into the shared top-level
   key ring (union per level/tier) and strips them, so keys earned before the
   upgrade survive and can never be hidden by a later active-member cycle.
+- Folds any pre-LIV-72 per-member `gold` into the single shared top-level wallet
+  (summed and clamped to the catalog `gold.cap`) and strips the per-member copies,
+  so old wealth survives as one pool and can never fork or reset (LIV-72).
 - Backfills `towerProgress` onto slot metadata for the tower picker.
 - Idempotent: a rerun is a no-op once the guard exists.
 
-`migratePlayerParty` is also applied lazily on `loadSlot`, `selectTower`,
-`restartFloor`, `respawnAfterDeath`, `advanceFloor`, `saveCharacter`, and
-`newGame`, so a save is always party-shaped before it is persisted.
+A later **world migration** (`migrateWorldSave`, guarded by
+`game_settings/migration_world_v5`) runs after the tower/party migrations for
+veteran saves: it normalizes every character through `migratePlayerParty`, runs
+the **veteran tower backfill** (`backfillLegacyTowerProgress`) so a pre-gate save
+that had already cleared a tower stays unlocked, and stamps
+`saveVersion: SAVE_FORMAT_VERSION (5)`. New saves at the current format are never
+backfilled (the guard is already set), so they correctly start locked. Idempotent
+via the guard.
 
-`resetProgress` clears all three migration guards.
+`migratePlayerParty` is also applied lazily on `loadSlot`, `selectTower`,
+`enterTowerFloor`, `restartFloor`, `respawnAfterDeath`, `advanceFloor`,
+`saveCharacter`, and `newGame`, so a save is always party-shaped before it is
+persisted.
+
+`resetProgress` clears all four migration guards.
 
 ---
 
@@ -441,3 +457,53 @@ profiles (fighter/paladin) enable it; backline/support profiles keep their
 
 T0 coverage: `html/tests/liv33-party-tweaks.test.mjs` (shared keys + cycle +
 gate, key migration, item-search pathing/pickup, protector targeting).
+
+---
+
+## 11. Shared party gold (LIV-72)
+
+The party carries **one wallet**, not one per member. `gold` joins
+`MEMBER_EXCLUDED_KEYS` in `html/engine/party.js`: it lives on the **top-level
+player** and is never captured into or applied from a member, so switching the
+active member never swaps, forks, or resets the pool. Any member — the controlled
+hero or an auto ally — that picks up gold credits the same `player.gold`; shop
+purchases and upgrades spend from the same pool.
+
+- `consolidatePartyGold(player, members, activeId)` folds pre-LIV-72 per-member
+  wallets into the top level as the **sum of the members' gold, clamped to the
+  catalog `economy.gold.cap`**, counting the active member's live top-level value
+  once (never the stale mirror), then strips the per-member copies. A save with no
+  per-member gold adopts the top-level wallet as-is, so new and migrated saves are
+  identical. Idempotent: a rerun is a reference no-op.
+- `migratePlayerParty` calls `consolidatePartyGold` on every normalize pass, and
+  `migratePlayerParty` runs on load/enter/exit/advance/save/new-game, so a save is
+  always single-wallet before it is persisted.
+- `economy.gold.starting` / `gold.cap` are the catalog tuning points; `gold` is
+  never part of a `PartyMember` payload.
+
+T0 coverage: `html/tests/liv72-shared-gold.test.mjs` (fold/sum/cap, active-mirror
+de-duplication, idempotence, member exclusion, worker round-trip).
+
+---
+
+## 12. Town return spot (LIV-75)
+
+Exiting a tower to the overworld remembers where to resume. `html/engine/return-spot.js`
+is the pure, browser-free model; the record lives on the shared run envelope at
+`player.lastTowerExit = { towerId, floor }` and is **never** mirrored onto a party
+member, so it survives swaps, reloads, and migration.
+
+- `setReturnSpot(player, towerId, floorNumber)` records the exit; an unknown tower
+  id or non-finite floor is **not** recorded (`null`), so a bad value can never
+  produce an unusable spot.
+- `resolveReturnSpot(player)` returns `{ towerId, floor }` or `null`; an unknown
+  tower or out-of-range floor resolves to `null` (the spot hides) rather than
+  soft-locking.
+- `clearReturnSpot(player)` removes the record when the tower is no longer valid.
+
+The town's return spot calls the `enterTowerFloor` worker RPC, which re-enters the
+remembered tower/floor under the **same `accessGate` as `selectTower`** — a stale
+spot pointing at a now-locked tower is rejected, hidden, and cleared rather than
+stranding the player.
+
+T0 coverage: `html/tests/liv75-return-spot.test.mjs`.

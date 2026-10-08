@@ -7,11 +7,11 @@ A high-level design canon for *Lokarta: Come Into The Light*.
 ## 1. Core Game Loop
 
 1. **Title & Save Slot Selection:** Choose from 5 persistent save slots stored in browser IndexedDB (`lokarta_browser_db`).
-2. **Havenreach Town Hub:** Access the Merchant's Stall (Shop), Temple of the Dawn (Temple healing), or embark into the tower.
-3. **Sequential Tower Campaign:** Climb one of four themed towers at a time, in unlock order, through its deterministic procedural levels on a $40 \times 40$ tile grid ($3 \times 3$ macro rooms). Only the Spire of Light is available at campaign start; each conquered tower unlocks the next (§8).
+2. **Dawnreach Isle & Havenreach Town Hub:** Explore the walkable island overworld and its town — the Merchant's Stall (Shop), the Temple of the Dawn (Temple healing), and a three-quest NPC chain (Q1→Q2→Q3) whose **Rite of the Beacon** opens the **Tide Gate** and unlocks the Spire of Light (§10). Exiting a tower to town leaves a **return spot** that re-enters the last tower/floor.
+3. **Sequential Tower Campaign:** Climb one of four themed towers at a time, in unlock order, through its deterministic procedural levels on a $40 \times 40$ tile grid ($3 \times 3$ macro rooms). The Spire of Light is gated behind the island quest chain (and, on legacy saves, is available at campaign start); each conquered tower unlocks the next (§8).
 4. **Gated Progression & Keys:** Defeat tier key holders to obtain Copper, Silver, and Gold keys to unlock gates leading to the ascent stairs.
 5. **Combat & Tactical Abilities:** 10 Hz real-time simulation tick (`TICK_INTERVAL_MS = 100`) using vocation-specific abilities, cooldowns, and range mechanics. Party members fight alongside the active hero in auto mode (§8.1).
-6. **Fate Grants (Drafting System):** At Level 1 and upon every level-up (up to Level 20 cap), players are offered a 5-card draft and **must select exactly 2 cards** granting vocation skills, stat upgrades, or gear rank upgrades (Ranks 1–5).
+6. **Fate Grants (Drafting System):** At Level 1 and upon every level-up (up to Level 20 cap), players are offered a 5-card draft and **must select exactly 2 cards** granting vocation skills, stat upgrades, or gear rank upgrades. Accepting the first island quest (Q1) opens the Level-1 starter grant for a brand-new character (LIV-64, `quests.json.onAccept`), so the hero is armed before the first fight; the tower-entry fallback checks `needsStarterGrant` and does not double-fire once the accept grant equips the vocation weapon.
 7. **Recruit a Companion:** Clearing a tower's final floor is no longer a game-over. It shows the **Tower Complete** modal, then a **Recruit** choice that adds one not-yet-recruited vocation to the party (max 4, one per vocation). The new recruit becomes player-controlled for the next tower; prior members fight in auto mode.
 8. **Ultimate Victory:** After all four towers are complete, "ULTIMATE VICTORY" fires once, as the campaign's terminal beat — not per-tower.
 
@@ -48,7 +48,8 @@ other tower follows. Its layout and monster pools are catalog-driven via
 
 * **Keyboard Movement:** Arrow Keys $\uparrow, \leftarrow, \downarrow, \rightarrow$.
 * **Party Cycling:** `A` / `S` cycle control to the previous / next living member (LIV-27), playing the control-swap feedback beat (LIV-49, §5).
-* **Touch & Mobile Gestures:** Directional swipe for movement; tap for HUD buttons, loadout slots, and floor item pickup.
+* **Interact:** `Space` / `F` (catalog `keybindings.json.interact`) talks to an adjacent NPC, examines a world object (shrine, gate, chest), and advances the current dialogue beat. Walking into a blocking NPC also opens its dialogue (bump-to-talk, LIV-63/66); dialogue text renders in a bubble anchored above the speaker (LIV-67).
+* **Touch & Mobile Gestures:** Directional swipe for movement; tap for HUD buttons, loadout slots, and floor item pickup; tap an adjacent NPC/world object to interact.
 * **Active Consumable Slots:** Keys `1`, `2`, `3`, `4` activate potions, torches, and active consumables.
 * **Equipment Hotkeys:** Keys `Q`, `W`, `E`, `R` map to `main_hand`, `off_hand`, `armor`, and `relic`.
 * **Stairs & Gate Traversal:** Step directly onto stairs or unlocked gates to traverse tower rooms and floors.
@@ -61,6 +62,8 @@ other tower follows. Its layout and monster pools are catalog-driven via
   * **4 Active Action Slots:** Hotkeys `1`–`4` (potions, torches, active items).
   * **4 Paperdoll Equipment Slots:** Hotkeys `Q`, `W`, `E`, `R` (`main_hand`, `off_hand`, `armor`, `relic`).
   * **36 Backpack Slots:** $6 \times 6$ storage grid for general inventory.
+* **Shared Party Wallet (LIV-72):** The party carries **one gold pool** on the save envelope, not one per member. Gold picked up by the controlled hero or any auto ally credits the same purse, and shop/upgrade purchases spend from it; switching the active member never forks, hides, or resets it. `consolidatePartyGold` folds pre-LIV-72 per-member wallets into the single pool (summed, clamped to `economy.gold.cap`) on migration. The shared backpack (LIV-22) and key ring (LIV-33) work the same way.
+* **Town Return Spot (LIV-75):** Exiting a tower to town records the tower/floor on the save envelope (`player.lastTowerExit`); a spot near the town entrance re-enters that same tower/floor (the `enterTowerFloor` RPC), enforcing the same `accessGate` as the tower picker so a stale spot hides rather than soft-locking the player.
 * **Knockout, Revive & Party Wipe (LIV-41):** A party member at 0 HP is **knocked out in place**, not removed — they collapse where they fell, grey out, project no light cone, cannot act, and monsters ignore the body. Control never lands on a downed member: if the active member falls while an ally still stands, control hands off to a living ally and play continues.
   * **Revive:** Once the room is safe (no living hostile in range and no damage dealt or taken for the idle window), an **adjacent living ally** channels a revive using a healing ability or a `canRevive` consumable. The member returns at **30% HP / 25% MP** with a 1s grace window. The channel is **interruptible** — reviver damage, reviver movement, or hostiles re-entering range breaks it.
   * **Auto-revive (LIV-51; LIV-41 plan rev 2):** The ally channel is the *fast, active* rescue; a **per-member auto-revive timer** is the *guaranteed fallback*, so recovery never depends on an ally physically reaching the body. A downed member carries a countdown that runs continuously, **including during combat**, and revives them in place when it elapses — **10s on the 1st down, 20s on the 2nd, 30s on the 3rd+** (cap 30s). The escalation counter is **per member**, persists across revives within a tower, and resets to 10s only on **exiting + re-entering a tower**. An auto-revive restores **>=25% HP / >=25% MP**, with no mana cost and no item — the escalating wait *is* the cost. A completed **ally revive cancels the pending auto-revive** for that member. A genuine floor transition revives every downed member at the same >=25% floor. A **simultaneous full-party down still wipes to the Temple** before any timer can fire (the timer only saves members while at least one stands). This rule **replaces the old 45s self-stabilize net**. The grace window (`graceSec`) applies after an auto-revive too.
@@ -644,7 +647,7 @@ Linear campaign chain, keyed by `order` and gated by `unlockRequires`:
 
 | Order | Tower | Unlocks when |
 | ---: | :--- | :--- |
-| 1 | The Spire of Light (`spire_of_light`) | Campaign start (always unlocked) |
+| 1 | The Spire of Light (`spire_of_light`) | `rite_of_the_beacon` turned in (§10.4); legacy saves that predate the gate are backfilled unlocked |
 | 2 | The Sunken Catacombs (`sunken_catacombs`) | `spire_of_light` complete |
 | 3 | The Emberforge (`emberforge`) | `sunken_catacombs` complete |
 | 4 | The Rime Aerie (`rime_aerie`) | `emberforge` complete |
@@ -655,9 +658,12 @@ Linear campaign chain, keyed by `order` and gated by `unlockRequires`:
 * The chain is strictly linear by design (WS1's T0 test locks "each tower
   requires the previous"); branching unlocks are a deliberate non-goal for the
   campaign's first pass. *Lenses: clarity, scope discipline.*
-* `firstTowerId()` is the always-unlocked entry; `towersUnlockedBy(id)` drives
-  the unlock event on completion. Recruiting the new vocation and unlocking the
-  next tower happen on the same completion (§8.4). *Lenses: core loop.*
+* `firstTowerId()` is the campaign entry tower; the Spire additionally carries a
+  `rite_of_the_beacon` `accessGate` (§10.4), so a fresh save starts with
+  `unlockedTowerIds: []` and no tower enterable until the Rite is turned in.
+  `towersUnlockedBy(id)` drives the unlock event on completion. Recruiting the
+  new vocation and unlocking the next tower happen on the same completion (§8.4).
+  *Lenses: core loop.*
 
 ### 8.4 Campaign copy (`ui.json` → `campaign`)
 
@@ -974,6 +980,8 @@ of the town footprint at `(24,44)`. A center square (decor props) sits at `y11�
 | **Old Sailor Doran** | `(11,12)` | Flavor; foreshadows three more lights (Islands 2–4) |
 | **Pilgrim's Apprentice Tam** | `(13,12)` | Diegetic quest journal; restates the current objective |
 
+NPC behavior is data-driven (`engine/npc-system.js`): each entry declares `aiType` (`stationary|wander`), `blocks`, and an `interact` dispatch key (`dialogue | shop | temple`) — never a per-NPC branch. Walking into a blocking NPC opens its dialogue (**bump-to-talk**, LIV-63/66); the text renders in a bubble anchored above the speaker with keyboard beat advance (LIV-67). World objects flagged `autoTrigger` (the Drowned Shrine) fire on first approach (LIV-71).
+
 ### 10.4 Quest chain (Q1→Q2→Q3, `quests.json` + `dialogues.json`)
 
 Objective `type` ∈ `talk|kill|fetch|reach|interact`; reward `type` ∈
@@ -991,6 +999,14 @@ so the chain is the level advancement.
 **Starter weapon rewards** use a data-only `item` reward with `vocationItems`
 (`magician→apprentice_wand`, `archer→wooden_bow`, `fighter→tempered_broadsword`,
 `paladin→consecrated_warhammer`) — one catalog entry, no per-quest branch.
+
+**First-quest Fate Grant (LIV-64).** Q1 also declares an optional `onAccept`
+effect list (`[{ "type": "fate_grant", "level": 1 }]`).
+`quest-system.acceptQuest` surfaces `onAccept` **only** on the inactive→active
+transition, so a re-accept or reload can never replay the grant, and the app
+dispatches it through a catalog-keyed `QUEST_ON_ACCEPT_HANDLERS` table — the
+brand-new hero is armed before the first fight, and the tower-entry fallback
+skips a duplicate via `FateGrantSystem.needsStarterGrant`.
 
 **The Spire unlock** is expressed on the tower as data (`tower_levels.json →
 spire_of_light.accessGate`): `questId: rite_of_the_beacon`, `state: turned_in`,
