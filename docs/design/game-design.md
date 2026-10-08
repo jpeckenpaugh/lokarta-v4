@@ -60,7 +60,9 @@ other tower follows. Its layout and monster pools are catalog-driven via
   * **4 Active Action Slots:** Hotkeys `1`–`4` (potions, torches, active items).
   * **4 Paperdoll Equipment Slots:** Hotkeys `Q`, `W`, `E`, `R` (`main_hand`, `off_hand`, `armor`, `relic`).
   * **36 Backpack Slots:** $6 \times 6$ storage grid for general inventory.
-* **Death & Defeat:** Defeat in the tower revives the hero at full health/mana in the Havenreach Town Temple. Current floor progression is **preserved** (the player can re-enter and resume on their active floor).
+* **Knockout, Revive & Party Wipe (LIV-41):** A party member at 0 HP is **knocked out in place**, not removed — they collapse where they fell, grey out, project no light cone, cannot act, and monsters ignore the body. Control never lands on a downed member: if the active member falls while an ally still stands, control hands off to a living ally and play continues.
+  * **Revive:** Once the room is safe (no living hostile in range and no damage dealt or taken for the idle window), an **adjacent living ally** channels a revive using a healing ability or a `canRevive` consumable. The member returns at **30% HP / 25% MP** with a 1s grace window. The channel is **interruptible** — reviver damage, reviver movement, or hostiles re-entering range breaks it.
+  * **Party Wipe:** Only a **simultaneous full-party knockout** (every member down at once) ejects the party. The party revives at the **Temple of the Dawn**, and tower depth resets to that tower's **entry floor** on re-entry. **Keys, level, gear, backpack, and gold are kept.** A solo party (no living ally to revive) wipes **immediately** when its sole member falls.
 * **Data-Driven Truth:** All balance stats, drop tables, room tiers, and costs are authored exclusively in `html/data/*.json`.
 
 ---
