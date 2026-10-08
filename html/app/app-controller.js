@@ -22,6 +22,7 @@ import { ModalManager } from './modal-manager.js';
 import { InputController } from './input-controller.js';
 import { AbilityBar } from './ability-bar.js';
 import { TransitionController } from './transition-controller.js';
+import { SwapFeedback } from './swap-feedback.js';
 import { normalizeOptions } from '../services/save-slots.js';
 import { createAnimState } from './animation-state.js';
 
@@ -69,6 +70,10 @@ export class LokartaApp {
 
     this.canvas = document.getElementById('game-canvas');
     this.renderer = new CanvasRenderer(this.canvas);
+    // LIV-50: one shared control-swap feedback state; the renderer reads it to
+    // draw the position locator + destination flash.
+    this.swapFeedback = new SwapFeedback();
+    this.renderer.swapFeedback = this.swapFeedback;
 
     this.statusBarsEl = document.getElementById('status-bars-container');
     this.sidebarEl = document.getElementById('sidebar-hud');

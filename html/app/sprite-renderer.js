@@ -506,6 +506,58 @@ function mixHex(a, b, t) {
   return `#${[m(0), m(1), m(2)].map(v => v.toString(16).padStart(2, '0')).join('')}`;
 }
 
+function rgbToHex(r, g, b) {
+  const c = (v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
+  return `#${c(r)}${c(g)}${c(b)}`;
+}
+
+/**
+ * Transform one hex colour through a LIV-49 tint spec. Order is data-authored:
+ * optional grayscale desaturation toward its Rec.709 luminance, then a `darken`
+ * multiply, then a final `tint`/`amount` wash. A legacy `{ hex, amount }` spec
+ * (hit feedback) performs only the wash, so this is backward compatible.
+ * @param {string} hex
+ * @param {{ grayscale?: boolean, desaturate?: number, luminance?: {r:number,g:number,b:number}, darken?: number, hex?: string, amount?: number }} tint
+ * @returns {string}
+ */
+export function applyTintToHex(hex, tint) {
+  if (!hex || !tint) return hex;
+  let r;
+  let g;
+  let b;
+  [r, g, b] = hexToRgb(hex);
+  const lum = tint.luminance;
+  const desat = Number(tint.desaturate);
+  if (tint.grayscale && lum && Number.isFinite(desat) && desat > 0) {
+    const y = r * (lum.r ?? 0.2126) + g * (lum.g ?? 0.7152) + b * (lum.b ?? 0.0722);
+    const t = Math.max(0, Math.min(1, desat));
+    r += (y - r) * t; g += (y - g) * t; b += (y - b) * t;
+  }
+  const darken = Number(tint.darken);
+  if (Number.isFinite(darken) && darken > 0) {
+    const f = 1 - Math.max(0, Math.min(1, darken));
+    r *= f; g *= f; b *= f;
+  }
+  let out = rgbToHex(r, g, b);
+  const amount = Number(tint.amount);
+  if (tint.hex && Number.isFinite(amount) && amount > 0) out = mixHex(out, tint.hex, Math.min(1, amount));
+  return out;
+}
+
+/**
+ * Build a tinted palette copy for a sprite definition. The result drives
+ * `parseFrame` exactly as the untinted palette does. Exported as the pure seam
+ * the LIV-49 downed-grayscale tests exercise.
+ * @param {Record<string, string>} palette
+ * @param {object} tint
+ * @returns {Record<string, string|null>}
+ */
+export function applyTintToPalette(palette, tint) {
+  const out = {};
+  for (const [k, v] of Object.entries(palette || {})) out[k] = v ? applyTintToHex(v, tint) : null;
+  return out;
+}
+
 /**
  * Parse a frame (array of `h` strings of `w` palette chars) into a flat RGBA
  * pixel object. `"."` and unknown chars are transparent.
@@ -579,10 +631,15 @@ export function scalePixels(pix, scale, flipX = false) {
   return { w: sw, h: sh, data: out };
 }
 
-function tintedPalette(def, tintHex, amount) {
-  const out = {};
-  for (const [k, v] of Object.entries(def.palette)) out[k] = v ? mixHex(v, tintHex, amount) : null;
-  return out;
+/** Stable cache key for a tint spec (legacy wash + LIV-49 grayscale pipeline). */
+function tintCacheKey(tint) {
+  if (!tint) return '';
+  const lum = tint.luminance;
+  return [
+    tint.hex || '', tint.amount ?? '',
+    tint.grayscale ? 1 : 0, tint.desaturate ?? '', tint.darken ?? '',
+    lum ? `${lum.r ?? ''},${lum.g ?? ''},${lum.b ?? ''}` : '',
+  ].join('~');
 }
 
 export function resolveSpriteId(actor) {
@@ -634,14 +691,14 @@ function createCanvas(w, h) {
 function renderFramePixels(def, frameId, scale, flipX, tint) {
   const rows = def.frames[frameId];
   if (!rows) return null;
-  const palette = tint ? tintedPalette(def, tint.hex, tint.amount) : def.palette;
+  const palette = tint ? applyTintToPalette(def.palette, tint) : def.palette;
   const pix = parseFrame(rows, palette);
   const outlined = applyOutline(pix, def.palette['0'] || OUTLINE_COLOR);
   return scalePixels(outlined, scale, flipX);
 }
 
 function getFrameCanvas(def, frameId, scale, flipX, tint) {
-  const key = `${def.id}|${frameId}|${scale}|${flipX ? 1 : 0}|${tint ? tint.hex + tint.amount : ''}`;
+  const key = `${def.id}|${frameId}|${scale}|${flipX ? 1 : 0}|${tintCacheKey(tint)}`;
   if (_frameCache.has(key)) return _frameCache.get(key);
   const pixels = renderFramePixels(def, frameId, scale, flipX, tint);
   if (!pixels) return null;
@@ -877,18 +934,33 @@ export class SpriteRenderer {
 
     // Hit feedback: a static tint under reduced motion, otherwise the same tint
     // baked into the frame (no per-frame shake, no alpha edge fades). An explicit
-    // caller tint (the LIV-45 downed grey wash) wins and is baked the same way.
+    // caller tint (the LIV-45/49 downed grey-out) wins and is baked the same way.
     const hitTint = (!reduced && state === 'hit') ? { hex: HIT_TINT, amount: 0.35 } : null;
     const tint = opts.tint || hitTint;
+
+    // LIV-49 on-back pose: rotate the baked frame about the tile centre. One
+    // translate/rotate pair plus a pivot-relative blit keeps the per-frame path
+    // allocation-free (no matrix objects).
+    let drawX = dx;
+    let drawY = dy;
+    const rotDeg = Number(opts.rotationDeg);
+    if (Number.isFinite(rotDeg) && rotDeg % 360 !== 0) {
+      const pivotX = screenX + size / 2;
+      const pivotY = screenY + size / 2;
+      ctx.translate(pivotX, pivotY);
+      ctx.rotate((rotDeg * Math.PI) / 180);
+      drawX = dx - pivotX;
+      drawY = dy - pivotY;
+    }
 
     const canvas = getFrameCanvas(def, frameId, scale, dir === 'side' && !!anim?.flipX, tint);
     if (canvas && typeof ctx.drawImage === 'function') {
       if ('imageSmoothingEnabled' in ctx) ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(canvas, dx, dy);
+      ctx.drawImage(canvas, drawX, drawY);
     } else {
       const pixels = renderFramePixels(def, frameId, scale, dir === 'side' && !!anim?.flipX, tint);
       if (!pixels) { ctx.restore(); return null; }
-      if (typeof ctx.fillRect === 'function') drawPixels(ctx, pixels, dx, dy, scale);
+      if (typeof ctx.fillRect === 'function') drawPixels(ctx, pixels, drawX, drawY, scale);
     }
     ctx.restore();
 

@@ -5,6 +5,7 @@
 import { CONFIG, LightingSystem, TILE_TYPES, ReviveSystem } from '../engine/index.js';
 import { SpriteRenderer, themeForFloor } from './sprite-renderer.js';
 import { UI_CATALOG, PARTY_AI_CATALOG } from '../data/index.js';
+import { resolveEasing } from './swap-feedback.js';
 
 /** Static entity-bar token cache from `ui.json.entityBars` (D1 §3.2). */
 const OUTLINE_COLOR = '#0b0d12';
@@ -79,9 +80,15 @@ const KNOCKOUT = (() => {
   const n = (val, fallback) => (Number.isFinite(Number(val)) ? Number(val) : fallback);
   return {
     downed: {
-      tint: d.tint || '#5b6069',
-      tintAmount: n(d.tintAmount, 0.4),
-      alpha: n(d.alpha, 0.85),
+      tint: d.tint || '#4b5563',
+      tintAmount: n(d.tintAmount, 0.35),
+      grayscale: d.grayscale !== false,
+      desaturate: n(d.desaturate, 0.92),
+      luminance: d.luminance || { r: 0.2126, g: 0.7152, b: 0.0722 },
+      darken: n(d.darken, 0.18),
+      alpha: n(d.alpha, 0.9),
+      rotationDeg: n(d.rotationDeg, 90),
+      rotateOrigin: d.rotateOrigin || 'tileCenter',
     },
     beacon: {
       enabled: help.enabled !== false,
@@ -103,6 +110,31 @@ const KNOCKOUT = (() => {
     },
   };
 })();
+
+/**
+ * Frozen draw options for a downed body (LIV-49): near-full grayscale tint
+ * (desaturate toward Rec.709 luminance, darken, then a cool wash) plus the
+ * on-back rotation. Built once so the party render loop allocates nothing.
+ */
+const DOWNED_DRAW_OPTS = Object.freeze({
+  downed: true,
+  dim: KNOCKOUT.downed.alpha,
+  rotationDeg: KNOCKOUT.downed.rotationDeg,
+  rotateOrigin: KNOCKOUT.downed.rotateOrigin,
+  tint: Object.freeze({
+    grayscale: KNOCKOUT.downed.grayscale,
+    desaturate: KNOCKOUT.downed.desaturate,
+    luminance: KNOCKOUT.downed.luminance,
+    darken: KNOCKOUT.downed.darken,
+    hex: KNOCKOUT.downed.tint,
+    amount: KNOCKOUT.downed.tintAmount,
+  }),
+});
+
+/** The frozen downed-body draw options (pure test seam + renderer input). */
+export function downedDrawOpts() {
+  return DOWNED_DRAW_OPTS;
+}
 
 /** True when a party entry is downed (explicit state or a clamped-out HP). */
 function isDownedEntry(entry) {
@@ -187,6 +219,32 @@ export class CanvasRenderer {
     this.cameraX = 0;
     this.cameraY = 0;
     this.tileSize = CONFIG.GRID_SIZE;
+    // LIV-50 control-swap presentation: an optional SwapFeedback instance (set
+    // by the app) and the in-flight camera glide state. Both start idle.
+    this.swapFeedback = null;
+    this.cameraGlide = null;
+  }
+
+  /** Per-frame clock for camera-glide timing (overridable in tests). */
+  _now() {
+    return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  }
+
+  /**
+   * LIV-50: start a fluid camera glide to wherever `player` is. `durationMs` and
+   * `easing` come from `ui.json.knockout.swap`; a non-positive duration (reduced
+   * motion) leaves the camera snapping as before.
+   */
+  startCameraGlide(durationMs, easing, nowMs) {
+    const d = Number(durationMs);
+    if (!Number.isFinite(d) || d <= 0) { this.cameraGlide = null; return; }
+    this.cameraGlide = {
+      fromX: this.cameraX,
+      fromY: this.cameraY,
+      startMs: Number.isFinite(nowMs) ? nowMs : this._now(),
+      durationMs: d,
+      ease: resolveEasing(easing),
+    };
   }
 
   /**
@@ -213,9 +271,18 @@ export class CanvasRenderer {
     }
   }
 
-  updateCamera(player, width, height) {
+  updateCamera(player, width, height, nowMs = this._now()) {
     const targetX = player.x * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - width / 2;
     const targetY = player.y * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - height / 2;
+    const g = this.cameraGlide;
+    if (g) {
+      const t = Math.max(0, Math.min(1, (nowMs - g.startMs) / g.durationMs));
+      const e = g.ease(t);
+      this.cameraX = Math.round(g.fromX + (targetX - g.fromX) * e);
+      this.cameraY = Math.round(g.fromY + (targetY - g.fromY) * e);
+      if (t >= 1) this.cameraGlide = null;
+      return;
+    }
     this.cameraX = Math.round(targetX);
     this.cameraY = Math.round(targetY);
   }
@@ -237,8 +304,9 @@ export class CanvasRenderer {
     if (!this.canvas || !this.ctx) return;
     const { width, height } = this.canvas;
     const ctx = this.ctx;
+    const now = this._now();
 
-    this.updateCamera(player, width, height);
+    this.updateCamera(player, width, height, now);
 
     ctx.fillStyle = '#050608';
     ctx.fillRect(0, 0, width, height);
@@ -450,18 +518,13 @@ export class CanvasRenderer {
     //     active member is the top-level player drawn below, so its stale
     //     `party` mirror is skipped (matched by memberId).
     if (Array.isArray(party) && party.length > 1) {
-      const downed = KNOCKOUT.downed;
       for (const member of party) {
         if (!member) continue;
         if (member.memberId && member.memberId === player.activeMemberId) continue;
         const memberScreenX = member.x * CONFIG.GRID_SIZE - this.cameraX;
         const memberScreenY = member.y * CONFIG.GRID_SIZE - this.cameraY;
         if (isDownedEntry(member)) {
-          SpriteRenderer.drawPlayer(ctx, member, memberScreenX, memberScreenY, CONFIG.GRID_SIZE, {
-            downed: true,
-            dim: downed.alpha,
-            tint: { hex: downed.tint, amount: downed.tintAmount },
-          });
+          SpriteRenderer.drawPlayer(ctx, member, memberScreenX, memberScreenY, CONFIG.GRID_SIZE, DOWNED_DRAW_OPTS);
         } else {
           SpriteRenderer.drawPlayer(ctx, member, memberScreenX, memberScreenY);
           this.drawActorBars(ctx, member, memberScreenX, memberScreenY, true);
@@ -485,12 +548,11 @@ export class CanvasRenderer {
     // 6c. Knockout VFX (LIV-45): the E1 "Call for Help" beacon over every downed
     //     body and the revive channel tether/progress arc. Drawn last so the
     //     rescue read survives the fog, bars and player sprite.
-    this.renderKnockoutVfx(
-      ctx,
-      player,
-      party,
-      (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()
-    );
+    this.renderKnockoutVfx(ctx, player, party, now);
+
+    // 6d. Control-swap feedback (LIV-50): the fluid position locator plus the
+    //     destination activity flash after a KO handoff / manual cycle.
+    this.renderSwapVfx(ctx, this.swapFeedback, now);
 
     // 7. Projectiles & Impact Particles (after the mask, so they read at range)
     this.renderProjectiles(ctx, projectiles);
@@ -753,6 +815,56 @@ export class CanvasRenderer {
     ctx.lineWidth = c.progressLineWidthPx;
     ctx.beginPath();
     ctx.arc(tx, ty, radius, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /**
+   * LIV-50 control-swap world read. Draws the fluid position locator travelling
+   * from the outgoing to the incoming tile over `ui.json.knockout.swap`
+   * `positionAnimMs`, then the destination activity flash (additive core glow +
+   * ring) as it ramps down over `destinationFlash.durationMs`. Allocation is
+   * limited to the draw primitives; the timing lives in `SwapFeedback`.
+   *
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {import('./swap-feedback.js').SwapFeedback|null} feedback
+   * @param {number} now ms clock
+   */
+  renderSwapVfx(ctx, feedback, now) {
+    if (!feedback || !feedback.active) return;
+    const size = CONFIG.GRID_SIZE;
+    const pos = feedback.position(now);
+
+    // 1. Position locator during the fluid move (fades as it reaches the target).
+    if (pos.active && pos.t < 1) {
+      const fx = pos.x * size + size / 2 - this.cameraX;
+      const fy = pos.y * size + size / 2 - this.cameraY;
+      ctx.save();
+      ctx.globalAlpha = 0.9 * (1 - pos.t);
+      ctx.fillStyle = feedback.cfg.flash.color;
+      ctx.beginPath();
+      ctx.arc(fx, fy, size * 0.14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 2. Destination activity flash.
+    const flash = feedback.flash(now);
+    if (!flash.active || !(flash.alpha > 0)) return;
+    const dx = feedback.toX * size + size / 2 - this.cameraX;
+    const dy = feedback.toY * size + size / 2 - this.cameraY;
+    ctx.save();
+    if (flash.mode === 'additive') ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = flash.alpha;
+    ctx.fillStyle = flash.coreColor;
+    ctx.beginPath();
+    ctx.arc(dx, dy, size * 0.38, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = flash.alpha * flash.ringAlpha;
+    ctx.strokeStyle = flash.color;
+    ctx.lineWidth = flash.ringLineWidthPx;
+    ctx.beginPath();
+    ctx.arc(dx, dy, flash.ringRadiusTiles * size, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
   }

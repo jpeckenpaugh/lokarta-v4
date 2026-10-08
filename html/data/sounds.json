@@ -218,5 +218,26 @@
       { "freq": 1567.98, "time": 0.06, "duration": 0.05 },
       { "freq": 2093.0, "time": 0.09, "duration": 0.06 }
     ]
+  },
+  "koHandoff": {
+    "type": "sequence",
+    "oscType": "triangle",
+    "gain": 0.22,
+    "notes": [
+      { "freq": 329.63, "time": 0.00, "duration": 0.12 },
+      { "freq": 261.63, "time": 0.09, "duration": 0.14 },
+      { "freq": 196.00, "time": 0.20, "duration": 0.26 },
+      { "freq": 329.63, "time": 0.40, "duration": 0.20 },
+      { "freq": 493.88, "time": 0.50, "duration": 0.34 }
+    ]
+  },
+  "controlSwap": {
+    "type": "sequence",
+    "oscType": "triangle",
+    "gain": 0.15,
+    "notes": [
+      { "freq": 659.25, "time": 0.00, "duration": 0.07 },
+      { "freq": 987.77, "time": 0.06, "duration": 0.11 }
+    ]
   }
 }
