@@ -24,7 +24,10 @@ const PATH = CODE('PATH');
 
 function southWallTiles() {
   const out = [];
-  for (let y = 70; y < composedIsland.height; y++) {
+  // LIV-77: the island is 48x48; the Havenreach marker lives in the far south
+  // (y34-43). Start the scan below the Drowned Shrine ruin (y<=25) and the
+  // Spire base (north) so only the town marker walls are counted.
+  for (let y = Math.floor(composedIsland.height * 0.6); y < composedIsland.height; y++) {
     for (let x = 0; x < composedIsland.width; x++) {
       if (composedIsland.tiles[y][x] === WALL) out.push([x, y]);
     }
@@ -45,11 +48,15 @@ test('LIV-70 compact Havenreach overmap marker', async (t) => {
   });
 
   await t.test('the oversized road loop around the old enclosure is gone', () => {
-    // The pre-LIV-70 layout wrapped the town with PATH arms at x30 / x66 from
-    // y52 to y87. Those loop arms must no longer be paved streets.
-    for (let y = 52; y <= 87; y++) {
-      assert.notEqual(composedIsland.tiles[y][30], PATH, `(30,${y}) is not a loop arm`);
-      assert.notEqual(composedIsland.tiles[y][66], PATH, `(66,${y}) is not a loop arm`);
+    // The pre-LIV-70 layout wrapped the town with PATH arms around the old
+    // compound. After LIV-77 the marker is a compact 10x10 cluster at x19-28,
+    // y34-43, flanked by open field x18 / x29; only Pilgrim's Road (x24) is
+    // paved, so no wrap-around loop arms remain.
+    const yTop = 34;
+    const yBottom = 43;
+    for (let y = yTop; y <= yBottom; y++) {
+      assert.notEqual(composedIsland.tiles[y][18], PATH, `(18,${y}) is not a loop arm`);
+      assert.notEqual(composedIsland.tiles[y][29], PATH, `(29,${y}) is not a loop arm`);
     }
   });
 

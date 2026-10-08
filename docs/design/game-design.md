@@ -889,43 +889,45 @@ consumes (`html/data/islands.json`, `towns.json`, `npcs.json`, `quests.json`,
 * **Encounter model:** visible roaming monsters in authored zones (Zelda-style), never
   hidden random battles — the player can read and choose a fight (LIV-55 D3).
 
-### 10.2 Dawnreach Isle layout (96×96, `islands.json`)
+### 10.2 Dawnreach Isle layout (48×48, `islands.json`)
 
-A designer-authored character tilemap (`map` = 96 rows × 96 chars, `legend` maps
-char → tile type), **doubled from the original 48×48** in the LIV-69 board pass so
-top–bottom and left–right travel is ~2× (LIV-55 feedback #4). The landmass is a
-rounded rectangle inset behind a full all-water surround — the authored edge is
-`WATER` and the engine's `outside.mode: "water"` continues it off-map, so no grass
-ever shows beyond the shore (feedback #2). Verified: spawn reaches the town gate,
-the Spire entrance, the Wreck and the Shrine with `WATER`/`TREE`/`BUILDING_WALL` as
-the only structural walls. Trees are a light texture scatter (~50 tiles, down from
-91) kept clear of roads, sites and the town apron (feedback #3).
+A designer-authored character tilemap (`map` = 48 rows × 48 chars, `legend` maps
+char → tile type). **LIV-77 halved the island 96×96 → 48×48** on board feedback that
+the earlier doubling made the isle too expansive: top–bottom and left–right travel
+is cut in half, with every landmark, portal, gate, quest site, spawn and zone
+re-placed to the new grid so the map stays coherent. The landmass is a rounded
+rectangle inset behind a full all-water surround — the authored edge is `WATER` and
+the engine's `outside.mode: "water"` continues it off-map, so no grass ever shows
+beyond the shore. Verified: spawn reaches the town gate, the Spire entrance, the
+Wreck and the Shrine with `WATER`/`TREE`/`BUILDING_WALL` as the only structural
+walls. Trees are a light texture scatter (46 tiles) kept clear of roads, sites and
+the town apron.
 
-**LIV-70 (overmap readability):** the island's Havenreach **representation** is a
-compact **10×10** walled overmap marker, not the full town — the pre-LIV-69
-enclosure (`x34–61, y56–84`, ~28×29 with an oversized road loop) is replaced by a
-small gate cluster (`x43–52, y76–85`) on the straight Pilgrim's Road. Walking around
-it is a few steps instead of ~30 tiles. Only `islands.json` changed: the played
-interior (**24×24 Havenreach**, `towns.json`) is byte-identical.
+**Overmap readability (LIV-70):** the island's Havenreach **representation** is a
+compact **10×10** walled overmap marker, not the full town — the pre-LIV-69 enclosure
+(`x34–61, y56–84`, ~28×29 with an oversized road loop) is replaced by a small gate
+cluster. After LIV-77 that marker sits at `x19–28, y34–43` on the straight Pilgrim's
+Road. Walking around it is a few steps instead of ~30 tiles. Only `islands.json`
+changed: the played interior (**24×24 Havenreach**, `towns.json`) is byte-identical.
 
-The **Drowned Dark** runs a full impassable tidal strait along row 20, so the
-**Tide Gate at `(47–49,20)` is the sole crossing** between the southern town side
+The **Drowned Dark** runs a full impassable tidal strait along row 10, so the
+**Tide Gate at `(23–25,10)` is the sole crossing** between the southern town side
 and the northern Spire side — reachability is preserved in principle because the
 gate is a runtime lock, not a solid (`sceneAccessReport`).
 
 | Landmark | Coordinates | Notes |
 | :--- | :--- | :--- |
-| Water border | rows/cols `0–4` and `91–95` | all-water surround; no grass ring at the edge |
-| **Havenreach** overmap marker | `x43–52, y76–85` (10×10) | compact walled cluster, solid north wall `BUILDING_WALL (48,76)`, single **south gate** `DOORWAY (48,85)` → the `to_town` portal (LIV-70, LIV-73) |
-| Player island spawn | `(48,86)` | just **south** of the marker gate |
-| **Pilgrim's Road** (safe) | column `x48, y9–75` | straight teaching path that ends at the marker's south-anchored wall; the south gate is reached by rounding the marker apron; **no wrap-around loop** (LIV-70) |
-| **Tidal channel** | `y20`, full width (`WATER`) | full impassable strait; **only** crossing is the Tide Gate |
-| **Tide Gate** | tiles `(47–49,20)` (`GATED_DOOR`) | gated cause: `rite_of_the_beacon`; the sole threshold |
-| Spire causeway + base | column `x48, y9–19`; block `x44–52,y5–8`, `TOWER_ENTRANCE (48,8)` | gated by the Tide Gate |
-| **Wreck of the Lantern** | Lantern Islet `(9,40)`; `BRIDGE (13–14,40)` | Q2 site; ruin debris, walkable centre |
-| **Drowned Shrine** | `(78,44)` | Q3 site; ruin walls, shrine interactable |
-| Wild zones | west `x16–30`; meadow `x32–44`; east field `x52–64`; far east `x66–88`, all `y24–50` | roaming pools |
-| Safe zones | town marker apron (`x40–56,y74–90`) + Pilgrim's Road (`x45–51,y4–54`) | no spawns (`safeZones`) |
+| Water border | rows/cols `0–2` and `45–47` | all-water surround; no grass ring at the edge |
+| **Havenreach** overmap marker | `x19–28, y34–43` (10×10) | compact walled cluster, solid north wall `BUILDING_WALL (24,34)`, single **south gate** `DOORWAY (24,43)` → the `to_town` portal (LIV-70, LIV-73, LIV-77) |
+| Player island spawn | `(24,44)` | just **south** of the marker gate |
+| **Pilgrim's Road** (safe) | column `x24, y4–33` | straight teaching path that ends at the marker's south-anchored wall; the south gate is reached by rounding the marker apron; **no wrap-around loop** (LIV-70) |
+| **Tidal channel** | `y10`, full width (`WATER`) | full impassable strait; **only** crossing is the Tide Gate |
+| **Tide Gate** | tiles `(23–25,10)` (`GATED_DOOR`) | gated cause: `rite_of_the_beacon`; the sole threshold |
+| Spire causeway + base | column `x24, y4–9`; block `x20–28,y2–3`, `TOWER_ENTRANCE (24,3)` | gated by the Tide Gate |
+| **Wreck of the Lantern** | Lantern Islet `(4,20)`; `BRIDGE (5,20)` | Q2 site; ruin debris, walkable centre |
+| **Drowned Shrine** | `(39,22)` | Q3 site; ruin walls, shrine interactable |
+| Wild zones | west `x8–15`; meadow `x16–22`; east field `x26–32`; far east `x33–44`, all `y12–25` | roaming pools |
+| Safe zones | town marker apron (`x16–32,y31–47`) + Pilgrim's Road (`x22–26,y2–33`) | no spawns (`safeZones`) |
 
 Tile palette uses exactly the nine appended types — `WATER, GRASS, SAND, PATH, TREE,
 BRIDGE, BUILDING_WALL, DOORWAY, TOWER_ENTRANCE` — plus the existing `GATED_DOOR` for the
@@ -955,7 +957,7 @@ per-building branch.
 | Wayfarer's Rest | `17–21, 15–19` | `(19,15)` | rest / dialogue | Innkeep Bessa |
 
 Town spawn `(12,21)`; the south gate `(12,23)` returns to the island just **south**
-of the town footprint at `(48,86)`. A center square (decor props) sits at `y11–13`.
+of the town footprint at `(24,44)`. A center square (decor props) sits at `y11–13`.
 
 **NPC roster (8 named, `npcs.json`).** Positions are town tiles; each carries
 `spriteId` (a vocation actor), a `renderTheme` tint, `aiType` (`stationary|wander`),
@@ -983,8 +985,8 @@ so the chain is the level advancement.
 | Quest | Giver | Prereq | Objectives | Rewards | Teaches |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Q1 "Rats in the Gutter"** | Captain Halden | — | kill 6 `drowned_crawler`; kill 1 `gutter_king` | 100 XP → **L2**; starter weapon (per vocation via `vocationItems`); 30 gold; 1× potion | move, attack, ability, potions, KO/revive; first telegraph read |
-| **Q2 "The Lantern Wreck"** | Wick | Q1 | reach Wreck `(9,40)`; kill 2 `tide_thrall`; kill 2 `drowned_crawler`; fetch `beacon_lens` | 200 XP → **L3**; **Dawn Lantern**; 60 gold; 2× HP + 1× MP potion | exploration/loot, zoner read, shop/temple sustain |
-| **Q3 "Rite of the Beacon"** | Elder Rowan Vane | Q2 | reach Shrine `(78,44)`; interact `drowned_shrine_rite`; kill 1 `shrine_warden` | 300 XP → **L4**; `tidegate_signet`; 100 gold; set `beaconLit`; **unlock `spire_of_light`** | elite prioritization + AoE telegraph; objective chaining |
+| **Q2 "The Lantern Wreck"** | Wick | Q1 | reach Wreck `(4,20)`; kill 2 `tide_thrall`; kill 2 `drowned_crawler`; fetch `beacon_lens` | 200 XP → **L3**; **Dawn Lantern**; 60 gold; 2× HP + 1× MP potion | exploration/loot, zoner read, shop/temple sustain |
+| **Q3 "Rite of the Beacon"** | Elder Rowan Vane | Q2 | reach Shrine `(39,22)`; interact `drowned_shrine_rite`; kill 1 `shrine_warden` | 300 XP → **L4**; `tidegate_signet`; 100 gold; set `beaconLit`; **unlock `spire_of_light`** | elite prioritization + AoE telegraph; objective chaining |
 
 **Starter weapon rewards** use a data-only `item` reward with `vocationItems`
 (`magician→apprentice_wand`, `archer→wooden_bow`, `fighter→tempered_broadsword`,
@@ -1019,7 +1021,7 @@ Every LIV-56 §5 guarantee is authored as data, not a stat wall:
 
 | File | Content |
 | :--- | :--- |
-| `islands.json` **(new)** | Dawnreach Isle **96×96** tilemap (LIV-69 doubled) + legend, spawn, portals, Tide Gate, landmarks, safe/spawn zones, quest spawns, ground items, shrine interactable |
+| `islands.json` **(new)** | Dawnreach Isle **48×48** tilemap (LIV-77 halved from 96×96) + legend, spawn, portals, Tide Gate, landmarks, safe/spawn zones, quest spawns, ground items, shrine interactable |
 | `towns.json` **(new)** | Havenreach 24×24 tilemap, **perimeter `BUILDING_WALL` + south gate**, 6 buildings + doors + interactions, south portal, decor props |
 | `npcs.json` **(new)** | 8 named NPCs (position, behavior, recolor, OpenMoji, dialogue/quest wiring) |
 | `quests.json` **(new)** | Q1–Q3 with prerequisites, typed objectives, typed rewards, teaching notes |
@@ -1074,7 +1076,7 @@ Six play-through items from [LIV-55](/LIV/issues/LIV-55) (engine side landed in
 
 | # | Item | Resolution |
 | :--- | :--- | :--- |
-| 4 | Double the island | `islands.json` re-authored **96×96**; landmarks re-placed and spaced (~2× travel), feature tiles stay 1 tile. |
+| 4 | Double the island | `islands.json` re-authored **96×96**; landmarks re-placed and spaced (~2× travel), feature tiles stay 1 tile. *(Superseded by LIV-77 — the isle is now 48×48.)* |
 | 2 | All-water surround | Authored edge is `WATER` behind a rounded landmass; `outside.mode:"water"` continues it off-map — no grass ring. |
 | 3 | Fewer trees | Light scatter (~50 vs 91), cleared from roads, quest sites and the town apron. |
 | 5 | Town enter/exit south | **No flip.** Town scene keeps its south gate; the island's `to_town` portal + spawn move **south of the town footprint** (the wrapping road loop from this pass was replaced by the compact marker in LIV-70). Round trip is south-anchored both ways. |
@@ -1088,9 +1090,30 @@ full-size and took too many steps to walk around.
 | Item | Resolution |
 | :--- | :--- |
 | Island town footprint | `islands.json` south enclosure shrunk from ~28×29 (`x34–61,y56–84`) + a ~36-tile-wide road loop to a compact **10×10** walled marker (`x43–52,y76–85`). |
-| Approach | Straight Pilgrim's Road (`x48`) dead-ends at the marker's **solid north wall** (LIV-73 removed the false north doorway); the **south gate** `(48,85)` is the single `to_town` portal, one tile north of the `(48,86)` spawn. Round trip unchanged; `sceneAccessReport` stays soft-lock-free. |
+| Approach | Straight Pilgrim's Road dead-ends at the marker's **solid north wall** (LIV-73 removed the false north doorway); the **south gate** is the single `to_town` portal, one tile north of the spawn. Round trip unchanged; `sceneAccessReport` stays soft-lock-free. *(Coordinates re-based to `x19–28,y34–43` by LIV-77.)* |
 | Interior untouched | `towns.json` (24×24 Havenreach) is **not changed** — the player still plays the full town. |
-| Budget | 8 texture trees re-added in the reclaimed field (net ~50). No new tiles/legend, palette, or engine work — a pure data re-author. `liv70-island-town-footprint` locks the footprint, the removed loop, and the round trip. |
+| Budget | 8 texture trees re-added in the reclaimed field. No new tiles/legend, palette, or engine work — a pure data re-author. `liv70-island-town-footprint` locks the footprint, the removed loop, and the round trip. |
+
+### 10.11 Island size reduction (LIV-77)
+
+Board feedback: after the LIV-69 doubling the isle read as **too big/expansive**, so
+the total size is **halved top-to-bottom and left-to-right (96×96 → 48×48)**, cutting
+travel distances both ways. Core-loop & flow lens: the overworld is connective tissue
+between town, quest sites and the tower — at ~2× travel the walk diluted the
+quest→tower cadence, so halving restores a tight teaching loop without shrinking the
+combat arenas or the played town.
+
+| Item | Resolution |
+| :--- | :--- |
+| Grid | `islands.json` `island_dawnreach` re-authored **48×48**; `width`/`height` = 48, 48 rows × 48 chars, all-water border intact (rows/cols `0–2`, `45–47`). |
+| Landmarks | Re-placed proportionally: Spire `(24,3)`, Tide Gate `(23–25,10)`, Wreck/Lantern Islet `(4,20)`, Drowned Shrine `(39,22)`, Havenreach marker `x19–28,y34–43`. Named features stay 1 tile. |
+| Portals / gates | `to_tower (24,3)`, `to_town (24,43)`, Tide Gate tiles `(23–25,10)`; `spawn (24,44)` south of the marker — round trip stays south-anchored. |
+| Zones / spawns | `spawnZones` halved (`x8–15 / x16–22 / x26–32 / x33–44`, `y12–25`); `safeZones` re-based; Q1 elite anchor `(11,16)`. |
+| Quests | `quests.json` reach objectives re-based: `reach_wreck (4,20)`, `reach_shrine (39,22)`; `towns.json` `to_island` exit spawn → `(24,44)`. |
+| Tests | `liv69-island-content`, `liv70-island-town-footprint`, `liv73-island-north-doorway`, `liv65-north-scene-render`, `liv60-quest-system`, `liv60-scene-spawner` re-based to 48×48. Full suite green. |
+
+*Lenses cited: core loop & fantasy, flow (tension/release pacing), readability,
+theme coherence, balance levers (grid extent, not stat walls), no soft-locks.*
 
 *Lenses cited (§10): core loop & fantasy, theme coherence, readability & legibility,
 difficulty curve & flow, enemy role taxonomy, balance levers (non-droppable flags +

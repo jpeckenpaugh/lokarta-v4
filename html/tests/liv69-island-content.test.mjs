@@ -15,7 +15,8 @@ import { composeSceneById, sceneAccessReport, tileCodeForName } from '../service
 
 // LIV-69: board Floor-1 + Havenreach content pass on top of the LIV-68 engine
 // work. These lock the *content* contract:
-//   #4 Dawnreach Isle doubled 48x48 -> 96x96, landmarks re-placed, 1-tile features
+//   #4 Dawnreach Isle re-authored 48x48 (LIV-77 halved the 96x96 pass), landmarks
+//      re-placed, 1-tile features
 //   #2 authored border is all water (no grass ring at the edge)
 //   #3 fewer blocking TREE tiles
 //   #5 town enter/exit is the SOUTH side in both directions
@@ -28,13 +29,13 @@ const composedIsland = composeSceneById(DEFAULT_ISLAND_ID);
 const composedTown = composeSceneById(DEFAULT_TOWN_ID);
 
 test('LIV-69 Island 1 content pass', async (t) => {
-  await t.test('#4 the island is doubled to ~96x96 and rectangular', () => {
-    assert.equal(island.width, 96, 'Dawnreach Isle width');
-    assert.equal(island.height, 96, 'Dawnreach Isle height');
-    assert.equal(island.map.length, 96);
-    for (const row of island.map) assert.equal(row.length, 96);
-    // ~2x the old 48x48 travel envelope.
-    assert.ok(island.width >= 90 && island.height >= 90, 'island roughly doubled');
+  await t.test('#4 the island is halved to 48x48 and rectangular', () => {
+    assert.equal(island.width, 48, 'Dawnreach Isle width');
+    assert.equal(island.height, 48, 'Dawnreach Isle height');
+    assert.equal(island.map.length, 48);
+    for (const row of island.map) assert.equal(row.length, 48);
+    // Half the 96x96 travel envelope (LIV-77 board feedback).
+    assert.ok(island.width <= 54 && island.height <= 54, 'island roughly halved');
   });
 
   await t.test('#2 the authored border is all water (no grass/sand ring at the edge)', () => {
@@ -56,8 +57,8 @@ test('LIV-69 Island 1 content pass', async (t) => {
     const tree = CODE('TREE');
     let count = 0;
     for (const row of composedIsland.tiles) for (const code of row) if (code === tree) count += 1;
-    // The pre-doubling 48x48 map carried 91 trees; the doubled map keeps a light
-    // scattering only, and never enough to wall off the roads.
+    // The historic 48x48 map carried 91 trees; the current map (LIV-77) keeps a
+    // light scattering only, and never enough to wall off the roads.
     assert.ok(count > 0, 'some trees remain for texture');
     assert.ok(count < 60, `tree count ${count} must be clearly reduced`);
   });

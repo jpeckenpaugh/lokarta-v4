@@ -62,8 +62,8 @@
           "target": {
             "sceneId": "island_dawnreach",
             "spawn": {
-              "x": 48,
-              "y": 86
+              "x": 24,
+              "y": 44
             }
           }
         }

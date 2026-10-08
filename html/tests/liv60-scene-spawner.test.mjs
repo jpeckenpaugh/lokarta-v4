@@ -64,7 +64,7 @@ test('LIV-60 scene spawner', async (t) => {
     assert.ok(king, 'Q1 elite spawns while active');
     assert.equal(king.type, 'gutter_king');
     // Anchored near the authored west-field spot, on a walkable tile.
-    assert.ok(Math.abs(king.x - 22) + Math.abs(king.y - 32) <= 6, `near anchor (${king.x},${king.y})`);
+    assert.ok(Math.abs(king.x - 11) + Math.abs(king.y - 16) <= 6, `near anchor (${king.x},${king.y})`);
     assert.ok(isCodeWalkable(scene.tiles[king.y][king.x]), 'elite tile walkable');
   });
 
