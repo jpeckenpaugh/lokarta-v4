@@ -153,6 +153,7 @@
     "cooldownSec": 6.0,
     "healRadius": 6,
     "targetsAllies": true,
+    "canRevive": true,
     "soundId": "holy_chime",
     "actionKey": "healing_prayer"
   },

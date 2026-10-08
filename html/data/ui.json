@@ -108,6 +108,18 @@
     "towerContinueLabel": "Continue",
     "towerReturnToTownLabel": "Return to Havenreach"
   },
+  "knockout": {
+    "description": "Party knockout/revive copy (LIV-41/LIV-44). {member} is a display name, {floor} a floor number; never catalog ids. The Game Designer owns the final wording/tuning.",
+    "downedCue": "{member} has fallen!",
+    "revivePrompt": "Revive {member}",
+    "reviveStartCue": "Reviving {member}...",
+    "reviveCompleteCue": "{member} is revived!",
+    "reviveInterruptedCue": "The revive is interrupted.",
+    "selfReviveCue": "{member} steadies themselves.",
+    "handoffCue": "Control passes to {member}.",
+    "partyWipeTitle": "THE LIGHT FAILS",
+    "partyWipeBody": "The last of your party falls on Floor {floor}. The Temple of the Dawn draws you back and restores you at the tower gate."
+  },
   "party": {
     "description": "Auto-ally feedback copy (FIX-11 / LIV-26). {member}, {level}, {cards}, {item} and {ability} are substituted with display names, never catalog ids. Cues are subtle and non-blocking; no dark patterns.",
     "allyLevelUpCue": "{member} reached Level {level}",

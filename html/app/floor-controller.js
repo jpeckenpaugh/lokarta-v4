@@ -9,6 +9,7 @@ import {
   DoorSystem,
   isTowerUnlocked,
   recruitableVocations,
+  ReviveSystem,
 } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
 import { TOWER_LEVEL_COUNT, getTowerLevelCount } from '../services/floor-generator.js';
@@ -21,7 +22,7 @@ import { ModalManager } from './modal-manager.js';
  * Assigned onto `LokartaApp.prototype` from `app-controller.js`.
  */
 export const floorControllerMethods = {
-  applyDungeonData(floorData) {
+  applyDungeonData(floorData, options = {}) {
     this.currentFloorName = floorData.biome_name || 'The Gatehouse';
     this.gridMap.loadFromMatrix(floorData.tiles);
 
@@ -103,7 +104,13 @@ export const floorControllerMethods = {
     const floorKey = `${floorData.tower_id || this.towerId || ''}#${floorData.floor_number || ''}`;
     const floorChanged = this._partyFloorKey !== floorKey;
     this._partyFloorKey = floorKey;
-    this.layoutPartyOnFloor(floorChanged);
+    // LIV-44: the between-floor mercy valve revives downed members on a genuine
+    // floor transition only — never on a load/reload of the same floor. Callers
+    // opt in explicitly (`handleFloorClear` / tower entry); the catalog
+    // `revive.reviveOnFloorTransition` can turn the whole valve off.
+    const config = ReviveSystem.resolveReviveConfig(this.player?.vocation);
+    const reviveDowned = options.reviveDowned === true && config.reviveOnFloorTransition === true;
+    this.layoutPartyOnFloor(floorChanged, reviveDowned);
   },
   /**
    * Places and revives the non-active party on a freshly loaded floor
@@ -114,8 +121,10 @@ export const floorControllerMethods = {
    * coordinates are unusable on this floor (missing, blocked, or occupied).
    *
    * @param {boolean} [transportAll=false] - force-relocate every non-active member
+   * @param {boolean} [reviveDowned=false] - true only on a genuine floor
+   *   transition (`revive.reviveOnFloorTransition`); a reload keeps the body
    */
-  layoutPartyOnFloor(transportAll = false) {
+  layoutPartyOnFloor(transportAll = false, reviveDowned = false) {
     const player = this.player;
     if (!player || !Array.isArray(player.party)) return;
     const grid = this.gridMap;
@@ -125,11 +134,24 @@ export const floorControllerMethods = {
     for (const member of player.party) {
       if (!member || member.memberId === activeId) continue;
 
-      if (member.hp <= 0) {
-        member.hp = member.max_hp;
-        member.mana = member.max_mana;
+      if (ReviveSystem.isDowned(member)) {
         member.aiTargetId = null;
         member.aiRetargetTimer = 0;
+        if (reviveDowned) {
+          member.hp = member.max_hp;
+          member.mana = member.max_mana;
+          member.combatState = 'active';
+          member.lifeState = 'alive';
+          member.downedAtSec = 0;
+          member.reviveGraceSec = 0;
+          member._reviveTargetId = null;
+          member._reviveProgressSec = 0;
+        } else {
+          // Same-floor reload: the body stays downed (LIV-44).
+          member.combatState = 'downed';
+          member.lifeState = 'downed';
+          member.hp = 0;
+        }
       }
       member.anim = createAnimState(member.facing || 'down');
 
@@ -234,7 +256,7 @@ export const floorControllerMethods = {
       await this.transition.run('floorAdvance', async () => {
         const transition = await this.gameClient.advanceFloor(this.player, nextFloor);
         this.player = transition.player;
-        this.applyDungeonData(transition.floor);
+        this.applyDungeonData(transition.floor, { reviveDowned: true });
         LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
         this.updateHUD();
         await this.persistSave(true);
@@ -344,7 +366,7 @@ export const floorControllerMethods = {
     try {
       const data = await this.gameClient.selectTower(this.player.slotIndex, nextTowerId);
       this.player = data.player;
-      this.applyDungeonData(data.floor);
+      this.applyDungeonData(data.floor, { reviveDowned: true });
       LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
       this.updateHUD();
       await this.persistSave(true);
@@ -464,7 +486,7 @@ export const floorControllerMethods = {
         try {
           const data = await this.gameClient.selectTower(this.player.slotIndex, towerId);
           this.player = data.player;
-          this.applyDungeonData(data.floor);
+          this.applyDungeonData(data.floor, { reviveDowned: true });
           LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
           this.updateHUD();
           await this.persistSave(true);

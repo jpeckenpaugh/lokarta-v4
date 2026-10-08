@@ -12,6 +12,7 @@ import {
   ChestSystem,
   PartyAI,
   cycleActiveMember,
+  ReviveSystem,
 } from '../engine/index.js';
 import {
   firstMonsterOnSegment,
@@ -78,6 +79,15 @@ export const gameLoopMethods = {
     if (!this.isRunning || this.isGameOver || this.isPaused || this.isFloorCleared) return;
     const deltaSec = CONFIG.TICK_INTERVAL_MS / 1000;
 
+    // LIV-44 run clock + combat-idle accumulator. The revive start gate opens
+    // only after `revive.idleSec` with no damage dealt/taken; any hit below
+    // resets it. The player's post-revive grace window counts down here.
+    this.elapsedSec = (this.elapsedSec || 0) + deltaSec;
+    this.combatIdleSec = (this.combatIdleSec || 0) + deltaSec;
+    if (this.player.reviveGraceSec > 0) {
+      this.player.reviveGraceSec = Math.max(0, this.player.reviveGraceSec - deltaSec);
+    }
+
     // 0. Accumulate playtime for the slot card
     this.player.playtimeMs = (this.player.playtimeMs || 0) + CONFIG.TICK_INTERVAL_MS;
 
@@ -121,6 +131,7 @@ export const gameLoopMethods = {
     // slow/stun control timers, advanced through the engine dispatch table.
     const statusResult = CombatSystem.tickPlayerStatusEffects(this.player, deltaSec);
     if (statusResult.damage > 0) {
+      this.combatIdleSec = 0;
       if (statusResult.burnDamage > 0) {
         this.addFloatingText(`-${statusResult.burnDamage} burn`, this.player.x, this.player.y, '#f97316');
       }
@@ -280,6 +291,9 @@ export const gameLoopMethods = {
       PartyAI.livingAllies(this.player)
     );
     for (const res of aiResults) {
+      if ((res.damageToPlayer && res.damageToPlayer > 0) || (res.absorbed && res.absorbed > 0)) {
+        this.combatIdleSec = 0;
+      }
       const hitTarget = res.target || this.player;
       const isActiveTarget = hitTarget === this.player;
       if (res.message) this.logCombat(res.message, 'combat');
@@ -326,16 +340,35 @@ export const gameLoopMethods = {
       else if (m.anim && m.anim.state === 'walk') setAnimState(m, 'idle');
     }
 
-    // 4b. Party auto-AI (LIV-13/WS4): non-active members act after the player
+    // 4b. Knockout seam (LIV-44): funnel any 0-HP member (active mirror
+    //     included) through the single `markDowned` transition before the ally
+    //     AI so the revive planner can see the downed body.
+    ReviveSystem.markPartyDowned(this.player, {
+      elapsedSec: this.elapsedSec,
+      floor: this.player.current_floor,
+    });
+
+    // 4c. Party auto-AI (LIV-13/WS4): non-active members act after the player
     //     and monsters. Engine decides + applies movement/abilities; the app
     //     turns the returned events into sounds, log, float text and loot.
     this.updatePartyAllies(deltaSec);
 
-    // 5. Defeat check
-    if (this.player.hp <= 0 && !this.isGameOver) {
+    // 5. Party step (LIV-44): hand control off a downed active member, tick
+    //    revive channels + self-stabilize, then evaluate the party wipe. Only a
+    //    true simultaneous full-party knockout ends the run.
+    const partyStep = ReviveSystem.evaluateParty(this.player, {
+      deltaSec,
+      elapsedSec: this.elapsedSec,
+      monsters: this.monsters,
+      combatIdleSec: this.combatIdleSec,
+      floor: this.player.current_floor,
+    });
+    if (partyStep.handoff) this.handleActiveHandoff(partyStep.handoff);
+    for (const ev of partyStep.events) this.applyPartyEvent(ev);
+    if (partyStep.wiped && !this.isGameOver) {
       this.isGameOver = true;
-      this.logCombat('You have fallen in the tower! Darkness consumes you...', 'warning');
-      this.onPlayerDeath();
+      this.logCombat('The last of your party falls... The Light fails.', 'warning');
+      this.onPartyWipe();
     }
 
     // 6. Stair traversal (E8): resolve the stair under the player against the
@@ -399,6 +432,7 @@ export const gameLoopMethods = {
 
       const status = CombatSystem.tickPlayerStatusEffects(member, deltaSec);
       if (status.damage > 0) {
+        this.combatIdleSec = 0;
         this.addFloatingText(`-${status.damage}`, member.x, member.y, '#f97316');
         if (member.hp <= 0) this.addFloatingText('DOWN!', member.x, member.y, '#ef4444');
       }
@@ -414,8 +448,27 @@ export const gameLoopMethods = {
       gridMap: this.gridMap,
       monsters: this.monsters,
       deltaSec,
+      elapsedSec: this.elapsedSec,
+      partyState: 'exploring',
+      combatIdleSec: this.combatIdleSec,
     });
     for (const ev of events) this.applyPartyEvent(ev);
+  },
+  /**
+   * LIV-44: a downed active member hands control to a living ally with no modal.
+   * Drops held keys and any stale monster target so the new actor does not
+   * inherit the previous member's input.
+   */
+  handleActiveHandoff(member) {
+    this.keysDown.clear();
+    this.selectedMonsterId = null;
+    setAnimState(this.player, 'idle');
+    const voc = VOCATIONS_CATALOG?.[member && member.vocation];
+    const label = (voc && (voc.name || voc.renderTheme?.classLabel)) || (member && member.vocation) || 'an ally';
+    this.logCombat(`The Light passes — control goes to ${label}.`, 'warning');
+    this.addFloatingText('CONTROL → ALLY', this.player.x, this.player.y, '#fde68a');
+    soundFX.play('holyChime');
+    this.updateHUD();
   },
   /**
    * LIV-27 / FIX-12: hand control to the next (`direction` +1) or previous
@@ -472,6 +525,24 @@ export const gameLoopMethods = {
     }
     if (ev.type === 'potion') {
       this.resolvePartyPotionResult(ev);
+    }
+    // LIV-44 knockout/revive cues.
+    if (ev.type === 'revive' && ev.phase === 'begin') {
+      soundFX.play('lightSpell');
+      if (ev.target) this.addFloatingText('REVIVING...', ev.target.x, ev.target.y, '#fde68a');
+      return;
+    }
+    if (ev.type === 'revived') {
+      soundFX.play('holyChime');
+      this.addFloatingText('REVIVED', member.x, member.y, '#fde68a');
+      this.logCombat(`${ev.member?.vocation ? String(ev.member.vocation).toUpperCase() : 'An ally'} is back on their feet.`, 'spell');
+      this.updateHUD();
+      this.persistSave();
+      return;
+    }
+    if (ev.type === 'selfRevive') {
+      this.addFloatingText('STEADIED', member.x, member.y, '#fde68a');
+      this.updateHUD();
     }
   },
   /** Applies an auto-ally potion drink: cue, log, float text, HUD + save. */

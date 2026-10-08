@@ -21,6 +21,10 @@ export class CombatSystem {
     if (!actor) return;
     CombatSystem.decrementCooldowns(actor, deltaSec);
     CombatSystem.decrementSpellTimers(actor, deltaSec);
+    // LIV-44 revive grace window counts down per tick.
+    if (actor.reviveGraceSec > 0) {
+      actor.reviveGraceSec = Math.max(0, actor.reviveGraceSec - (Number(deltaSec) || 0));
+    }
   }
 
   static decrementCooldowns(player, deltaSec) {
@@ -148,6 +152,20 @@ export class CombatSystem {
   static applyIncomingDamage(player, damage, attacker = null) {
     if (!player || damage <= 0) {
       return { damageToPlayer: 0, absorbed: 0, dodged: false, deflected: false, rawDamage: damage || 0 };
+    }
+
+    // LIV-44 revive grace: a freshly revived member is invulnerable for
+    // `reviveGraceSec` so a lingering DoT cannot instantly re-down it. Damage
+    // sites only clamp hp; the downed transition lives in revive-system.js.
+    if (Number(player.reviveGraceSec) > 0) {
+      return {
+        damageToPlayer: 0,
+        absorbed: 0,
+        dodged: false,
+        deflected: false,
+        rawDamage: damage,
+        grace: true,
+      };
     }
 
     // Friendly fire is impossible: a same-faction attacker is blocked before
