@@ -166,9 +166,34 @@ test('LIV-17: a fallen non-active member is revived and transported', () => {
   player.current_floor = 2;
   player.x = floor2.spawn_coords.x;
   player.y = floor2.spawn_coords.y;
-  app.applyDungeonData(floor2);
+  // LIV-44: the between-floor mercy valve fires only on a genuine floor
+  // transition, which the app signals explicitly.
+  app.applyDungeonData(floor2, { reviveDowned: true });
 
   assert.equal(fallen.hp, fallen.max_hp, 'the fallen ally revives between levels');
   assert.equal(fallen.mana, fallen.max_mana, 'the fallen ally refills mana');
+  assert.equal(fallen.lifeState, 'alive', 'the between-floor revive clears the downed state');
   assert.ok(chebyshev(fallen, player) <= 4, 'the revived ally is transported beside the active member');
+});
+
+test('LIV-17/LIV-44: reloading the same floor keeps a downed member downed', () => {
+  const towerId = firstTowerId();
+  const player = createPartyPlayer('magician');
+  player.towerId = towerId;
+  player.current_floor = 1;
+
+  const fallen = createPartyMember('paladin', { x: 0, y: 0, hp: 0, mana: 0 });
+  fallen.lifeState = 'downed';
+  player.party.push(fallen);
+
+  const floor = generateFloor(1, null, towerId, 2);
+  player.x = floor.spawn_coords.x;
+  player.y = floor.spawn_coords.y;
+  const app = makeApp(player);
+  app.applyDungeonData(floor);
+  // A same-floor reload / first layout must not revive the body.
+  app.applyDungeonData(floor);
+
+  assert.equal(fallen.hp, 0, 'the body stays downed on a same-floor reload');
+  assert.equal(fallen.lifeState, 'downed', 'lifeState stays downed');
 });

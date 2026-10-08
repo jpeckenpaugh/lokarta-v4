@@ -90,6 +90,7 @@ test('LIV-13 membership: inactive == living auto non-active members', () => {
   assert.deepEqual(inactive.map((m) => m.vocation), ['paladin']);
   assert.ok(PartyAI.livingAllies(player).includes(player));
   assert.equal(PartyAI.livingAllies(player).filter((m) => m.memberId === player.activeMemberId).length, 0, 'stale active mirror excluded');
+  assert.ok(!PartyAI.livingAllies(player).includes(downed), 'downed allies are never monster targets');
   assert.equal(PartyAI.partyMemberAt(player, 4, 4), ally);
   assert.equal(PartyAI.partyMemberAt(player, 0, 0), null, 'active tile is not an ally');
 });
@@ -237,6 +238,71 @@ test('LIV-13 ammo: auto bow casts use free ammo, manual casts still consume', ()
   assert.equal(manualTarget.hp, 100);
 });
 
+test('LIV-44 revive AI: the designated reviver paths to a downed ally', () => {
+  const grid = floorGrid();
+  const paladin = createPartyMember('paladin', { x: 5, y: 5, mana: 100, hp: 120 });
+  const downed = createPartyMember('fighter', { x: 8, y: 5, hp: 0 });
+  downed.lifeState = 'downed';
+  const player = partyOf('magician', [paladin, downed]);
+  player.x = 0;
+  player.y = 0;
+
+  const events = PartyAI.updateAllies(player, {
+    gridMap: grid,
+    monsters: [],
+    deltaSec: 0.1,
+    partyState: 'exploring',
+    combatIdleSec: 99,
+  });
+
+  const move = events.find((ev) => ev.member === paladin && ev.type === 'move');
+  assert.ok(move, 'the capable member moves toward the body');
+  assert.equal(paladin.x, 6, 'stepped one tile closer');
+  assert.equal(downed.hp, 0, 'the body is never revived by walking');
+  assert.ok(!events.some((ev) => ev.member === downed), 'a downed member acts on its own');
+});
+
+test('LIV-44 revive AI: adjacent to the body begins the channel', () => {
+  const grid = floorGrid();
+  const paladin = createPartyMember('paladin', { x: 7, y: 5, mana: 100, hp: 120 });
+  const downed = createPartyMember('fighter', { x: 8, y: 5, hp: 0 });
+  downed.lifeState = 'downed';
+  const player = partyOf('magician', [paladin, downed]);
+
+  const events = PartyAI.updateAllies(player, {
+    gridMap: grid,
+    monsters: [],
+    deltaSec: 0.1,
+    partyState: 'exploring',
+    combatIdleSec: 99,
+  });
+
+  const began = events.find((ev) => ev.member === paladin && ev.type === 'revive');
+  assert.ok(began && began.phase === 'begin', 'the reviver commits to the channel');
+  assert.equal(began.target, downed);
+  assert.equal(paladin._reviveTargetId, downed.memberId);
+});
+
+test('LIV-44 revive AI: a hostile inside safetyRadius blocks the rescue', () => {
+  const grid = floorGrid();
+  const paladin = createPartyMember('paladin', { x: 7, y: 5, mana: 100, hp: 120 });
+  const downed = createPartyMember('fighter', { x: 8, y: 5, hp: 0 });
+  downed.lifeState = 'downed';
+  const player = partyOf('magician', [paladin, downed]);
+  const lurking = enemy(8, 9);
+
+  const events = PartyAI.updateAllies(player, {
+    gridMap: grid,
+    monsters: [lurking],
+    deltaSec: 0.1,
+    partyState: 'exploring',
+    combatIdleSec: 99,
+  });
+
+  assert.ok(!events.some((ev) => ev.type === 'revive'), 'a hostile in range blocks the revive start');
+  assert.ok(!paladin._reviveTargetId, 'no channel is opened while the room is unsafe');
+});
+
 test('LIV-13 integration: the loop and renderer are wired for allies', async () => {
   const { readControllerSources } = await import('./helpers/app-source.mjs');
   const source = readControllerSources();
@@ -245,4 +311,7 @@ test('LIV-13 integration: the loop and renderer are wired for allies', async () 
   assert.match(source, /PartyAI\.livingAllies\(/, 'monsters target the living party');
   assert.match(source, /5b\. Party Allies Layer/, 'the renderer draws the allies');
   assert.match(source, /layoutPartyOnFloor\(/, 'floor load places/revives allies');
+  assert.match(source, /ReviveSystem\.markPartyDowned\(/, 'the loop runs the knockout seam');
+  assert.match(source, /ReviveSystem\.evaluateParty\(/, 'the loop runs the party step');
+  assert.match(source, /onPartyWipe\(/, 'a full-party wipe routes to the Temple');
 });

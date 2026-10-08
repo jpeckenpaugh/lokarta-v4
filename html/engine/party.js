@@ -233,6 +233,13 @@ export function createPartyMember(vocation, overrides = {}) {
   member.vocation = key;
   member.aiMode = DEFAULT_AI_MODE;
   member.faction = PARTY_FACTION;
+  // LIV-44 knockout lifecycle: explicit per-member state derived from `hp`.
+  // `combatState` is the approved-plan field; `lifeState` is the tech-plan alias.
+  member.combatState = 'active';
+  member.lifeState = 'alive';
+  member.downedAtSec = 0;
+  member.downedFloor = Number(member.current_floor) > 0 ? Number(member.current_floor) : 1;
+  member.reviveGraceSec = 0;
   // The party shares one backpack (LIV-22) and one key ring (LIV-33) held on
   // the top-level player; a member never carries its own copy. The hotbar and
   // equipment stay per member.
@@ -241,6 +248,11 @@ export function createPartyMember(vocation, overrides = {}) {
   for (const [field, value] of Object.entries(overrides || {})) {
     if (field === 'memberId' || field === 'vocation' || field === 'faction') continue;
     member[field] = clone(value);
+  }
+  // Reconcile the derived state with any hp override (LIV-44).
+  if (!(Number(member.hp) > 0)) {
+    member.combatState = 'downed';
+    member.lifeState = 'downed';
   }
   return member;
 }
@@ -267,6 +279,32 @@ function normalizeMember(member) {
   }
   if (out.faction !== PARTY_FACTION) {
     out.faction = PARTY_FACTION;
+    changed = true;
+  }
+  // LIV-44 knockout lifecycle: backfill the derived fields from `hp` so a
+  // pre-revive save loads deterministically. Idempotent for migrated members.
+  const hasHp = Number.isFinite(Number(out.hp));
+  const downed = hasHp && Number(out.hp) <= 0;
+  const lifeState = downed ? 'downed' : 'alive';
+  if (out.lifeState !== lifeState) {
+    out.lifeState = lifeState;
+    changed = true;
+  }
+  const combatState = downed ? 'downed' : 'active';
+  if (out.combatState !== combatState) {
+    out.combatState = combatState;
+    changed = true;
+  }
+  if (!Number.isFinite(Number(out.downedAtSec))) {
+    out.downedAtSec = 0;
+    changed = true;
+  }
+  if (!Number.isFinite(Number(out.downedFloor))) {
+    out.downedFloor = Number(out.current_floor) > 0 ? Number(out.current_floor) : 1;
+    changed = true;
+  }
+  if (!Number.isFinite(Number(out.reviveGraceSec))) {
+    out.reviveGraceSec = 0;
     changed = true;
   }
   return changed ? out : member;
@@ -390,7 +428,7 @@ export function cycleActiveMember(player, direction = 1) {
   for (let offset = 1; offset < count; offset++) {
     const idx = (((current + step * offset) % count) + count) % count;
     const member = player.party[idx];
-    if (!member || member.hp <= 0 || !member.memberId) continue;
+    if (!member || member.hp <= 0 || member.combatState === 'downed' || member.lifeState === 'downed' || !member.memberId) continue;
     setActiveMember(player, member.memberId);
     return member;
   }

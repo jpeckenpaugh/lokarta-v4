@@ -18,6 +18,7 @@ import {
   clampTowerFloor,
   migratePlayerToTower,
   normalizeSlotToTower,
+  SAVE_FORMAT_VERSION,
   TOWER_LEVEL_COUNT as TOWER_FLOOR_COUNT,
 } from '../services/save-slots.js';
 
@@ -320,18 +321,18 @@ test('E6: tower migration clamps old saves and drops stale floors', async (t) =>
     assert.equal(a.level, 6, 'level progress preserved');
     assert.equal(a.xp, 120, 'xp preserved');
     assert.deepEqual(a.backpack, [{ item_id: 'torch', quantity: 2 }], 'inventory preserved');
-    assert.equal(a.saveVersion, 2, 'save format stamped');
+    assert.equal(a.saveVersion, SAVE_FORMAT_VERSION, 'save format stamped');
 
     const b = await read(STORES.CHARACTERS, 'char_tower_b');
     assert.equal(b.current_floor, 5, 'floor 9 clamps to the final level');
-    assert.equal(b.saveVersion, 2);
+    assert.equal(b.saveVersion, SAVE_FORMAT_VERSION);
   });
 
   await t.test('slot records clamp to the tower', async () => {
     const s1 = await read(STORES.SAVE_SLOTS, 'slot_1');
     assert.equal(s1.currentFloor, 5);
     assert.equal(s1.floorEntry.current_floor, 5);
-    assert.equal(s1.saveVersion, 2);
+    assert.equal(s1.saveVersion, SAVE_FORMAT_VERSION);
     const s2 = await read(STORES.SAVE_SLOTS, 'slot_2');
     assert.equal(s2.currentFloor, 5);
   });

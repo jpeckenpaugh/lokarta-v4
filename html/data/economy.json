@@ -28,6 +28,12 @@
     "reviveAt": "town_temple",
     "reviveCostPct": 0
   },
+  "wipe": {
+    "goldPenaltyPct": 0,
+    "resetToEntryFloor": true,
+    "blessingFreeHeal": true,
+    "description": "Full-party knockout (every member downed at once): the Temple of the Dawn restores the party free, resets re-entry to the tower's entry floor, and keeps keys/level/gear/backpack/gold/completions. goldPenaltyPct is off at launch (0); the re-climb is the penalty."
+  },
   "shop": {
     "sellRatePct": 50,
     "buyMarkupPct": 0,

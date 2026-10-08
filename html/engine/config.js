@@ -152,6 +152,13 @@ function buildArchetype(vocKey) {
     max_hp: data.hp,
     mana: data.mana,
     max_mana: data.mana,
+    // LIV-44 knockout lifecycle (derived from hp; explicit so the save and the
+    // active mirror never disagree). `combatState` is the approved-plan field;
+    // `lifeState` is the tech-plan alias, written together.
+    combatState: 'active',
+    lifeState: 'alive',
+    downedAtSec: 0,
+    reviveGraceSec: 0,
     level: 1,
     xp: 0,
     xpToNextLevel: 100,

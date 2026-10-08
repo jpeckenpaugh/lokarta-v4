@@ -2,9 +2,9 @@
  * Lokarta: Come Into The Light - Viewport Canvas Renderer
  */
 
-import { CONFIG, LightingSystem, TILE_TYPES } from '../engine/index.js';
+import { CONFIG, LightingSystem, TILE_TYPES, ReviveSystem } from '../engine/index.js';
 import { SpriteRenderer, themeForFloor } from './sprite-renderer.js';
-import { UI_CATALOG } from '../data/index.js';
+import { UI_CATALOG, PARTY_AI_CATALOG } from '../data/index.js';
 
 /** Static entity-bar token cache from `ui.json.entityBars` (D1 §3.2). */
 const OUTLINE_COLOR = '#0b0d12';
@@ -62,6 +62,59 @@ const PLAYER_VFX = (() => {
     },
   };
 })();
+
+/**
+ * Cached knockout/revive presentation tokens (LIV-45). Geometry/palette come
+ * from `ui.json.knockout.visuals`; the E1 beacon's on/off, color and pulse come
+ * from `party_ai.json.revive.callForHelp` (behavior source) so the world read
+ * and the AI share one switch. Resolved once — the per-frame paths allocate
+ * nothing.
+ */
+const KNOCKOUT = (() => {
+  const v = UI_CATALOG?.knockout?.visuals || {};
+  const d = v.downed || {};
+  const b = v.beacon || {};
+  const c = v.channel || {};
+  const help = PARTY_AI_CATALOG?.revive?.callForHelp || {};
+  const n = (val, fallback) => (Number.isFinite(Number(val)) ? Number(val) : fallback);
+  return {
+    downed: {
+      tint: d.tint || '#5b6069',
+      tintAmount: n(d.tintAmount, 0.4),
+      alpha: n(d.alpha, 0.85),
+    },
+    beacon: {
+      enabled: help.enabled !== false,
+      color: help.color || '#fde68a',
+      pulseHz: n(help.pulseHz, 1.2),
+      ringMinTiles: n(b.ringMinTiles, 0.45),
+      ringMaxTiles: n(b.ringMaxTiles, 1.7),
+      lineWidthPx: n(b.lineWidthPx, 3),
+      baseAlpha: n(b.baseAlpha, 0.75),
+      pipSizeTiles: n(b.pipSizeTiles, 0.3),
+    },
+    channel: {
+      color: c.color || '#fde68a',
+      coreColor: c.coreColor || '#fffbeb',
+      beamWidthPx: n(c.beamWidthPx, 4),
+      tetherAlpha: n(c.tetherAlpha, 0.5),
+      progressRadiusTiles: n(c.progressRadiusTiles, 0.42),
+      progressLineWidthPx: n(c.progressLineWidthPx, 4),
+    },
+  };
+})();
+
+/** True when a party entry is downed (explicit state or a clamped-out HP). */
+function isDownedEntry(entry) {
+  if (!entry) return false;
+  if (entry.combatState === 'downed' || entry.lifeState === 'downed') return true;
+  return !(Number(entry.hp) > 0);
+}
+
+/** True when a party entry can act and light the way. */
+function isLivingEntry(entry) {
+  return Boolean(entry) && !isDownedEntry(entry);
+}
 
 /** True when a DOOR or GATED_DOOR tile sits within `radius` of (x, y). */
 function isNearDoor(gridMap, x, y, radius) {
@@ -390,18 +443,29 @@ export class CanvasRenderer {
       }
     }
 
-    // 5b. Party Allies Layer (LIV-13/WS4): every living non-active member draws
-    //     with the shared player sprite pipeline (vocation sprite + animation).
-    //     The live active member is the top-level player drawn below, so its
-    //     stale `party` mirror is skipped (matched by memberId).
+    // 5b. Party Allies Layer (LIV-13/WS4): every non-active member draws with
+    //     the shared player sprite pipeline (vocation sprite + animation). A
+    //     downed body (LIV-45) stays on the board, greyed + darkened, with no
+    //     light and no HP bar — it is a rescue target, not a combatant. The live
+    //     active member is the top-level player drawn below, so its stale
+    //     `party` mirror is skipped (matched by memberId).
     if (Array.isArray(party) && party.length > 1) {
+      const downed = KNOCKOUT.downed;
       for (const member of party) {
-        if (!member || member.hp <= 0) continue;
+        if (!member) continue;
         if (member.memberId && member.memberId === player.activeMemberId) continue;
         const memberScreenX = member.x * CONFIG.GRID_SIZE - this.cameraX;
         const memberScreenY = member.y * CONFIG.GRID_SIZE - this.cameraY;
-        SpriteRenderer.drawPlayer(ctx, member, memberScreenX, memberScreenY);
-        this.drawActorBars(ctx, member, memberScreenX, memberScreenY, true);
+        if (isDownedEntry(member)) {
+          SpriteRenderer.drawPlayer(ctx, member, memberScreenX, memberScreenY, CONFIG.GRID_SIZE, {
+            downed: true,
+            dim: downed.alpha,
+            tint: { hex: downed.tint, amount: downed.tintAmount },
+          });
+        } else {
+          SpriteRenderer.drawPlayer(ctx, member, memberScreenX, memberScreenY);
+          this.drawActorBars(ctx, member, memberScreenX, memberScreenY, true);
+        }
       }
     }
 
@@ -417,6 +481,16 @@ export class CanvasRenderer {
     //     Prayer healing orbs. Drawn after the player + light mask so both read
     //     clearly over the existing lighting.
     this.renderPlayerVfx(ctx, player, playerScreenX, playerScreenY);
+
+    // 6c. Knockout VFX (LIV-45): the E1 "Call for Help" beacon over every downed
+    //     body and the revive channel tether/progress arc. Drawn last so the
+    //     rescue read survives the fog, bars and player sprite.
+    this.renderKnockoutVfx(
+      ctx,
+      player,
+      party,
+      (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()
+    );
 
     // 7. Projectiles & Impact Particles (after the mask, so they read at range)
     this.renderProjectiles(ctx, projectiles);
@@ -557,6 +631,130 @@ export class CanvasRenderer {
       }
       ctx.restore();
     }
+  }
+
+  /**
+   * LIV-45 knockout/revive world read. For every downed body it draws the E1
+   * "Call for Help" beacon (a pulsing ring + a locator pip aimed at the nearest
+   * living ally); for every living member mid-channel it draws the revive
+   * tether and a progress arc. Allocation is kept to the same `save`/`restore`
+   * and path primitives the other VFX use.
+   *
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {object} player top-level active member (mirror)
+   * @param {Array<object>} party
+   * @param {number} now ms clock
+   */
+  renderKnockoutVfx(ctx, player, party, now) {
+    if (!player || !Array.isArray(party) || party.length <= 1) return;
+
+    // Revive channels (living reviver holding a downed target).
+    for (const member of party) {
+      if (!isLivingEntry(member) || !member._reviveTargetId) continue;
+      const target = this._findEntryById(party, player, member._reviveTargetId);
+      if (target && isDownedEntry(target)) this.drawReviveChannel(ctx, member, target);
+    }
+
+    // E1 beacon over each downed body (only while an ally can answer it).
+    const beacon = KNOCKOUT.beacon;
+    if (!beacon.enabled) return;
+    for (const member of party) {
+      if (!isDownedEntry(member)) continue;
+      const ally = this.nearestLivingAlly(player, party, member.x, member.y);
+      if (ally) this.drawCallForHelp(ctx, member, ally, now);
+    }
+  }
+
+  /** Party entry with `memberId`, or the top-level player when it matches. */
+  _findEntryById(party, player, memberId) {
+    if (!memberId) return null;
+    if (player && player.memberId === memberId) return player;
+    for (const m of party) if (m && m.memberId === memberId) return m;
+    return null;
+  }
+
+  /**
+   * Nearest living ally to (x, y) — the top-level active member (live position)
+   * plus non-active living party entries — or null when none stand.
+   */
+  nearestLivingAlly(player, party, x, y) {
+    let best = null;
+    let bestDist = Infinity;
+    const consider = (entry) => {
+      const d = Math.hypot(entry.x - x, entry.y - y);
+      if (d < bestDist) { bestDist = d; best = entry; }
+    };
+    if (isLivingEntry(player)) consider(player);
+    for (const m of party) {
+      if (!m || !isLivingEntry(m)) continue;
+      if (m.memberId && m.memberId === player.activeMemberId) continue;
+      consider(m);
+    }
+    return best;
+  }
+
+  /** E1: pulsing beacon ring + locator pip pointing at the nearest living ally. */
+  drawCallForHelp(ctx, downed, ally, now) {
+    const b = KNOCKOUT.beacon;
+    const size = CONFIG.GRID_SIZE;
+    const cx = downed.x * size + size / 2 - this.cameraX;
+    const cy = downed.y * size + size / 2 - this.cameraY;
+    const phase = ((now / 1000) * b.pulseHz) % 1;
+    const radius = (b.ringMinTiles + (b.ringMaxTiles - b.ringMinTiles) * phase) * size;
+
+    ctx.save();
+    ctx.globalAlpha = b.baseAlpha * (1 - phase);
+    ctx.strokeStyle = b.color;
+    ctx.lineWidth = b.lineWidthPx;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Locator pip rides the ring edge, aimed at the ally who can answer.
+    const angle = Math.atan2(ally.y - downed.y, ally.x - downed.x);
+    const px = cx + Math.cos(angle) * radius;
+    const py = cy + Math.sin(angle) * radius;
+    const s = b.pipSizeTiles * size;
+    ctx.globalAlpha = Math.min(1, b.baseAlpha + 0.2);
+    ctx.fillStyle = b.color;
+    ctx.beginPath();
+    ctx.moveTo(px + Math.cos(angle) * s, py + Math.sin(angle) * s);
+    ctx.lineTo(px + Math.cos(angle + 2.5) * s, py + Math.sin(angle + 2.5) * s);
+    ctx.lineTo(px + Math.cos(angle - 2.5) * s, py + Math.sin(angle - 2.5) * s);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /** Revive channel: tether beam + a progress arc that closes as the channel completes. */
+  drawReviveChannel(ctx, reviver, target) {
+    const c = KNOCKOUT.channel;
+    const size = CONFIG.GRID_SIZE;
+    const rx = reviver.x * size + size / 2 - this.cameraX;
+    const ry = reviver.y * size + size / 2 - this.cameraY;
+    const tx = target.x * size + size / 2 - this.cameraX;
+    const ty = target.y * size + size / 2 - this.cameraY;
+    const cfg = ReviveSystem.resolveReviveConfig(reviver.vocation);
+    const frac = Math.max(0, Math.min(1, Number(reviver._reviveProgressSec || 0) / Math.max(0.01, cfg.channelSec)));
+    const blocked = reviver._reviveBlocked === true;
+
+    ctx.save();
+    ctx.globalAlpha = c.tetherAlpha;
+    ctx.strokeStyle = c.color;
+    ctx.lineWidth = c.beamWidthPx;
+    ctx.beginPath();
+    ctx.moveTo(rx, ry);
+    ctx.lineTo(tx, ty);
+    ctx.stroke();
+
+    const radius = c.progressRadiusTiles * size;
+    ctx.globalAlpha = blocked ? 0.4 : 0.9;
+    ctx.strokeStyle = blocked ? '#94a3b8' : c.coreColor;
+    ctx.lineWidth = c.progressLineWidthPx;
+    ctx.beginPath();
+    ctx.arc(tx, ty, radius, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
   }
 
   renderProps(ctx, props, layer, gridMap, startX, endX, startY, endY) {

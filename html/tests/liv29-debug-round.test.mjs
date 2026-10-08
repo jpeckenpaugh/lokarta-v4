@@ -28,6 +28,7 @@ import {
   createPlayer,
   createPartyPlayer,
   createPartyMember,
+  ReviveSystem,
 } from '../engine/index.js';
 import { generateFloor } from '../services/floor-generator.js';
 import { ITEMS_CATALOG, UI_CATALOG, CHESTS_CATALOG, ECONOMY_CATALOG } from '../data/index.js';
@@ -385,6 +386,24 @@ describe('Fountain heals the whole party (LIV-19)', () => {
     assert.equal(fighter.hp, 12, 'never overheals past max_hp');
     assert.equal(archer.hp, 0, 'downed member stays down');
     assert.equal(app.player.hp, 15);
+  });
+
+  it('LIV-44: a fountain never revives a downed member; the party step keeps it down', () => {
+    const player = createPartyPlayer('magician');
+    const downed = createPartyMember('archer', { x: 1, y: 1, hp: 0 });
+    downed.lifeState = 'downed';
+    downed.downedAtSec = 0;
+    player.party.push(downed);
+
+    const res = ReviveSystem.evaluateParty(player, {
+      elapsedSec: 5,
+      floor: 1,
+      monsters: [],
+      combatIdleSec: 0,
+    });
+    assert.equal(downed.hp, 0, 'only the dedicated revive flow restores a body');
+    assert.equal(downed.lifeState, 'downed');
+    assert.equal(res.events.length, 0, 'no revive fires while the gate is closed');
   });
 });
 

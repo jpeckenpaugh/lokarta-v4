@@ -1411,20 +1411,21 @@ export class ModalManager {
     const fromFloor = callbacks.fromFloor || player?.current_floor || 1;
     const toFloor = callbacks.toFloor || fromFloor;
     const descended = toFloor < fromFloor;
-    const subtitle = descended
-      ? `Floor ${fromFloor} claims another soul. You descend to Floor ${toFloor}, restored to full health and magic.`
+    const title = callbacks.title || 'YOU HAVE PERISHED';
+    const body = callbacks.body
+      ? String(callbacks.body).replace(/\{floor\}/g, String(fromFloor))
       : `Floor ${fromFloor} claims another soul. You awaken at the tower gate, restored to full health and magic.`;
     const primaryLabel = descended ? `DESCEND TO FLOOR ${toFloor}` : `CONTINUE ON FLOOR ${toFloor}`;
 
     modalOverlayEl.innerHTML = `
       <div class="result-modal defeat-modal">
-        <h2>YOU HAVE PERISHED</h2>
-        <p class="result-subtitle">${subtitle}</p>
+        <h2>${title}</h2>
+        <p class="result-subtitle">${body}</p>
         <div class="confirm-actions">
           <button class="action-btn" id="btn-retry">${primaryLabel}</button>
           <button class="action-btn" id="btn-continue">RETURN TO TITLE</button>
         </div>
-        <p class="result-hint">Death sends you down one level (never below Floor 1) with full HP and MP.<br />Continue stays in the tower; Return to Title exits to the main menu.</p>
+        <p class="result-hint">A full-party knockout returns you to the Temple of the Dawn at the tower's entry floor.<br />Continue enters the town; Return to Title exits to the main menu.</p>
       </div>
     `;
 

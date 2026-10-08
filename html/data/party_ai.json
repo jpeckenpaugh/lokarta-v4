@@ -14,12 +14,34 @@
     "potion": "v2 auto-potion (FIX-9 / LIV-24). When HP fraction is at or below `hpPct`, the member consumes `itemId` from the shared party backpack if off `cooldownSec`; when no HP drink is due and mana fraction is at or below `manaPct`, it consumes `manaItemId` instead. `hpPct` is pinned to 0.50 to match the Board rule (auto-drink below 50%). The consumed potion's authored `effect.scope: 'party'` makes the restore land on every eligible party member, not just the drinker.",
     "autoFateGrant": "v2 deterministic auto-Fate-Grant policy (FIX-5 / LIV-20), read once for the whole party. Non-active allies that level up auto-draft `picks` cards without pausing; `priority` is an ordered list of rule tokens (highest first) used as tie-breakers. Valid tokens: upgrade, main_hand, off_hand, affinity, rarity, offer_order. The offer itself is generated per member per level; the policy picks deterministically from whatever is offered.",
     "itemSearch": "v3 ally ground-item search (LIV-33). When a member has no engaged target (out of combat) and `enabled`, it scans a square window of `radius` tiles around itself for ground items and paths the nearest one with EntityAI.findNextStepAStar; the walk-over pickup pipeline banks it in the shared party backpack. `radius` is the search leash in tiles (0 disables scanning). Combat, retreat and support decisions always run first, so item finding never competes with survival.",
-    "protect": "v3 protector/retaliate targeting (LIV-33). When `enabled`, a member prioritizes the hostile that is currently attacking another party member (a hostile adjacent to, or target-locked on, a living ally other than itself) before falling back to the nearest hostile. `radius` bounds how far it will leave formation to reach that attacker. Only front-line protectors (fighter/paladin) enable it; supports/backline keep their support distance."
+    "protect": "v3 protector/retaliate targeting (LIV-33). When `enabled`, a member prioritizes the hostile that is currently attacking another party member (a hostile adjacent to, or target-locked on, a living ally other than itself) before falling back to the nearest hostile. `radius` bounds how far it will leave formation to reach that attacker. Only front-line protectors (fighter/paladin) enable it; supports/backline keep their support distance.",
+    "revive": "v4 party knockout/revive flow (LIV-41/LIV-44). A member at 0 HP stays on the board as `downed` (greyed, immobile, not targeted, no light) and control never lands on it. `enabled` is the master switch; `channelSec`/`cooldownSec`/`manaCost` tune the rescue channel; `hpPct`/`manaPct`/`graceSec` tune what a completed revive restores; `idleSec` + `safetyRadius` gate when a revive may START (no living hostile within `safetyRadius` of the downed member AND no damage dealt/taken for `idleSec`); `interruptOnDamage`/`interruptOnMove`/`channelDecayMult` govern the interruptible channel (progress decays at `channelDecayMult`x while broken); `reviveOnFloorTransition` keeps the between-floor mercy valve (only on a genuine floor change, never a same-floor reload); `selfReviveSec`/`selfReviveHpPct` are the resource-dry safety net; `bleedOutSec: 0` disables any hard death timer; `boss` overrides apply inside a boss room; `potion` is the consumable fallback source. Revive sources are data: a heal ability flagged `canRevive` in abilities.json or a consumable flagged `effect.canRevive` in items.json. E3 Vigils (LIV-45): each vocation may declare a partial `profiles[vocation].revive` block that overrides only the keys it changes; the engine resolver merges it over this top-level block, so vocation identity is data with no per-class branches. `dragTiles`/`damageReductionPct` are the generic Fighter Vigil levers (engine handler LIV-47): `dragTiles` pulls the downed body up to N orthogonal tiles toward the reviver over a live channel (walkable + unoccupied destination only), and `damageReductionPct` scales incoming damage to the reviver while it channels; both default `0` (inert) for every other vocation."
   },
   "_design": "Roles stay distinct: Fighter/Paladin hold the line (follow 1, melee), Archer/Magician fight from the back (follow 3). Retreat thresholds track fragility - Magician (60 HP) disengages earliest at 0.35, Fighter (140 HP) holds latest at 0.20. Paladin is the only support profile. Rationale: docs/design/game-design.md 8.1.",
   "autoFateGrant": {
     "picks": 2,
     "priority": ["upgrade", "main_hand", "off_hand", "affinity", "rarity", "offer_order"]
+  },
+  "revive": {
+    "enabled": true,
+    "channelSec": 2.0,
+    "cooldownSec": 6.0,
+    "manaCost": 25,
+    "hpPct": 0.3,
+    "manaPct": 0.25,
+    "graceSec": 1.0,
+    "idleSec": 3.0,
+    "safetyRadius": 8,
+    "interruptOnDamage": true,
+    "interruptOnMove": true,
+    "channelDecayMult": 2.0,
+    "reviveOnFloorTransition": true,
+    "selfReviveSec": 45,
+    "selfReviveHpPct": 0.15,
+    "bleedOutSec": 0,
+    "boss": { "safetyRadius": 5, "channelSec": 3.0 },
+    "potion": { "enabled": true, "itemId": "health_potion", "hpPct": 0.2 },
+    "callForHelp": { "enabled": true, "color": "#fde68a", "radiusTiles": 6, "pulseHz": 1.2 }
   },
   "default": {
     "preferredAbilities": [],
@@ -105,6 +127,11 @@
         "enabled": false,
         "radius": 8
       },
+      "revive": {
+        "_vigil": "Arcane Suture (E3) — fast but mana-hungry: shortest channel, steepest mana price.",
+        "channelSec": 1.4,
+        "manaCost": 40
+      },
       "_note": "Squishiest backline (60 HP): disengages earliest so an artillery telegraph cannot one-shot it. Opens with Beam (4-tile, 20 dmg), fills with Spark, and takes the longest to retarget because it commits to a cast. Steps last in formation (stagger 0.12) and is the most mobile wanderer (0.40) so it keeps sightlines for its long casts. Mana-hungry kit: drinks mana at 50% too."
     },
     "archer": {
@@ -147,6 +174,11 @@
       "protect": {
         "enabled": false,
         "radius": 8
+      },
+      "revive": {
+        "_vigil": "Field Salve (E3) — quick, low payoff: faster channel than base, restores less HP.",
+        "channelSec": 1.6,
+        "hpPct": 0.2
       },
       "_note": "Longest reach (6) and the fastest footwork (cadence 0.15): a marksman repositions quickly but does not body-block. Opens with Power Shot (4s cooldown) before Bow Shot so the auto-AI does not drain the party's arrow stock; that ordering is the ammo-economy guard rail."
     },
@@ -191,6 +223,11 @@
         "enabled": true,
         "radius": 8
       },
+      "revive": {
+        "_vigil": "Drag to Safety (E3) — frontline fantasy: haul the body 1 tile toward the reviver while channeling; the reviver takes 25% less damage. The generic engine handler lands in LIV-47 (resolveReviveConfig + tickReviveChannel + the applyIncomingDamage seam); both levers default 0 for other vocations.",
+        "dragTiles": 1,
+        "damageReductionPct": 0.25
+      },
       "_note": "Frontline anchor (140 HP): intercepts out to 3 tiles, holds to 20% HP, and retargets fastest so Cleave lands on clusters rather than a single body. Steps first (stagger 0.00), holds position tightly (wander 0.15, radius 1) so the line reads as a wall."
     },
     "paladin": {
@@ -233,6 +270,10 @@
       "protect": {
         "enabled": true,
         "radius": 8
+      },
+      "revive": {
+        "_vigil": "Holy Prayer (E3) — the most reliable rescue: a standard channel that restores more HP.",
+        "hpPct": 0.35
       },
       "_note": "Melee anchor and the party's only support: Holy Prayer (healRadius 6) heals the most-injured ally at <=65% HP, then Aegis Holy Shield (range 6, cooldown 6s) bulwarks the most-injured un-warded ally at <=90% while mana stays above 15%; a 2s cadence plus the shield's own 6s cooldown and its never-ward-an-ally-already-warded rule means the bubble stays up without spam (FIX-15 / LIV-30: shield frequency was too low). Holds the line (wander 0.15, radius 1) so the heal radius stays on the front. Mana powers heals and shields, so it drinks mana at 50%."
     }

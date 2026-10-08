@@ -347,6 +347,9 @@ export const combatControllerMethods = {
       return;
     }
 
+    // LIV-44: dealing damage counts as combat activity, which resets the
+    // revive idle gate (`revive.idleSec`).
+    this.combatIdleSec = 0;
     if (res.message) this.logCombat(res.message, 'combat');
     if (res.damageDealt) {
       soundFX.play('hit');

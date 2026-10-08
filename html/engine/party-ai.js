@@ -31,6 +31,15 @@ import { EntityAI } from './entity-ai.js';
 import { InventorySystem } from './inventory-system.js';
 import { LightingSystem } from './lighting-system.js';
 import { isFriendly, isHostile, sameActor } from './faction.js';
+import {
+  ReviveSystem,
+  isDowned as isMemberDowned,
+  canStartRevive,
+  hasReviveSource,
+  beginRevive,
+  orthogonalAdjacent,
+  findPartyMemberById,
+} from './revive-system.js';
 
 /** Safe baseline profile when a vocation has no authored entry. */
 export const DEFAULT_AI_PROFILE = Object.freeze({
@@ -222,6 +231,9 @@ export function profileForVocation(vocation) {
   resolved.potion = resolvePotion(catalogDefault, profile);
   resolved.itemSearch = resolveItemSearch(catalogDefault, profile);
   resolved.protect = resolveProtect(catalogDefault, profile);
+  // LIV-44: resolve the knockout/revive block (catalog default + per-vocation
+  // override). The engine resolver owns the schema; no vocation branches here.
+  resolved.revive = ReviveSystem.resolveReviveConfig(key);
   return resolved;
 }
 
@@ -795,6 +807,91 @@ function usePotion(member, profile, ctx) {
   return { member, type: 'potion', resource, itemId, item: found.item, result };
 }
 
+/** True when a party entry is downed (the active entry reads the live mirror). */
+function isPartyEntryDowned(player, member) {
+  if (!member) return false;
+  if (sameActor(player, member)) return isMemberDowned(player);
+  return isMemberDowned(member);
+}
+
+/**
+ * LIV-44 designated-reviver plan: the single living, capable member (nearest to
+ * a downed ally, tie-break lowest party index) that will run the rescue. Only
+ * revives whose start gate is open (no hostile within `safetyRadius`, damage
+ * idle `idleSec`) are considered. Returns `{ reviverId, targetId }` or null.
+ */
+function planRevives(player, ctx) {
+  const party = player && Array.isArray(player.party) ? player.party : null;
+  if (!party || party.length < 2) return null;
+  let bestReviverId = null;
+  let bestTargetId = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  for (let t = 0; t < party.length; t++) {
+    const target = party[t];
+    if (!target || !target.memberId) continue;
+    if (!isPartyEntryDowned(player, target)) continue;
+    if (!canStartRevive(target, ctx, ReviveSystem.resolveReviveConfig(target.vocation))) continue;
+    for (let r = 0; r < party.length; r++) {
+      const reviver = party[r];
+      if (!reviver || reviver === target || !reviver.memberId) continue;
+      if (isPartyEntryDowned(player, reviver)) continue;
+      const cfg = ReviveSystem.resolveReviveConfig(reviver.vocation);
+      if (!cfg.enabled) continue;
+      if (!hasReviveSource(reviver, cfg, ctx)) continue;
+      const d = Math.hypot(reviver.x - target.x, reviver.y - target.y);
+      if (d < bestDist - 1e-6) {
+        bestDist = d;
+        bestReviverId = reviver.memberId;
+        bestTargetId = target.memberId;
+      }
+    }
+  }
+  if (!bestReviverId) return null;
+  return { reviverId: bestReviverId, targetId: bestTargetId };
+}
+
+/**
+ * LIV-44 revive step for the designated reviver: walk orthogonally adjacent to
+ * the downed ally, then channel. Returns an event, or null when this member is
+ * not the designated reviver / nothing is actionable.
+ */
+function tryRevive(member, profile, ctx) {
+  if (!ctx.designatedReviverId || ctx.designatedReviverId !== member.memberId) return null;
+  if (!ctx.reviveTargetId) return null;
+  const cfg = (profile && profile.revive) || ReviveSystem.resolveReviveConfig(member.vocation);
+  if (!cfg.enabled) return null;
+  const target = findPartyMemberById(ctx.active, ctx.reviveTargetId);
+  if (!target || !isPartyEntryDowned(ctx.active, target)) return null;
+
+  // Already committed to this target: hold position so the engine can tick the
+  // channel (moving would break it).
+  if (member._reviveTargetId === target.memberId) {
+    return { member, type: 'revive', target, phase: 'channel', progressSec: toFinite(member._reviveProgressSec, 0) };
+  }
+  if (!canStartRevive(target, ctx, cfg)) return null;
+  if (!hasReviveSource(member, cfg, ctx)) return null;
+
+  if (orthogonalAdjacent(member, target)) {
+    beginRevive(member, target, cfg);
+    return { member, type: 'revive', target, phase: 'begin' };
+  }
+  if (canStep(member)) {
+    const step = stepToward(member, target.x, target.y, ctx);
+    if (step) {
+      const fromX = member.x;
+      const fromY = member.y;
+      commitStep(member, step, profile, ctx);
+      return moveEvent(member, fromX, fromY);
+    }
+  }
+  return idleEvent(member);
+}
+
+function toFinite(value, fallback) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 /** Decide + apply one auto member's action for this tick. */
 function updateMember(member, ctx) {
   const profile = profileForVocation(member.vocation);
@@ -841,6 +938,14 @@ function updateMember(member, ctx) {
         result,
       };
     }
+  }
+
+  // 2c. Knockout rescue (LIV-44): the designated reviver walks to a downed ally
+  //     and channels. Only runs while exploring (planner + start gate), after
+  //     support, before loot/follow, so survival and support always win.
+  if (ctx.partyState === 'exploring') {
+    const rescue = tryRevive(member, profile, ctx);
+    if (rescue) return rescue;
   }
 
   // 2b. Out of combat: seek nearby ground items into the shared backpack
@@ -909,7 +1014,7 @@ export class PartyAI {
     const out = [];
     for (let i = 0; i < party.length; i++) {
       const member = party[i];
-      if (!member || member.hp <= 0) continue;
+      if (!member || isMemberDowned(member)) continue;
       if (member.aiMode === 'manual') continue;
       if (sameActor(player, member)) continue;
       out.push(member);
@@ -924,12 +1029,12 @@ export class PartyAI {
    */
   static livingAllies(player) {
     const out = [];
-    if (player && player.hp > 0) out.push(player);
+    if (player && !isMemberDowned(player)) out.push(player);
     const party = player && Array.isArray(player.party) ? player.party : null;
     if (party) {
       for (let i = 0; i < party.length; i++) {
         const member = party[i];
-        if (!member || member.hp <= 0) continue;
+        if (!member || isMemberDowned(member)) continue;
         if (sameActor(player, member)) continue;
         out.push(member);
       }
@@ -943,7 +1048,7 @@ export class PartyAI {
     if (!party) return null;
     for (let i = 0; i < party.length; i++) {
       const member = party[i];
-      if (!member || member.hp <= 0) continue;
+      if (!member || isMemberDowned(member)) continue;
       if (sameActor(player, member)) continue;
       if (member.x === x && member.y === y) return member;
     }
@@ -972,7 +1077,17 @@ export class PartyAI {
       random: typeof ctx.random === 'function' ? ctx.random : Math.random,
       allies: PartyAI.livingAllies(player),
       active: player,
+      // LIV-44: rescue is legal only while exploring; the gate also re-checks
+      // no-hostile-in-safetyRadius + damage-idle. A caller that omits the idle
+      // clock (engine tests) gets an open idle gate.
+      partyState: ctx.partyState || 'exploring',
+      combatIdleSec: Number.isFinite(Number(ctx.combatIdleSec))
+        ? Number(ctx.combatIdleSec)
+        : Number.POSITIVE_INFINITY,
     };
+    const revivePlan = fullCtx.partyState === 'exploring' ? planRevives(player, fullCtx) : null;
+    fullCtx.designatedReviverId = revivePlan ? revivePlan.reviverId : null;
+    fullCtx.reviveTargetId = revivePlan ? revivePlan.targetId : null;
 
     const events = [];
     for (let i = 0; i < members.length; i++) {

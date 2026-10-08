@@ -2,10 +2,16 @@
  * Lokarta: Come Into The Light - Save & App Flow Controller
  */
 
-import { ChestSystem, CombatSystem, canRecruit, nextRecruitVocation } from '../engine/index.js';
+import { ChestSystem, CombatSystem, canRecruit, nextRecruitVocation, ReviveSystem } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
 import { UI_CATALOG } from '../data/index.js';
-import { normalizeOptions, resolveReducedMotion, slotSummary } from '../services/save-slots.js';
+import {
+  normalizeOptions,
+  resolveReducedMotion,
+  slotSummary,
+  clampTowerFloor,
+  snapshotFloorEntry,
+} from '../services/save-slots.js';
 import { ModalManager } from './modal-manager.js';
 
 /**
@@ -357,6 +363,13 @@ export const saveControllerMethods = {
       await this.transition.run('selectToGame', async () => {
         this.adoptPlayer(data.player, data.floor);
         this.clearCombatLog();
+        // LIV-44: a corrupt/interrupted all-down save routes to the wipe path
+        // rather than loading an unplayable party.
+        if (ReviveSystem.evaluateWipe(this.player)) {
+          this.isGameOver = true;
+          this.onPartyWipe();
+          return;
+        }
         this.logCombat(`Resumed the ascent on Floor ${this.player.current_floor || 1} (${this.currentFloorName}).`, 'system');
         this.player.location = this.player.location || 'tower';
         this.startGameLoop();
@@ -412,26 +425,59 @@ export const saveControllerMethods = {
       console.warn('Auto-save error:', err);
     }
   },
-  async onPlayerDeath() {
-    // On defeat the hero is revived in the Town Temple at full
-    // HP/MP (never persisted at 0). The descent-on-death model is retired.
-    const fromFloor = this.player?.current_floor || 1;
+  /**
+   * LIV-44 full-party wipe: the Temple of the Dawn restores every member and
+   * resets re-entry to the tower's entry floor. Keys, level, gear, backpack,
+   * gold, and tower completions are kept (`economy.wipe.goldPenaltyPct: 0`).
+   * Supersedes the single-hero `onPlayerDeath`; only a true simultaneous
+   * full-party knockout reaches here.
+   */
+  async onPartyWipe() {
+    if (!this.player) return;
+    const fromFloor = this.player.current_floor || 1;
+    const towerId = this.player.towerId;
+    // Entry floor is always the tower's first level (Spire of Light = 1).
+    const entryFloor = clampTowerFloor(1, towerId);
     this.isPaused = true;
 
-    this.player.hp = this.player.max_hp;
-    this.player.mana = this.player.max_mana;
+    const restore = (member) => {
+      if (!member || typeof member !== 'object') return;
+      member.hp = member.max_hp;
+      member.mana = member.max_mana;
+      member.combatState = 'active';
+      member.lifeState = 'alive';
+      member.downedAtSec = 0;
+      member.reviveGraceSec = 0;
+      member.aiTargetId = null;
+      member.aiRetargetTimer = 0;
+      member._reviveTargetId = null;
+      member._reviveProgressSec = 0;
+      member._reviveBlocked = false;
+    };
+
+    if (Array.isArray(this.player.party)) {
+      for (const member of this.player.party) restore(member);
+    }
+    restore(this.player);
+
     this.player.location = 'town';
-    this.player.current_floor = this.player.current_floor || 1;
+    this.player.current_floor = entryFloor;
     this.location = 'town';
+    // Refresh the floor-entry snapshot so re-entry lands on the entry floor.
+    this.player.floorEntry = snapshotFloorEntry(this.player);
 
     try {
       await this.persistSave(true);
     } catch (err) {
-      console.warn('Death save error:', err);
+      console.warn('Party-wipe save error:', err);
     }
 
-    this.logCombat(`You fell on Floor ${fromFloor}. The Temple of the Dawn draws you back and restores you.`, 'warning');
-    this.showGameOverModal(fromFloor, fromFloor);
+    this.logCombat(`The party falls on Floor ${fromFloor}. The Temple of the Dawn draws you back to the tower gate.`, 'warning');
+    this.showGameOverModal(fromFloor, entryFloor);
+  },
+  /** @deprecated Use `onPartyWipe`; kept for external callers/back-compat. */
+  async onPlayerDeath() {
+    return this.onPartyWipe();
   },
   /** Resumes play in the Town after a defeat. */
   resumeAfterDeath() {
@@ -450,6 +496,9 @@ export const saveControllerMethods = {
     ModalManager.showGameOverModal(this.modalOverlayEl, this.player, {
       fromFloor,
       toFloor,
+      // LIV-44 copy is catalog-driven; the Game Designer owns the wording.
+      title: UI_CATALOG?.knockout?.partyWipeTitle,
+      body: UI_CATALOG?.knockout?.partyWipeBody,
       onRetry: () => this.resumeAfterDeath(),
       onContinue: () => this.returnToTitle(),
     });

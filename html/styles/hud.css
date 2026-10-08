@@ -1095,3 +1095,74 @@
 
 .party-hp i { background: var(--hp-red); }
 .party-mp i { background: var(--mp-blue); }
+
+/* --- LIV-45 knockout: downed chip + locator pip + on-screen prompt --- */
+.party-chip.is-downed {
+  border-left-color: #5b6069;
+  background: #0a0b10;
+  /* ~40% desaturate/darken wash to match the world body. */
+  filter: grayscale(0.4) brightness(0.7);
+  opacity: 0.92;
+}
+
+.party-chip.is-downed .party-chip-badge {
+  background: #3f4450;
+  color: #cbd5e1;
+}
+
+.party-chip.is-downed .party-hp i,
+.party-chip.is-downed .party-mp i {
+  background: #4b5563;
+}
+
+.party-downed-tag {
+  color: #94a3b8;
+  letter-spacing: 0.06em;
+  font-size: 0.62rem;
+}
+
+.party-locator-pip {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--pip-color, #fde68a);
+  box-shadow: 0 0 6px var(--pip-color, #fde68a);
+  animation: party-pip-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes party-pip-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .party-locator-pip { animation: none; opacity: 0.9; }
+}
+
+.knockout-prompt {
+  position: absolute;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 5;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(253, 230, 138, 0.45);
+  background: rgba(11, 13, 20, 0.86);
+  color: #fde68a;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.knockout-prompt[data-state='downed'] {
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+}
+
+.knockout-prompt[hidden] {
+  display: none;
+}
