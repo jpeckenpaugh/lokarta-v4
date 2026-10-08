@@ -468,6 +468,12 @@ export class InventorySystem {
     const item = list[slotIndex];
     if (!item) return { success: false, message: 'Slot is empty.' };
 
+    // Quest-critical items (catalog `droppable: false`) can never be dropped:
+    // they must survive wipes and cannot be stranded on a floor (LIV-55 §4).
+    if (item.droppable === false || ITEMS_CATALOG[item.item_id]?.droppable === false) {
+      return { success: false, message: `${item.name} cannot be dropped.` };
+    }
+
     // Never cover an existing ground item. Land on the nearest
     // free tile; only stack in place when the whole search radius is occupied.
     const free = InventorySystem.findFreeGroundTile(gridMap, player.x, player.y, reserved);

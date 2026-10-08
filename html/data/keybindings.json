@@ -9,6 +9,7 @@
     "prev": ["KeyA"],
     "next": ["KeyS"]
   },
+  "interact": ["Space", "KeyF"],
   "keySlots": {
     "equipment": {
       "q": "main_hand",

@@ -36,6 +36,7 @@ import {
   isHostile,
   sameActor,
 } from './faction.js';
+import { normalizeQuestState, normalizeWorldFlags } from './quest-system.js';
 
 // Faction constants and the friendly-fire helpers are owned by `faction.js`.
 // Re-exported here so existing party-model consumers keep one import surface.
@@ -69,7 +70,7 @@ export const MAX_PARTY_SIZE = Math.max(1, Object.keys(VOCATIONS_CATALOG || {}).l
  */
 const MEMBER_EXCLUDED_KEYS = new Set([
   // Envelope / persistence bookkeeping.
-  'party', 'activeMemberId', 'towerProgress',
+  'party', 'activeMemberId', 'towerProgress', 'questState', 'worldFlags',
   'slotId', 'slotIndex', 'saveVersion', 'playtimeMs',
   'createdAt', 'updatedAt', 'lastPlayedAt', 'floorEntry',
   // Shared run state (the whole party is on the same floor).
@@ -562,6 +563,13 @@ export function migratePlayerParty(player) {
   const progress = normalizeTowerProgress(player.towerProgress);
   const progressChanged = progress !== player.towerProgress;
 
+  // Quest/world state rides the save envelope (never per-member). Normalize it
+  // once so a legacy save backfills an empty state and a clean rerun is a no-op.
+  const questState = normalizeQuestState(player.questState);
+  const worldFlags = normalizeWorldFlags(player.worldFlags);
+  const questChanged = questState !== player.questState;
+  const flagsChanged = worldFlags !== player.worldFlags;
+
   if (members.length > 0) {
     let activeId = player.activeMemberId;
     if (!members.some((m) => m.memberId === activeId)) activeId = null;
@@ -575,8 +583,8 @@ export function migratePlayerParty(player) {
     const inventoryChanged = consolidateSharedInventory(player, members, activeId);
     // Fold any per-member key ring into the shared top-level store (LIV-33).
     const keysChanged = consolidatePartyKeys(player, members);
-    if (!membersChanged && !progressChanged && !activeIdChanged && !inventoryChanged && !keysChanged) return player;
-    return { ...player, party: members, activeMemberId: activeId, towerProgress: progress };
+    if (!membersChanged && !progressChanged && !activeIdChanged && !inventoryChanged && !keysChanged && !questChanged && !flagsChanged) return player;
+    return { ...player, party: members, activeMemberId: activeId, towerProgress: progress, questState, worldFlags };
   }
 
   // Legacy single-character save: wrap the top-level player into a 1-member party.
@@ -592,6 +600,8 @@ export function migratePlayerParty(player) {
     party: [member],
     activeMemberId: member.memberId,
     towerProgress: progress,
+    questState,
+    worldFlags,
   };
   // Normalize the shared containers (LIV-22 backpack, LIV-33 key ring) so a
   // rerun is an idempotent no-op.
