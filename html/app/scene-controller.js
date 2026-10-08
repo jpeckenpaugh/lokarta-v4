@@ -81,6 +81,20 @@ const DIALOGUE_ACTION_HANDLERS = {
   interact: (app, action, ctx) => app.handleWorldInteract(action, ctx),
 };
 
+/**
+ * Quest `onAccept` effect dispatch table (quests.json `onAccept[].type`). Runs
+ * once on the inactive -> active transition, so accepting arms the player
+ * immediately (LIV-64) and a re-accept/reload can never replay the grant.
+ * Unknown effect types are ignored — a catalog typo strands no one.
+ */
+const QUEST_ON_ACCEPT_HANDLERS = {
+  fate_grant: (app, effect) => {
+    if (typeof app.showFateGrantModal === 'function') {
+      app.showFateGrantModal(Math.max(1, Math.floor(Number(effect?.level) || 1)));
+    }
+  },
+};
+
 /** Formats UI copy with `{name}`/`{quest}`/`{item}` substitutions. */
 function fmt(template, vars = {}) {
   if (typeof template !== 'string') return '';
@@ -620,12 +634,29 @@ export const sceneControllerMethods = {
       this.updateHUD();
       this.refreshQuestMarkers();
       this.persistSave?.(false);
+      // Data-driven accept-time effects (LIV-64): a quest that arms the player
+      // on accept closes the dialogue and hands off to the effect handler (the
+      // Fate Grant) so the player is equipped before the first fight. A quest
+      // with no `onAccept` keeps the replay-the-dialogue path below.
+      if (Array.isArray(res.onAccept) && res.onAccept.length) {
+        this.closeInteraction();
+        this.applyQuestOnAccept(res.onAccept);
+        return;
+      }
       if (context.dialogueId) {
         this.openDialogue(context.dialogueId, context);
         return;
       }
     }
     this.closeInteraction();
+  },
+
+  /** Dispatches accept-time quest effects through the catalog-keyed table. */
+  applyQuestOnAccept(effects) {
+    for (const effect of Array.isArray(effects) ? effects : []) {
+      const handler = QUEST_ON_ACCEPT_HANDLERS[effect?.type];
+      if (typeof handler === 'function') handler(this, effect);
+    }
   },
 
   /** Turns in a completed quest, grants rewards, and shows the epilogue stage. */

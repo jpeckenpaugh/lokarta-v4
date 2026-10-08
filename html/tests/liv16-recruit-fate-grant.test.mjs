@@ -6,7 +6,7 @@
  * they can take a basic primary weapon. Covers:
  *   - the pure campaign model (`recruitMember` starts the recruit at level 1);
  *   - the fresh-recruit state that makes the tower-entry first-grant check fire
- *     (level 1 + empty action bar);
+ *     (level 1 + empty hotbar + no primary weapon);
  *   - the level-1 draft guarantee (a main_hand offer = basic primary weapon);
  *   - the worker persistence round-trip and next-tower hand-off; and
  *   - the app wiring that offers the level-1 Fate Grant on tower entry.
@@ -45,16 +45,13 @@ import { withFakeIndexedDB } from './helpers/fake-indexeddb.mjs';
 const VOCATIONS = Object.keys(VOCATIONS_CATALOG);
 
 /**
- * The exact preconditions the tower-entry first-grant check uses in
- * `floorControllerMethods.enterTower`: a level-1 actor with an empty hotbar.
+ * The tower-entry first-grant precondition is owned by
+ * `FateGrantSystem.needsStarterGrant` (LIV-64): a level-1 actor with an empty
+ * hotbar and no primary weapon equipped. Delegating keeps this test in sync
+ * with the app gate.
  */
 function isFirstGrantCase(actor, level = 1) {
-  return (
-    !!actor &&
-    Math.floor(Number(actor.level)) === level &&
-    Array.isArray(actor.action_bar) &&
-    actor.action_bar.every((slot) => slot === null)
-  );
+  return FateGrantSystem.needsStarterGrant(actor, level);
 }
 
 test('LIV-16: recruits join at level 1 regardless of the party level', () => {
@@ -143,7 +140,7 @@ test('LIV-16 app wiring: tower entry offers the Level-1 Fate Grant to a fresh ac
     resolve(process.cwd(), 'html', 'app', 'floor-controller.js'),
     'utf8'
   );
-  const gate = source.match(/if \(this\.player\.level === 1 && this\.player\.action_bar\?\.every\([\s\S]*?\)\s*\{([\s\S]*?)\n    \}/);
-  assert.ok(gate, 'floor-controller gates tower entry on a level-1 actor with an empty hotbar');
+  const gate = source.match(/if \(FateGrantSystem\.needsStarterGrant\(this\.player, 1\)\) \{([\s\S]*?)\n    \}/);
+  assert.ok(gate, 'floor-controller gates tower entry on FateGrantSystem.needsStarterGrant');
   assert.match(gate[1], /showFateGrantModal\(1\)/, 'the Level-1 Fate Grant modal is offered on tower entry');
 });

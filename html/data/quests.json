@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "LIV-58 Island 1 quest chain. Pure data for the engine/quest-system.js dispatch tables: objective `type` values are talk|kill|fetch|reach|interact; reward `type` values are xp|gold|item|unlock_tower|set_flag. `vocationItems` is a data-only selector on an `item` reward: the reward handler grants the map entry for the active member's vocation (fallback `itemId`), so one quest hands each vocation its starter weapon without a per-quest branch. Quests chain by `prerequisites`; turn-ins are idempotent (a turned_in quest replays flavor only).",
+  "description": "LIV-58 Island 1 quest chain. Pure data for the engine/quest-system.js dispatch tables: objective `type` values are talk|kill|fetch|reach|interact; reward `type` values are xp|gold|item|unlock_tower|set_flag. `vocationItems` is a data-only selector on an `item` reward: the reward handler grants the map entry for the active member's vocation (fallback `itemId`), so one quest hands each vocation its starter weapon without a per-quest branch. Quests chain by `prerequisites`; turn-ins are idempotent (a turned_in quest replays flavor only). The optional `onAccept` array (LIV-64) runs once on the inactive -> active transition: its `type` values are app-dispatched effects (currently `fate_grant`), so arming a player on accept is a catalog entry, never a per-quest JS branch.",
   "quests": [
     {
       "id": "rats_in_the_gutter",
@@ -26,6 +26,12 @@
           "count": 1,
           "logKey": "quest.rats.obj.king",
           "hintKey": "quest.rats.hint.king"
+        }
+      ],
+      "onAccept": [
+        {
+          "type": "fate_grant",
+          "level": 1
         }
       ],
       "rewards": [

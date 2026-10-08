@@ -10,6 +10,21 @@ import { applyItemRankUp } from './item-progression.js';
 export class FateGrantSystem {
   static CARD_DATABASE = CARDS_CATALOG;
 
+  /**
+   * True when an actor still needs the level-1 starter Fate Grant: a brand-new
+   * actor at `level` with no primary weapon equipped and an empty hotbar. Used
+   * by the tower-entry fallback and the debug-recruit path so a player who
+   * acquired gear from the first-quest accept grant (LIV-64) — which equips the
+   * weapon to the paperdoll while leaving the hotbar empty — is not offered a
+   * duplicate starter grant.
+   */
+  static needsStarterGrant(actor, level = 1) {
+    if (!actor) return false;
+    if (Math.floor(Number(actor.level)) !== Math.floor(Number(level))) return false;
+    if (!Array.isArray(actor.action_bar) || !actor.action_bar.every((slot) => slot === null)) return false;
+    return !actor.paperdoll?.main_hand;
+  }
+
   static generateDraftOffer(vocationOrPlayer, level = 1, opts = {}) {
     const player = typeof vocationOrPlayer === 'object' ? vocationOrPlayer : null;
     const vocation = player ? (player.vocation || 'magician') : vocationOrPlayer;

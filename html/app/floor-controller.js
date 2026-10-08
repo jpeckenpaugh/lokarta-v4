@@ -10,6 +10,7 @@ import {
   isTowerUnlocked,
   recruitableVocations,
   ReviveSystem,
+  FateGrantSystem,
 } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
 import { TOWER_LEVEL_COUNT, getTowerLevelCount } from '../services/floor-generator.js';
@@ -516,7 +517,10 @@ export const floorControllerMethods = {
     this.closeModal();
     this.isPaused = false;
     this.logCombat('You step through the tower gate. The ascent begins.', 'system');
-    if (this.player.level === 1 && this.player.action_bar?.every(s => s === null)) {
+    // Fallback re-offer (LIV-64): only when the actor still has no primary
+    // weapon. The first-quest accept grant equips the weapon to the paperdoll
+    // but leaves the hotbar empty, so this guard prevents a duplicate grant.
+    if (FateGrantSystem.needsStarterGrant(this.player, 1)) {
       this.showFateGrantModal(1);
     }
     this.updateHUD();

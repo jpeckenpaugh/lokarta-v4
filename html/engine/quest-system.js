@@ -151,19 +151,31 @@ export function canAcceptQuest(state, player, questId) {
 /**
  * Accepts a quest, initializing every objective counter to zero. Idempotent:
  * a quest already active/complete/turned_in is left untouched.
- * @returns {{ ok: boolean, reason: string|null, questId: string, status: string }}
+ *
+ * On the inactive -> active transition only, `onAccept` carries the catalog's
+ * accept-time effect descriptors (e.g. Q1's `fate_grant`). They are pure data;
+ * the app layer owns the dispatch table that opens the corresponding UI. A
+ * re-accept (`ok: false`) yields an empty list, so an accept-time grant can
+ * never replay.
+ * @returns {{ ok: boolean, reason: string|null, questId: string, status: string, onAccept: object[] }}
  */
 export function acceptQuest(state, player, questId) {
   ensureQuestState(player);
   const check = canAcceptQuest(state, player, questId);
   if (!check.ok) {
-    return { ok: false, reason: check.reason, questId, status: getQuestStatus(state, questId) };
+    return { ok: false, reason: check.reason, questId, status: getQuestStatus(state, questId), onAccept: [] };
   }
   const def = getQuestDefinition(questId);
   const objectives = {};
   for (const obj of def.objectives || []) objectives[obj.id] = 0;
   state.quests[questId] = { status: QUEST_STATUS.ACTIVE, objectives };
-  return { ok: true, reason: null, questId, status: QUEST_STATUS.ACTIVE };
+  return {
+    ok: true,
+    reason: null,
+    questId,
+    status: QUEST_STATUS.ACTIVE,
+    onAccept: Array.isArray(def.onAccept) ? def.onAccept : [],
+  };
 }
 
 /** True when the quest exists and is `complete` (ready to hand in). */
