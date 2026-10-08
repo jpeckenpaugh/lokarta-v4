@@ -892,8 +892,13 @@ consumes (`html/data/islands.json`, `towns.json`, `npcs.json`, `quests.json`,
 ### 10.2 Dawnreach Isle layout (48×48, `islands.json`)
 
 A compact, designer-authored character tilemap (`map` = 48 rows × 48 chars, `legend`
-maps char → tile type). Verified: spawn reaches the town gate, the Spire entrance, the
-Wreck and the Shrine with `WATER`/`TREE`/`BUILDING_WALL` as the only structural walls.
+maps char → tile type). Verified: spawn reaches the town gate, the Spire entrance,
+the Wreck and the Shrine with `WATER`/`TREE`/`BUILDING_WALL` as the only structural walls.
+The **Drowned Dark** runs a full impassable tidal strait along row 10 (the two sea
+rings are joined by water from `x2–22` and `x26–45`), so the **Tide Gate at
+`(23–25,10)` is the sole crossing** between the southern town side and the northern
+Spire side — reachability is preserved in principle because the gate is a runtime
+lock, not a solid (`sceneAccessReport`).
 
 | Landmark | Coordinates | Notes |
 | :--- | :--- | :--- |
@@ -902,7 +907,8 @@ Wreck and the Shrine with `WATER`/`TREE`/`BUILDING_WALL` as the only structural 
 | **Havenreach** footprint | `x17–32, y30–44` | walled compound, one north gate `DOORWAY (24,29)` → town scene |
 | Player island spawn | `(24,28)` | on Pilgrim's Road at the town gate |
 | **Pilgrim's Road** (safe) | column `x24, y12–29`; forks `y20` west + `y22` east | teaching path, `spawn:false` |
-| **Tide Gate** | tiles `(23–25,10)` (`GATED_DOOR`) | gated cause: `rite_of_the_beacon` |
+| **Tidal channel** | `y10, x2–22` + `x26–45` (`WATER`) | full impassable strait; **only** crossing is the Tide Gate |
+| **Tide Gate** | tiles `(23–25,10)` (`GATED_DOOR`) | gated cause: `rite_of_the_beacon`; the sole threshold |
 | Spire causeway + base | column `x24, y3–9`; `TOWER_ENTRANCE (24,3)` | gated by the Tide Gate |
 | **Wreck of the Lantern** | `(9,20)` | Q2 site; ruin walls, walkable centre |
 | **Drowned Shrine** | `(39,22)` | Q3 site; ruin walls, shrine interactable |
