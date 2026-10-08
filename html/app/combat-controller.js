@@ -13,6 +13,7 @@ import {
   awardPartyXp,
   applyAutoFateGrant,
   partyMemberName,
+  recordFoeDiscovery,
 } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
 import { ITEMS_CATALOG, UI_CATALOG } from '../data/index.js';
@@ -367,6 +368,18 @@ export const combatControllerMethods = {
       if (index !== -1) {
         const deadMonster = this.monsters[index];
         const isBoss = deadMonster.isBoss || deadMonster.id.includes('boss') || deadMonster.max_hp >= 200;
+
+        // I10 Bestiary: record the first defeat of this foe on the save envelope
+        // (spoiler-safe — a foe only appears in the codex once beaten).
+        const discovery = recordFoeDiscovery(this.player, deadMonster.type);
+        if (discovery.isNew) {
+          this.player = discovery.player;
+          const cueTemplate = (UI_CATALOG && UI_CATALOG.codex && UI_CATALOG.codex.newEntryCue) || 'Bestiary updated: {foe}';
+          this.logCombat(cueTemplate.split('{foe}').join(deadMonster.name), 'system');
+        }
+        this.persistSave();
+        // First blood also introduces the codex in the onboarding sequence.
+        this.maybeShowOnboarding?.('first_defeat');
 
         // Quest `kill` objective seam (LIV-60 P3): the catalog monster `type`
         // advances any active kill objective that targets it.

@@ -3,6 +3,7 @@
  */
 
 import { ChestSystem, CombatSystem, canRecruit, nextRecruitVocation, ReviveSystem } from '../engine/index.js';
+import { resolveDialogueScale, nextOnboardingPrompt, markOnboardingSeen } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
 import { UI_CATALOG, DEFAULT_TOWN_ID } from '../data/index.js';
 import {
@@ -50,6 +51,14 @@ export const saveControllerMethods = {
     const pixelMap = UI_CATALOG?.options?.ranges?.pixelScale || {};
     const zoom = typeof pixelMap[o.pixelScale] === 'number' ? pixelMap[o.pixelScale] : 64;
     this.renderer.setZoom(zoom);
+
+    // I10 accessibility: the codex/dialogue read aids. Colour-blind mode remaps
+    // telegraph colours at render time (authored palette in ui.json); the
+    // dialogue text scale drives the `--dialogue-scale` CSS property.
+    this.renderer.colorBlindMode = o.colorBlindMode || 'none';
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.setProperty('--dialogue-scale', String(resolveDialogueScale(o.dialogueTextScale)));
+    }
 
     // Debug option (off by default): Tester's Strength scales incoming damage
     // for the whole party. Magnitude is authored in ui.json `options.debug`.
@@ -127,6 +136,7 @@ export const saveControllerMethods = {
       onContinue: () => this.openSlotSelect('load'),
       onOptions: () => this.showOptionsModal('title'),
       onGuide: () => this.showGuideModal(),
+      onCodex: () => this.openCodexModal('title'),
     });
 
     this.startTitleAmbient();
@@ -154,9 +164,66 @@ export const saveControllerMethods = {
       onResume: () => this.resumeGameplay(),
       onReturnToTown: () => this.leaveTower(),
       onOptions: () => this.showOptionsModal('pause'),
+      onCodex: () => this.openCodexModal('pause'),
       onGuide: () => this.showGuideModal(),
       onReturnToTitle: () => this.returnToTitle(),
     });
+  },
+  /**
+   * Opens the I10 Bestiary. `returnTo` is `'pause'`, `'title'`, or omitted for
+   * the in-game hotkey (which pauses the world, then resumes on close).
+   */
+  openCodexModal(returnTo = null) {
+    const back = returnTo || (this.isInGameplay && !this.isGameOver ? 'gameplay' : 'title');
+    if (back === 'gameplay') this.isPaused = true;
+    ModalManager.showCodexModal(this.modalOverlayEl, this, {
+      onClose: () => this.returnFromCodex(back),
+    });
+  },
+  returnFromCodex(back) {
+    if (back === 'pause') {
+      this.openPauseMenu();
+      return;
+    }
+    if (back === 'gameplay') {
+      this.resumeGameplay();
+      return;
+    }
+    this.closeModal();
+    this.showTitleScreen();
+  },
+  /**
+   * Shows the first unseen onboarding prompt for `trigger`, stamps it seen on
+   * the save envelope, and persists. No-op when the prompt was already shown.
+   * @param {string} trigger
+   */
+  maybeShowOnboarding(trigger) {
+    if (!this.player) return null;
+    const prompt = nextOnboardingPrompt(this.player, trigger);
+    if (!prompt) return null;
+    const { player } = markOnboardingSeen(this.player, prompt.id);
+    this.player = player;
+    this.showOnboardingBanner(prompt);
+    this.persistSave();
+    return prompt;
+  },
+  /** Renders a transient, non-blocking onboarding banner (singleton element). */
+  showOnboardingBanner(prompt) {
+    if (typeof document === 'undefined' || !prompt) return;
+    let el = document.getElementById('onboarding-banner');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'onboarding-banner';
+      el.className = 'onboarding-banner';
+      el.setAttribute('role', 'status');
+      el.setAttribute('aria-live', 'polite');
+      document.body.appendChild(el);
+    }
+    el.innerHTML = `<div class="onboarding-title">${prompt.title || ''}</div><div class="onboarding-body">${prompt.body || ''}</div>`;
+    el.classList.add('visible');
+    if (this._onboardingTimer) clearTimeout(this._onboardingTimer);
+    const ms = Number(prompt.durationMs) > 0 ? Number(prompt.durationMs) : 7000;
+    this._onboardingTimer = setTimeout(() => el.classList.remove('visible'), ms);
   },
   resumeGameplay() {
     this.closeModal();
@@ -350,6 +417,8 @@ export const saveControllerMethods = {
 
       // A fresh save starts on foot in the Havenreach town scene (LIV-59 P1).
       await this.enterScene(DEFAULT_TOWN_ID);
+      // I10 onboarding: the first ~5 minutes open with the movement/interact cue.
+      this.maybeShowOnboarding('game_start');
     } catch (err) {
       console.error('Failed to start new game:', err);
       this.showLoadError(slotIndex);

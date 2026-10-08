@@ -2,7 +2,7 @@
  * Lokarta: Come Into The Light - Viewport Canvas Renderer
  */
 
-import { CONFIG, LightingSystem, TILE_TYPES, ReviveSystem } from '../engine/index.js';
+import { CONFIG, LightingSystem, TILE_TYPES, ReviveSystem, resolveTelegraphColor } from '../engine/index.js';
 import { SpriteRenderer, themeForFloor, sceneTheme } from './sprite-renderer.js';
 import { UI_CATALOG, PARTY_AI_CATALOG } from '../data/index.js';
 import { resolveEasing, prefersReducedMotion } from './swap-feedback.js';
@@ -217,18 +217,32 @@ const PROJECTILE_RENDERERS = {
     const cy = p.y * sw + sw / 2 - this.cameraY;
     const radius = (p.radius || 1) * sw + sw / 2;
     const pulse = 0.4 + 0.28 * Math.sin((p.elapsedMs || 0) / 80);
+    // I10: remap the authored telegraph colour through the active colour-blind
+    // palette. A non-`none` mode also adds a dashed inner ring so shape, not
+    // just hue, carries the threat cue.
+    const colorBlind = this.colorBlindMode && this.colorBlindMode !== 'none';
+    const color = resolveTelegraphColor(p.color || '#ef4444', colorBlind ? this.colorBlindMode : 'none');
     ctx.save();
     ctx.globalAlpha = pulse;
-    ctx.fillStyle = p.color || '#ef4444';
+    ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = Math.min(1, pulse + 0.35);
-    ctx.strokeStyle = p.color || '#ef4444';
+    ctx.strokeStyle = color;
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.stroke();
+    if (colorBlind) {
+      ctx.setLineDash([6, 5]);
+      ctx.globalAlpha = Math.min(1, pulse + 0.2);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, Math.max(2, radius * 0.6), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
     ctx.restore();
   },
   aoe_burst(ctx, p) {
@@ -237,9 +251,10 @@ const PROJECTILE_RENDERERS = {
     const cy = p.y * sw + sw / 2 - this.cameraY;
     const progress = Math.min(1, (p.elapsedMs || 0) / (p.durationMs || 320));
     const radius = ((p.radius || 1) * sw + sw / 2) * (0.35 + 0.65 * progress);
+    const burstColor = resolveTelegraphColor(p.color || '#ef4444', this.colorBlindMode || 'none');
     ctx.save();
     ctx.globalAlpha = Math.max(0, 1 - progress);
-    ctx.fillStyle = p.color || '#ef4444';
+    ctx.fillStyle = burstColor;
     ctx.beginPath();
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.fill();

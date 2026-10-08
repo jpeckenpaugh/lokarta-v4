@@ -24,6 +24,7 @@ import townsData from './towns.json' with { type: 'json' };
 import npcsData from './npcs.json' with { type: 'json' };
 import questsData from './quests.json' with { type: 'json' };
 import dialoguesData from './dialogues.json' with { type: 'json' };
+import codexData from './codex.json' with { type: 'json' };
 
 /**
  * Tower registry: `tower_levels.json` holds a set of full tower definitions.
@@ -265,4 +266,11 @@ export const TOWNS_CATALOG = townsData;
 export const NPCS_CATALOG = npcsData;
 export const QUESTS_CATALOG = questsData;
 export const DIALOGUES_CATALOG = dialoguesData;
+
+/**
+ * Bestiary/Codex catalog (I10). References foes by `id` into `monsters.json`;
+ * only reading aids (role/tier/silhouette/telegraph) are authored here. The
+ * pure resolver + discovery model lives in `engine/codex-system.js`.
+ */
+export const CODEX_CATALOG = codexData;
 

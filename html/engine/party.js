@@ -37,6 +37,8 @@ import {
   sameActor,
 } from './faction.js';
 import { normalizeQuestState, normalizeWorldFlags } from './quest-system.js';
+import { normalizeDiscoveredFoeIds } from './codex-system.js';
+import { normalizeSeenPromptIds } from './onboarding-system.js';
 
 // Faction constants and the friendly-fire helpers are owned by `faction.js`.
 // Re-exported here so existing party-model consumers keep one import surface.
@@ -71,6 +73,9 @@ export const MAX_PARTY_SIZE = Math.max(1, Object.keys(VOCATIONS_CATALOG || {}).l
 const MEMBER_EXCLUDED_KEYS = new Set([
   // Envelope / persistence bookkeeping.
   'party', 'activeMemberId', 'towerProgress', 'questState', 'worldFlags',
+  // I10 discovery/envelope bookkeeping: the codex + onboarding progress are
+  // per-save, never per-member, so they never swap with the active member.
+  'discoveredFoeIds', 'onboardingSeenIds',
   'slotId', 'slotIndex', 'saveVersion', 'playtimeMs',
   'createdAt', 'updatedAt', 'lastPlayedAt', 'floorEntry',
   // Shared run state (the whole party is on the same floor).
@@ -657,6 +662,13 @@ export function migratePlayerParty(player) {
   const questChanged = questState !== player.questState;
   const flagsChanged = worldFlags !== player.worldFlags;
 
+  // I10 per-save envelopes: codex discoveries + seen onboarding prompts. Normalize
+  // once so a legacy save backfills empty lists and a clean rerun is a no-op.
+  const discoveredFoeIds = normalizeDiscoveredFoeIds(player.discoveredFoeIds);
+  const onboardingSeenIds = normalizeSeenPromptIds(player.onboardingSeenIds);
+  const discoveryChanged = discoveredFoeIds !== player.discoveredFoeIds;
+  const onboardingChanged = onboardingSeenIds !== player.onboardingSeenIds;
+
   if (members.length > 0) {
     let activeId = player.activeMemberId;
     if (!members.some((m) => m.memberId === activeId)) activeId = null;
@@ -672,8 +684,8 @@ export function migratePlayerParty(player) {
     const keysChanged = consolidatePartyKeys(player, members);
     // Fold any per-member wallet into the shared top-level gold pool (LIV-72).
     const goldChanged = consolidatePartyGold(player, members, activeId);
-    if (!membersChanged && !progressChanged && !activeIdChanged && !inventoryChanged && !keysChanged && !goldChanged && !questChanged && !flagsChanged) return player;
-    return { ...player, party: members, activeMemberId: activeId, towerProgress: progress, questState, worldFlags };
+    if (!membersChanged && !progressChanged && !activeIdChanged && !inventoryChanged && !keysChanged && !goldChanged && !questChanged && !flagsChanged && !discoveryChanged && !onboardingChanged) return player;
+    return { ...player, party: members, activeMemberId: activeId, towerProgress: progress, questState, worldFlags, discoveredFoeIds, onboardingSeenIds };
   }
 
   // Legacy single-character save: wrap the top-level player into a 1-member party.
@@ -691,6 +703,8 @@ export function migratePlayerParty(player) {
     towerProgress: progress,
     questState,
     worldFlags,
+    discoveredFoeIds,
+    onboardingSeenIds,
   };
   // Normalize the shared containers (LIV-22 backpack, LIV-33 key ring, LIV-72
   // gold wallet) so a rerun is an idempotent no-op.

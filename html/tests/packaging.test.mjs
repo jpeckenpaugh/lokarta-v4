@@ -48,6 +48,8 @@ test('Lokarta Packaging (splash, title, options, save slots, transitions)', asyn
       fullscreen: false,
       damageNumbers: true,
       showFps: false,
+      colorBlindMode: 'none',
+      dialogueTextScale: 'normal',
       walkThruWalls: false,
       testerStrength: false,
     });

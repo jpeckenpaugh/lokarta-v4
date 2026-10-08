@@ -2,7 +2,7 @@
  * Lokarta: Come Into The Light - Modals & Screen Overlays Manager
  */
 
-import { FateGrantSystem } from '../engine/index.js';
+import { FateGrantSystem, listDiscoveredCodexEntries, codexProgress, listColorBlindModes, listDialogueTextScales } from '../engine/index.js';
 import { towerUnlockInfo } from '../engine/campaign.js';
 import { soundFX } from '../audio/index.js';
 import { HUDManager } from './hud-manager.js';
@@ -46,6 +46,10 @@ const PIXEL_SCALE_OPTIONS = [
   { value: '2x', label: '2×' },
   { value: '3x', label: '3×' },
 ];
+
+// I10 accessibility selectors, resolved from `ui.json.accessibility`.
+const COLOR_BLIND_OPTIONS = listColorBlindModes().map(m => ({ value: m.value, label: m.label }));
+const DIALOGUE_SCALE_OPTIONS = listDialogueTextScales().map(s => ({ value: s.value, label: s.label }));
 
 export class ModalManager {
   /**
@@ -129,6 +133,7 @@ export class ModalManager {
           <button class="title-btn continue-btn" id="title-btn-continue" data-row="1" role="menuitem"${hasSaves ? '' : ' aria-disabled="true" disabled'}><img class="openmoji-icon btn-emoji" src="./assets/openmoji/2694.svg" alt="Swords" /> CONTINUE</button>
           <button class="title-btn" id="title-btn-options" data-row="2" role="menuitem"><img class="openmoji-icon btn-emoji" src="./assets/openmoji/2699.svg" alt="Gear" /> OPTIONS</button>
           <button class="title-btn" id="title-btn-guide" data-row="3" role="menuitem"><img class="openmoji-icon btn-emoji" src="./assets/openmoji/1F4D6.svg" alt="Guide" /> GUIDE &amp; CONTROLS</button>
+          <button class="title-btn" id="title-btn-codex" data-row="4" role="menuitem"><img class="openmoji-icon btn-emoji" src="./assets/openmoji/1F43A.svg" alt="Codex" /> ${UI_CATALOG?.codex?.titleButtonLabel || 'BESTIARY'}</button>
         </div>
         <div class="title-footer">v2.4 • ${SAVE_SLOT_COUNT} Save Slots • Fate Grant Draft</div>
       </div>
@@ -155,6 +160,7 @@ export class ModalManager {
       else if (row.id === 'title-btn-continue') callbacks.onContinue?.();
       else if (row.id === 'title-btn-options') callbacks.onOptions?.();
       else if (row.id === 'title-btn-guide') callbacks.onGuide?.();
+      else if (row.id === 'title-btn-codex') callbacks.onCodex?.();
     };
 
     rows.forEach(row => {
@@ -223,6 +229,9 @@ export class ModalManager {
           ${toggle('fullscreen', 'Fullscreen')}
           ${toggle('damageNumbers', 'Damage Numbers')}
           ${toggle('showFps', 'Frame Rate Counter')}
+          <div class="options-section-label">Accessibility</div>
+          ${segmented('colorBlindMode', 'Telegraph Colours', COLOR_BLIND_OPTIONS)}
+          ${segmented('dialogueTextScale', 'Dialogue Text', DIALOGUE_SCALE_OPTIONS)}
           <div class="options-section-label">Debug</div>
           ${toggle('walkThruWalls', 'Walk Thru Walls')}
           ${toggle('testerStrength', "Tester's Strength")}
@@ -955,6 +964,67 @@ export class ModalManager {
     });
   }
 
+  /**
+   * Bestiary/Codex (I10): renders only the foes the player has defeated, so an
+   * unencountered opponent is never spoiled. Reads resolved entries from
+   * `codex-system.js`; undiscovered foes simply do not appear.
+   */
+  static showCodexModal(modalOverlayEl, app, callbacks = {}) {
+    const copy = (UI_CATALOG && UI_CATALOG.codex) || {};
+    const entries = listDiscoveredCodexEntries(app && app.player);
+    const progress = codexProgress(app && app.player);
+    const progressText = (copy.progressLabel || '{discovered} of {total} foes recorded')
+      .split('{discovered}').join(String(progress.discovered))
+      .split('{total}').join(String(progress.total));
+
+    this._reset(modalOverlayEl);
+    modalOverlayEl.classList.remove('title-active');
+
+    const cards = entries.map((e) => `
+      <article class="codex-card" data-foe="${e.id}">
+        <div class="codex-silhouette">
+          ${e.icon ? `<img class="openmoji-icon codex-icon" src="./assets/openmoji/${e.icon}.svg" alt="" />` : ''}
+        </div>
+        <div class="codex-body">
+          <div class="codex-name">${e.name}</div>
+          <div class="codex-tags">
+            <span class="codex-tier">${e.tierName}</span>
+            <span class="codex-role">${e.roleName}</span>
+          </div>
+          ${e.silhouette ? `<p class="codex-read"><span class="codex-label">${copy.silhouetteLabel || 'Read'}:</span> ${e.silhouette}</p>` : ''}
+          ${e.telegraph ? `<p class="codex-counter"><span class="codex-label">${copy.telegraphLabel || 'Counter'}:</span> ${e.telegraph}</p>` : ''}
+        </div>
+      </article>`).join('');
+
+    modalOverlayEl.innerHTML = `
+      <div class="codex-modal">
+        <div class="modal-header">
+          <h2>${copy.title || 'Bestiary'}</h2>
+          <div class="subtitle">${copy.subtitle || ''} — ${progressText}</div>
+        </div>
+        ${entries.length
+          ? `<div class="codex-grid">${cards}</div>`
+          : `<p class="codex-empty">${copy.empty || 'No foes recorded yet.'}</p>`}
+        <div class="modal-back-action">
+          <button class="action-btn" id="codex-back">${copy.backLabel || 'BACK'}</button>
+        </div>
+      </div>
+    `;
+
+    modalOverlayEl.querySelector('#codex-back')?.addEventListener('click', () => {
+      soundFX.play('uiBack');
+      callbacks.onClose?.();
+    });
+    const keyHandler = (e) => {
+      if (e.key === 'Escape' || e.key === 'KeyC' || e.code === 'KeyC') {
+        e.preventDefault();
+        soundFX.play('uiBack');
+        callbacks.onClose?.();
+      }
+    };
+    this._setKeyHandler(modalOverlayEl, keyHandler);
+  }
+
   /** In-game pause menu. */
   static showPauseModal(modalOverlayEl, callbacks = {}) {
     // Returning to town from the pause menu is disabled by
@@ -970,6 +1040,7 @@ export class ModalManager {
           <button class="title-btn" id="pause-resume">RESUME</button>
           ${returnToTownEnabled ? '<button class="title-btn" id="pause-town">RETURN TO TOWN</button>' : ''}
           <button class="title-btn" id="pause-options">OPTIONS</button>
+          <button class="title-btn" id="pause-codex">${UI_CATALOG?.codex?.pauseButtonLabel || 'BESTIARY'}</button>
           <button class="title-btn" id="pause-guide">GUIDE &amp; CONTROLS</button>
           <button class="title-btn" id="pause-title">RETURN TO TITLE</button>
         </div>
@@ -991,6 +1062,10 @@ export class ModalManager {
     modalOverlayEl.querySelector('#pause-guide')?.addEventListener('click', () => {
       soundFX.play('click');
       callbacks.onGuide?.();
+    });
+    modalOverlayEl.querySelector('#pause-codex')?.addEventListener('click', () => {
+      soundFX.play('click');
+      callbacks.onCodex?.();
     });
     modalOverlayEl.querySelector('#pause-title')?.addEventListener('click', () => {
       soundFX.play('click');

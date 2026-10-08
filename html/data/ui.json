@@ -317,17 +317,134 @@
       "fullscreen": false,
       "damageNumbers": true,
       "showFps": false,
+      "colorBlindMode": "none",
+      "dialogueTextScale": "normal",
       "walkThruWalls": false,
       "testerStrength": false
     },
     "ranges": {
       "sfxVolume": { "min": 0, "max": 100, "step": 5 },
       "uiScale": { "small": 0.85, "normal": 1.0, "large": 1.15, "xlarge": 1.3 },
-      "pixelScale": { "auto": 64, "1x": 32, "2x": 64, "3x": 96 }
+      "pixelScale": { "auto": 64, "1x": 32, "2x": 64, "3x": 96 },
+      "colorBlindMode": { "none": 0, "deuteranopia": 1, "protanopia": 2, "tritanopia": 3 },
+      "dialogueTextScale": { "normal": 1, "large": 1.25, "xlarge": 1.5 }
     },
     "debug": {
       "testerStrengthDamageReductionPct": 90,
       "description": "Debug toggles (default off). Walk Thru Walls lets the active member step onto any in-bounds tile, including walls. Tester's Strength reduces all incoming attack and damage-over-time damage by testerStrengthDamageReductionPct."
     }
+  },
+  "codex": {
+    "description": "I10 in-game Bestiary copy. Entry content lives in codex.json; only labels/prompts live here. {discovered}/{total}/{foe} are substituted values.",
+    "title": "Bestiary",
+    "subtitle": "Foes you have defeated",
+    "titleButtonLabel": "BESTIARY",
+    "pauseButtonLabel": "BESTIARY",
+    "empty": "No foes recorded yet. Defeat an opponent and its field notes appear here.",
+    "progressLabel": "{discovered} of {total} foes recorded",
+    "roleLabel": "Role",
+    "tierLabel": "Tier",
+    "silhouetteLabel": "Read",
+    "telegraphLabel": "Counter",
+    "newEntryCue": "Bestiary updated: {foe}",
+    "backLabel": "BACK"
+  },
+  "onboarding": {
+    "description": "I10 first-~5-minutes onboarding prompts. Each prompt fires once on the first matching `trigger`, then is stamped into the save envelope. No timers, no streaks; purely informational.",
+    "enabled": true,
+    "prompts": [
+      {
+        "id": "welcome",
+        "trigger": "game_start",
+        "title": "Carry the light",
+        "body": "Move with the arrow keys. Stand beside a person or object and press Space to interact.",
+        "durationMs": 7000
+      },
+      {
+        "id": "first_blood",
+        "trigger": "first_defeat",
+        "title": "First foe felled",
+        "body": "Every foe you defeat is written into your Bestiary. Press C any time to read each one's tell and how to counter it.",
+        "durationMs": 7000
+      },
+      {
+        "id": "first_tower",
+        "trigger": "enter_tower",
+        "title": "Into the tower",
+        "body": "Before an enemy's big move you will see a wind-up. Step out of the marked tile, then punish the recovery.",
+        "durationMs": 7000
+      },
+      {
+        "id": "low_hp",
+        "trigger": "low_hp",
+        "title": "The light wavers",
+        "body": "You are badly hurt. Use a potion from your action bar, or fall back toward the fountain to recover.",
+        "durationMs": 7000
+      }
+    ]
+  },
+  "accessibility": {
+    "description": "I10 accessibility tokens. `telegraphPalettes` remap the authored monster telegraph colours onto colour-blind-safe ramps (Okabe-Ito). `colorBlindModes` and `dialogueTextScales` supply the option labels; the numeric dialogue scale lives in options.ranges so it is normalized like every other option.",
+    "colorBlindModes": [
+      { "value": "none", "label": "Off" },
+      { "value": "deuteranopia", "label": "Deuteranopia" },
+      { "value": "protanopia", "label": "Protanopia" },
+      { "value": "tritanopia", "label": "Tritanopia" }
+    ],
+    "telegraphPalettes": {
+      "deuteranopia": {
+        "#ef4444": "#d55e00",
+        "#f97316": "#d55e00",
+        "#fb923c": "#e69f00",
+        "#f59e0b": "#e69f00",
+        "#ff7a18": "#e69f00",
+        "#84cc16": "#0072b2",
+        "#65a30d": "#0072b2",
+        "#8a9a5b": "#009e73",
+        "#a855f7": "#cc79a7",
+        "#38bdf8": "#56b4e9",
+        "#7dd3fc": "#56b4e9",
+        "#bae6fd": "#56b4e9",
+        "#e5e7eb": "#f0e442",
+        "#9ca3af": "#0072b2"
+      },
+      "protanopia": {
+        "#ef4444": "#d55e00",
+        "#f97316": "#d55e00",
+        "#fb923c": "#e69f00",
+        "#f59e0b": "#e69f00",
+        "#ff7a18": "#e69f00",
+        "#84cc16": "#0072b2",
+        "#65a30d": "#0072b2",
+        "#8a9a5b": "#009e73",
+        "#a855f7": "#cc79a7",
+        "#38bdf8": "#56b4e9",
+        "#7dd3fc": "#56b4e9",
+        "#bae6fd": "#56b4e9",
+        "#e5e7eb": "#f0e442",
+        "#9ca3af": "#0072b2"
+      },
+      "tritanopia": {
+        "#ef4444": "#d55e00",
+        "#f97316": "#d55e00",
+        "#fb923c": "#d55e00",
+        "#f59e0b": "#d55e00",
+        "#ff7a18": "#d55e00",
+        "#84cc16": "#0072b2",
+        "#65a30d": "#0072b2",
+        "#8a9a5b": "#009e73",
+        "#a855f7": "#cc79a7",
+        "#38bdf8": "#0072b2",
+        "#7dd3fc": "#0072b2",
+        "#bae6fd": "#009e73",
+        "#e5e7eb": "#f0e442",
+        "#9ca3af": "#009e73"
+      }
+    },
+    "dialogueTextScales": [
+      { "value": "normal", "label": "Normal" },
+      { "value": "large", "label": "Large" },
+      { "value": "xlarge", "label": "X-Large" }
+    ]
   }
 }

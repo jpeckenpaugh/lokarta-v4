@@ -16,6 +16,22 @@ const INTERACT_KEY_CODE_SET = new Set(
   Array.isArray(KEYBINDINGS_CATALOG?.interact) ? KEYBINDINGS_CATALOG.interact : ['Space', 'KeyF']
 );
 
+/**
+ * Keyboard-event codes that open the pause menu (`keybindings.json.pause`).
+ * Catalog-driven so a rebind is a data edit; Escape by default.
+ */
+const PAUSE_KEY_CODE_SET = new Set(
+  Array.isArray(KEYBINDINGS_CATALOG?.pause) ? KEYBINDINGS_CATALOG.pause : ['Escape']
+);
+
+/**
+ * Keyboard-event codes that open the Bestiary codex (`keybindings.json.codex`).
+ * Catalog-driven; KeyC by default.
+ */
+const CODEX_KEY_CODE_SET = new Set(
+  Array.isArray(KEYBINDINGS_CATALOG?.codex) ? KEYBINDINGS_CATALOG.codex : ['KeyC']
+);
+
 /** `{ KeyQ: 'main_hand', KeyE: 'armor', ... }` from `keybindings.json`. */
 const EQUIPMENT_KEY_CODE_MAP = Object.fromEntries(
   Object.entries(EQUIPMENT_KEY_MAP || {}).map(([key, slot]) => [`Key${String(key).toUpperCase()}`, slot])
@@ -47,10 +63,10 @@ export class InputController {
         return;
       }
 
-      if (e.code === 'Escape') {
-        // Escape opens the pause menu only from an unpaused gameplay surface.
-        // When already paused, the open pause modal owns Escape (Resume); when
-        // not in gameplay it is a no-op (e.g. the title screen).
+      if (PAUSE_KEY_CODE_SET.has(e.code)) {
+        // Pause opens only from an unpaused gameplay surface. When already
+        // paused, the open pause modal owns the key (Resume); when not in
+        // gameplay it is a no-op (e.g. the title screen).
         if (this.app.isInGameplay && !this.app.isGameOver && !this.app.isPaused) {
           e.preventDefault();
           this.app.openPauseMenu();
@@ -64,6 +80,15 @@ export class InputController {
       // Modal-owned surfaces (pause, town, temple, fate grant) pause the
       // simulation; never let a gameplay hotkey leak through while paused.
       if (this.app.isPaused) return;
+
+      // Bestiary (I10): a catalog-bound codex hotkey opens the codex, which
+      // pauses the world like any other modal-owned surface.
+      if (CODEX_KEY_CODE_SET.has(e.code)) {
+        e.preventDefault();
+        soundFX.init();
+        this.app.openCodexModal?.();
+        return;
+      }
 
       // Party control (LIV-27): catalog `keybindings.json.party` cycles which
       // member the player drives; every other member stays on auto-AI. Handled

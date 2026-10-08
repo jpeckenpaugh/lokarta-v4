@@ -1,0 +1,197 @@
+{
+  "schemaVersion": 1,
+  "description": "In-game Bestiary/Codex (I10). References foes by `id` into monsters.json (name, sprite, svgCode, stats all resolve from there) and only authors the player-facing reading aids: `role`, `tier`, `silhouette` (what to look for) and `telegraph` (how to react). A foe appears in the codex only after it has been defeated, so nothing here spoils an unencountered opponent. Game Designer owns this copy; Tech Lead owns the schema + `codex-system.js`. Adding a foe needs a monsters.json entry plus a codex entry here (dispatch-table driven, no JS branches).",
+  "roles": {
+    "chaser": {
+      "name": "Chaser",
+      "summary": "Closes the distance and attacks in melee. Kite it or meet it head-on."
+    },
+    "zoner": {
+      "name": "Zoner",
+      "summary": "Holds its spacing and strikes from range. Close the gap or break line of sight."
+    },
+    "artillery": {
+      "name": "Artillery",
+      "summary": "Fires telegraphed shots from afar. Dodge on the wind-up and punish the recovery."
+    },
+    "charger": {
+      "name": "Charger",
+      "summary": "Winds up, then lunges in a straight line. Step off the trail, then counter."
+    },
+    "bomber": {
+      "name": "Bomber",
+      "summary": "Marks ground, then detonates an area. Leave the marked tile before it lands."
+    },
+    "summoner": {
+      "name": "Summoner",
+      "summary": "Calls reinforcements. Prioritise it before the field fills up."
+    },
+    "unknown": {
+      "name": "Uncatalogued",
+      "summary": "No field notes recorded yet."
+    }
+  },
+  "tiers": {
+    "normal": { "name": "Common" },
+    "elite": { "name": "Elite", "summary": "A named, tougher foe with a signature move." },
+    "boss": { "name": "Boss", "summary": "A tower's final guardian. Learn its patterns." }
+  },
+  "entries": {
+    "giant_rat": {
+      "role": "chaser",
+      "tier": "normal",
+      "silhouette": "Low, lean shape that skitters straight at you.",
+      "telegraph": "No wind-up. Backpedal while you strike and it cannot close."
+    },
+    "crypt_skeleton": {
+      "role": "chaser",
+      "tier": "normal",
+      "silhouette": "Rattling upright frame with a raised arm.",
+      "telegraph": "Steady, unhurried approach; punish the gap between its swings."
+    },
+    "shadow_cultist": {
+      "role": "zoner",
+      "tier": "normal",
+      "silhouette": "Hooded robed figure that keeps its distance.",
+      "telegraph": "Casts from three to four tiles; close in to break the pattern."
+    },
+    "elite_cultist": {
+      "role": "zoner",
+      "tier": "normal",
+      "silhouette": "Taller robed caster with a heavier stance.",
+      "telegraph": "Tighter standoff and harder hits; commit to the gap between casts."
+    },
+    "abyssal_overlord": {
+      "role": "chaser",
+      "tier": "boss",
+      "silhouette": "Crowned, towering silhouette that fills the room.",
+      "telegraph": "Relentless pursuit; keep moving and answer only after its swings."
+    },
+    "cinder_acolyte": {
+      "role": "artillery",
+      "tier": "normal",
+      "silhouette": "Robed caster trailing ember sparks.",
+      "telegraph": "Hurls ember bolts; sidestep on the throw and dash the caster."
+    },
+    "grave_charger": {
+      "role": "charger",
+      "tier": "normal",
+      "silhouette": "Hunched skeletal runner, coiled to spring.",
+      "telegraph": "Short wind-up then a straight dash; step aside and strike the recovery."
+    },
+    "plague_bomber": {
+      "role": "bomber",
+      "tier": "normal",
+      "silhouette": "Bloated cultist holding a bubbling flask.",
+      "telegraph": "Marks a green pool before it bursts; clear the tile on the wind-up."
+    },
+    "bone_summoner": {
+      "role": "summoner",
+      "tier": "normal",
+      "silhouette": "Caster with a bone focus and dark ritual stance.",
+      "telegraph": "Raises reinforcements; burst it down before the field fills."
+    },
+    "mire_hound": {
+      "role": "charger",
+      "tier": "normal",
+      "silhouette": "Lean hound braced to lunge.",
+      "telegraph": "Wind-up then a fast straight pounce; dodge sideways, not backward."
+    },
+    "rime_acolyte": {
+      "role": "artillery",
+      "tier": "normal",
+      "silhouette": "Frost-rimed caster with a pale glow.",
+      "telegraph": "Fires frost shards in a line; weave between shots and close."
+    },
+    "sepulcher_mortar": {
+      "role": "bomber",
+      "tier": "normal",
+      "silhouette": "Bulky caster lobbing shells overhead.",
+      "telegraph": "Long, loud wind-up; leave the orange mark well before it lands."
+    },
+    "chime_wraith": {
+      "role": "bomber",
+      "tier": "normal",
+      "silhouette": "Drifting spectral form with a tolling bell.",
+      "telegraph": "Rings a purple zone; keep moving so you are never on the mark."
+    },
+    "barrow_knight": {
+      "role": "charger",
+      "tier": "normal",
+      "silhouette": "Armoured revenant with a raised blade.",
+      "telegraph": "Charges, then stamps an earth-shudder zone; dodge twice, not once."
+    },
+    "ossuary_priest": {
+      "role": "summoner",
+      "tier": "normal",
+      "silhouette": "Priest clutching a tome, ringed by motes.",
+      "telegraph": "Summons and snipes; silence it early or you will be surrounded."
+    },
+    "brine_witch": {
+      "role": "artillery",
+      "tier": "normal",
+      "silhouette": "Hunched figure wreathed in bubbling brine.",
+      "telegraph": "Lobs slow hexes; use the travel time to reposition or close."
+    },
+    "tidebound_king": {
+      "role": "artillery",
+      "tier": "boss",
+      "silhouette": "Crowned colossus wreathed in rising water.",
+      "telegraph": "Tidal slams mark the floor and it calls reinforcements; keep moving and thin the adds."
+    },
+    "forgemaster_kol": {
+      "role": "bomber",
+      "tier": "boss",
+      "silhouette": "Massive smith with a raised hammer.",
+      "telegraph": "Hammer marks plus slag lobs; read the mark, then strike the smith."
+    },
+    "frostbound_choirmaster": {
+      "role": "bomber",
+      "tier": "boss",
+      "silhouette": "Robed conductor ringed by a frozen choir.",
+      "telegraph": "Tolls of frost and rime lances; stay mobile between its casts."
+    },
+    "drowned_crawler": {
+      "role": "chaser",
+      "tier": "normal",
+      "silhouette": "Dripping, low arachnid that scuttles in.",
+      "telegraph": "No wind-up; strafe while attacking so it never lands a free hit."
+    },
+    "tide_thrall": {
+      "role": "artillery",
+      "tier": "normal",
+      "silhouette": "Drowned caster trailing a bubbling wake.",
+      "telegraph": "Looses tide bolts at range; break line of sight or close fast."
+    },
+    "gutter_king": {
+      "role": "charger",
+      "tier": "elite",
+      "silhouette": "Crowned rat-elite, filth-caked and braced.",
+      "telegraph": "Telegraphed lunging charge; dodge the wind-up, then punish the recovery."
+    },
+    "shrine_warden": {
+      "role": "charger",
+      "tier": "elite",
+      "silhouette": "Armoured guardian wreathed in tide-light.",
+      "telegraph": "Charges and stamps a tide-slam zone; read both tells before you commit."
+    },
+    "salt_hound": {
+      "role": "charger",
+      "tier": "normal",
+      "silhouette": "Salt-crusted hound braced with bared teeth.",
+      "telegraph": "Bites to inflict bleeding; space your retreat so the wound wears off."
+    },
+    "mudlark_wrecker": {
+      "role": "zoner",
+      "tier": "normal",
+      "silhouette": "Ragged human wrecker with a coiled net.",
+      "telegraph": "Throws a rooting net from range, then closes with a knife; dodge the throw."
+    },
+    "barnacle_brute": {
+      "role": "charger",
+      "tier": "elite",
+      "silhouette": "Barnacle-crusted brute, heavy and slow.",
+      "telegraph": "Telegraphed tide-slam AoE with knockback; leave the ring, then punish."
+    }
+  }
+}
