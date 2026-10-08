@@ -1580,6 +1580,13 @@ export class CombatSystem {
     stun: (player, effect) => {
       player.stunTimer = Math.max(player.stunTimer || 0, effect.durationSec || 1);
     },
+    bleed: (player, effect) => {
+      player.bleedTimer = Math.max(player.bleedTimer || 0, effect.durationSec || 3);
+      player.bleedDps = Math.max(player.bleedDps || 0, effect.dps || 1);
+    },
+    root: (player, effect) => {
+      player.rootTimer = Math.max(player.rootTimer || 0, effect.durationSec || 1);
+    },
   };
 
   /**
@@ -1603,7 +1610,7 @@ export class CombatSystem {
    * at most once per tick, never per monster/frame.
    */
   static tickPlayerStatusEffects(player, deltaSec) {
-    const result = { burnDamage: 0, poisonDamage: 0, damage: 0, slowed: false, stunned: false };
+    const result = { burnDamage: 0, poisonDamage: 0, bleedDamage: 0, damage: 0, slowed: false, stunned: false, rooted: false };
     if (!player) return result;
 
     if (player.burnTimer > 0) {
@@ -1634,13 +1641,28 @@ export class CombatSystem {
       }
     }
 
+    if (player.bleedTimer > 0) {
+      player.bleedTimer = Math.max(0, player.bleedTimer - deltaSec);
+      player.bleedAccumulator = (player.bleedAccumulator || 0) + (player.bleedDps || 0) * deltaSec;
+      const whole = Math.floor(player.bleedAccumulator);
+      if (whole > 0) {
+        player.bleedAccumulator -= whole;
+        result.bleedDamage = whole;
+      }
+      if (player.bleedTimer <= 0) {
+        player.bleedDps = 0;
+        player.bleedAccumulator = 0;
+      }
+    }
+
     // Tester's Strength (debug option) also covers damage-over-time ticks.
     if (CombatSystem.DEBUG_INCOMING_DAMAGE_MULTIPLIER < 1) {
       const m = CombatSystem.DEBUG_INCOMING_DAMAGE_MULTIPLIER;
       if (result.burnDamage > 0) result.burnDamage = Math.round(result.burnDamage * m);
       if (result.poisonDamage > 0) result.poisonDamage = Math.round(result.poisonDamage * m);
+      if (result.bleedDamage > 0) result.bleedDamage = Math.round(result.bleedDamage * m);
     }
-    result.damage = result.burnDamage + result.poisonDamage;
+    result.damage = result.burnDamage + result.poisonDamage + result.bleedDamage;
     if (result.damage > 0) {
       player.hp = Math.max(0, player.hp - result.damage);
     }
@@ -1653,6 +1675,10 @@ export class CombatSystem {
     if (player.stunTimer > 0) {
       player.stunTimer = Math.max(0, player.stunTimer - deltaSec);
       result.stunned = player.stunTimer > 0;
+    }
+    if (player.rootTimer > 0) {
+      player.rootTimer = Math.max(0, player.rootTimer - deltaSec);
+      result.rooted = player.rootTimer > 0;
     }
 
     return result;

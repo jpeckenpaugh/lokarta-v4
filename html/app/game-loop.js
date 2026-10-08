@@ -34,6 +34,22 @@ const DIRECTION_VECTORS = {
 };
 
 /**
+ * Presentation colors for the `onHit` status flash, keyed by the catalog status
+ * value (generic dispatch — adding a status is a catalog entry plus, when it
+ * needs a distinct read, one entry here). Unknown statuses fall back to the
+ * warning orange used by launch statuses.
+ */
+const STATUS_FLASH_COLORS = {
+  burn: '#f97316',
+  poison: '#84cc16',
+  slow: '#38bdf8',
+  stun: '#facc15',
+  bleed: '#dc2626',
+  root: '#8a9a5b',
+};
+const DEFAULT_STATUS_FLASH_COLOR = '#f97316';
+
+/**
  * Lifetime (seconds) of the Luminous Prayer orb VFX after each heal pulse
  *, resolved from `ui.json.playerVfx.luminousPrayer`.
  */
@@ -142,6 +158,9 @@ export const gameLoopMethods = {
       }
       if (statusResult.poisonDamage > 0) {
         this.addFloatingText(`-${statusResult.poisonDamage} poison`, this.player.x, this.player.y, '#84cc16');
+      }
+      if (statusResult.bleedDamage > 0) {
+        this.addFloatingText(`-${statusResult.bleedDamage} bleed`, this.player.x, this.player.y, '#dc2626');
       }
       this.logCombat(`Status effects sear you for ${statusResult.damage} damage!`, 'warning');
       soundFX.play('playerHurt');
@@ -319,7 +338,12 @@ export const gameLoopMethods = {
       if (res.statusEffects) {
         for (const eff of res.statusEffects) {
           if (CombatSystem.applyPlayerStatus(hitTarget, eff)) {
-            this.addFloatingText(eff.status.toUpperCase(), hitTarget.x, hitTarget.y, '#f97316');
+            this.addFloatingText(
+              eff.status.toUpperCase(),
+              hitTarget.x,
+              hitTarget.y,
+              STATUS_FLASH_COLORS[eff.status] || DEFAULT_STATUS_FLASH_COLOR
+            );
           }
         }
       }
@@ -781,8 +805,10 @@ export const gameLoopMethods = {
   },
   processMovementInput() {
     // Player control statuses (catalog `onHit`): stun skips input entirely;
+    // root pins the actor in place (positional only — cooldowns keep ticking);
     // slow accumulates toward a full step so cadence drops by `slowFactor`.
     if (this.player.stunTimer > 0) return;
+    if (this.player.rootTimer > 0) return;
 
     // LIV-50 KO-handoff beat: the incoming actor's input is held for the
     // dramatic beat while the world keeps simulating around them.

@@ -673,7 +673,51 @@ export class EntityAI {
     const maxDmg = atk.damageMax ?? minDmg;
     const damage = EntityAI.scaleDamage(monster, EntityAI.rollDamage(minDmg, maxDmg));
     const hit = CombatSystem.applyIncomingDamage(player, damage, monster);
-    return EntityAI.buildHitResult(hit, monster, damage, atk, null, { projectiles: [burst] });
+    const moved = EntityAI.applyBlastKnockback(monster, player, gridMap, monsters, atk, tx, ty);
+    const result = EntityAI.buildHitResult(hit, monster, damage, atk, null, { projectiles: [burst] });
+    if (moved > 0) result.knockbackMoved = moved;
+    return result;
+  }
+
+  /**
+   * Catalog-driven AoE displacement (`attacks[].knockbackTiles`). Pushes the
+   * player up to N tiles directly away from the blast centre `(tx, ty)` along
+   * the dominant cardinal axis, stopping at non-walkable or monster-occupied
+   * tiles (same walkability/occupancy guards as `resolveDashAttack`). Returns
+   * the number of tiles actually moved; absent/zero `knockbackTiles` is a
+   * byte-identical no-op.
+   */
+  static applyBlastKnockback(monster, player, gridMap, monsters, atk, tx, ty) {
+    const tiles = atk?.knockbackTiles || 0;
+    if (!(tiles > 0) || !gridMap || typeof gridMap.isWalkable !== 'function') return 0;
+
+    let dx = player.x - tx;
+    let dy = player.y - ty;
+    if (dx === 0 && dy === 0) {
+      // Standing on the blast centre: fall back to the approach vector.
+      dx = player.x - monster.x;
+      dy = player.y - monster.y;
+    }
+    if (dx === 0 && dy === 0) return 0;
+
+    const useX = Math.abs(dx) >= Math.abs(dy);
+    const moveX = useX ? Math.sign(dx) : 0;
+    const moveY = useX ? 0 : Math.sign(dy);
+    const blocked = EntityAI.occupiedHashSet(monsters, null, gridMap.width);
+    let moved = 0;
+    for (let s = 0; s < tiles; s++) {
+      const nx = player.x + moveX;
+      const ny = player.y + moveY;
+      if (!gridMap.isWalkable(nx, ny)) break;
+      if (blocked.has(ny * gridMap.width + nx)) break;
+      player.x = nx;
+      player.y = ny;
+      moved += 1;
+    }
+    if (moved > 0) {
+      player.facing = moveX > 0 ? 'right' : moveX < 0 ? 'left' : moveY > 0 ? 'down' : 'up';
+    }
+    return moved;
   }
 
   static resolveDashAttack(monster, player, gridMap, monsters, atk) {
