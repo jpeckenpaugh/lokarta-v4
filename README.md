@@ -40,7 +40,7 @@ All authoritative design and engineering specifications live under [`docs/`](doc
 | :--- | :--- | :--- |
 | **Game Design** | [`docs/design/game-design.md`](docs/design/game-design.md) | Core game loop, 4 vocations, 5-tier tower ascent, Havenreach town hub, controls, and inventory rules. |
 | **Art Direction** | [`docs/art/art-direction.md`](docs/art/art-direction.md) | 16-bit SNES-style pixel art contracts, frame sets, resolution rules, and contrast standards. |
-| **Architecture** | [`docs/engineering/architecture.md`](docs/engineering/architecture.md) | Dual-loop threading model, modular UI controllers, 17 Web Worker RPC handlers, and IndexedDB schema. |
+| **Architecture** | [`docs/engineering/architecture.md`](docs/engineering/architecture.md) | Dual-loop threading model, modular UI controllers, 20 Web Worker RPC handlers, and IndexedDB schema. |
 | **Engineering Rules** | [`docs/engineering/agents.md`](docs/engineering/agents.md) | Mandatory architectural rules, 16 data catalogs, hot-path GC budgets, DOM hygiene, and T0/T1/T2 testing models. |
 | **Build Versioning** | [`docs/engineering/build-versioning.md`](docs/engineering/build-versioning.md) | Build ID generation (`tools/write-build-id.mjs`), `boot.js` verification, and client cache-flush invalidation. |
 | **Environment** | [`docs/engineering/environment.md`](docs/engineering/environment.md) | Runtime browser prerequisites, local server setup, Node 22 CI, and test execution procedures. |

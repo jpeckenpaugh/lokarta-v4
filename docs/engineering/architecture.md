@@ -90,7 +90,7 @@ Communication between the main thread and `game-worker.js` uses a structured Pro
 * **Request:** `{ id: string, command: string, payload: object }`
 * **Response:** `{ id: string, ok: boolean, data?: any, error?: string }`
 
-### Handled RPC Commands (17 Handlers)
+### Handled RPC Commands (20 Handlers)
 
 | Command | Purpose |
 | :--- | :--- |
@@ -98,6 +98,9 @@ Communication between the main thread and `game-worker.js` uses a structured Pro
 | `listSlots` | Returns metadata array for all 5 save slots. |
 | `createSlot` | Initializes a new character for slot `1..5` and generates Floor 1. |
 | `loadSlot` | Loads the character and floor cache for an existing occupied slot. |
+| `selectTower` | Campaign gate: enters a chosen unlocked tower from the hub, regenerating Floor 1 for that tower. |
+| `completeTower` | Marks a cleared tower in `towerProgress`, unlocks the next campaign tower, and persists. |
+| `recruitMember` | Recruits a vocation onto the party at level 1 (LIV-16) after a tower clear and makes it active. |
 | `deleteSlot` | Clears character, metadata, and cached floors for a slot. |
 | `restartFloor` | Restores character to the arrival snapshot (`floorEntry`) on the active floor. |
 | `respawnAfterDeath` | Legacy single-hero respawn (descends one floor, full restore). The LIV-44 party wipe uses `onPartyWipe` instead: the Temple of the Dawn revives the party and resets re-entry to the tower's entry floor. |

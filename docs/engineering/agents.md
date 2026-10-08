@@ -105,7 +105,7 @@ Lokarta runs a 60 FPS Canvas rendering loop alongside a 10 Hz (100 ms) simulatio
    Do not dispatch `saveCharacter` worker messages on every minor user action. Use a trailing debounce timer (e.g., 500 ms) for rapid actions (potions, looting), reserving immediate saves (`persistSave(true)`) for critical transitions:
    - Floor ascent / descent stairs
    - Player leveling up
-   - Game over / defeat (persisting revival at Town Temple)
+   - Game over / defeat (persisting revival at the Temple of the Dawn)
 3. **Message Serialization (Structured Clone):**
    State sent between the main thread and `game-worker.js` must be pure JSON-serializable state. Never pass functions, DOM elements, or circular object graphs across `postMessage`.
 
