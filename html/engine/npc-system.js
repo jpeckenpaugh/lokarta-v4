@@ -166,3 +166,30 @@ export function findInteractableNpc(npcs, player) {
   if (npc) npc.facing = facingTo(npc.x, npc.y, px, py);
   return npc;
 }
+
+/**
+ * The blocking NPC in physical contact with the player — the player's own tile
+ * or an orthogonally adjacent tile (manhattan distance `<= 1`, the grid-collision
+ * definition of "touching"). Nearest first, ties resolved by catalog order.
+ * Data-driven: reads the runtime NPC `blocks` flag, never a per-NPC branch.
+ * Allocation-light: one scalar pass, no candidate array (LIV-63 touch-to-talk).
+ * @param {object[]} npcs
+ * @param {{x:number,y:number}} player
+ * @returns {object|null}
+ */
+export function findTouchingNpc(npcs, player) {
+  if (!Array.isArray(npcs) || !player) return null;
+  let best = null;
+  let bestDist = 2; // contact is manhattan <= 1; 2 means "none yet"
+  for (let i = 0; i < npcs.length; i++) {
+    const npc = npcs[i];
+    if (!npc || npc.blocks === false) continue;
+    const d = Math.abs(npc.x - player.x) + Math.abs(npc.y - player.y);
+    if (d < bestDist) {
+      best = npc;
+      bestDist = d;
+      if (d === 0) break;
+    }
+  }
+  return best;
+}

@@ -372,6 +372,9 @@ export const gameLoopMethods = {
       for (const n of this.npcs) occupied.add(n.y * width + n.x);
       updateNpcs(this.npcs, this.gridMap, deltaSec, occupied);
       this.updateInteractPrompt();
+      // LIV-63 touch-to-talk: a player step into — or a wanderer stepping into —
+      // an NPC opens its dialogue once per contact (no reopen while overlapping).
+      this.maybeContactTalk();
     }
 
     // 4b. Knockout seam (LIV-44): funnel any 0-HP member (active mirror

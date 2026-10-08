@@ -18,6 +18,7 @@ import {
   evaluateSceneGate,
   sceneGateAt,
   findInteractableNpc,
+  findTouchingNpc,
   spawnNpcsForScene,
   NPC_INTERACT_RADIUS,
   recordEvent,
@@ -161,6 +162,7 @@ export const sceneControllerMethods = {
     // LIV-60 P2: neutral NPCs. P3: quest ground items (fetch) + visible roaming
     // monsters (kill objectives) from the authored spawn zones/elites.
     this.npcs = typeof spawnNpcsForScene === 'function' ? spawnNpcsForScene(scene) : [];
+    this.armContactTalk();
     this.refreshQuestMarkers();
     this.spawnSceneGroundItems(scene);
     this.spawnSceneMonsters(scene);
@@ -553,6 +555,38 @@ export const sceneControllerMethods = {
     this.fireQuestEvent({ type: 'talk', npcId: npc.npcId });
     if (!dialogueId) return false;
     return this.openDialogue(dialogueId, { targetId: npc.npcId, name: npc.name, portraitEmoji: npc.portraitEmoji });
+  },
+
+  /**
+   * Arms collision-talk (LIV-63) for the freshly loaded scene: records the NPC
+   * already in contact at spawn so arriving next to one does not auto-open a
+   * dialogue. The player must separate and re-touch. Data-driven via the runtime
+   * `blocks` flag; no per-NPC branches.
+   */
+  armContactTalk() {
+    const npc = findTouchingNpc(this.npcs, this.player);
+    this._contactTalkNpcId = npc ? npc.npcId : null;
+  },
+
+  /**
+   * Touch-to-talk (LIV-63): when the player's movement brings them into contact
+   * with a blocking NPC — or a wandering NPC steps into contact — open its
+   * default dialogue, exactly like click/interact. Fires once per contact: the
+   * same NPC cannot re-open until the player separates, and it never auto-opens
+   * while a dialogue is already open. Allocation-free (single nearest-NPC scan).
+   * @returns {boolean} true when a dialogue opened on this call
+   */
+  maybeContactTalk() {
+    if (!Array.isArray(this.npcs) || this.npcs.length === 0 || !this.player) return false;
+    if (!this.isInGameplay || this.isPaused || this.isGameOver || this.isFloorCleared) return false;
+    const npc = findTouchingNpc(this.npcs, this.player);
+    if (!npc) {
+      this._contactTalkNpcId = null;
+      return false;
+    }
+    if (npc.npcId === this._contactTalkNpcId) return false;
+    this._contactTalkNpcId = npc.npcId;
+    return this.openNpcDialogue(npc) !== false;
   },
 
   /** Opens a scene object's world-prompt dialogue (e.g. the Drowned Shrine). */
