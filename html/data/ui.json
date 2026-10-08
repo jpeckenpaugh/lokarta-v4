@@ -115,7 +115,7 @@
     "reviveStartCue": "Reviving {member}...",
     "reviveCompleteCue": "{member} is revived!",
     "reviveInterruptedCue": "The revive is interrupted.",
-    "selfReviveCue": "{member} steadies themselves.",
+    "autoReviveCue": "{member} pulls themselves back up.",
     "handoffCue": "Control passes to {member}.",
     "partyWipeTitle": "THE LIGHT FAILS",
     "partyWipeBody": "The last of your party falls on Floor {floor}. The Temple of the Dawn draws you back and restores you at the tower gate.",

@@ -503,6 +503,10 @@ export const floorControllerMethods = {
   enterTower() {
     this.location = 'tower';
     this.player.location = 'tower';
+    // LIV-52: entering a tower (after leaving to Town / a party wipe / a tower
+    // switch) resets each member's KO escalation counter to the 1st-down 10s.
+    // Floor changes within a tower deliberately keep the count.
+    ReviveSystem.resetAutoReviveCounts(this.player);
     ModalManager.hideTownScreen(this.townEl);
     this.closeModal();
     this.isPaused = false;

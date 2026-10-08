@@ -1100,9 +1100,14 @@
 .party-chip.is-downed {
   border-left-color: #5b6069;
   background: #0a0b10;
-  /* ~40% desaturate/darken wash to match the world body. */
-  filter: grayscale(0.4) brightness(0.7);
+  /* ~40% desaturate/darken wash to match the world body. Scoped to the body so
+     the LIV-52 "down #N" pip keeps its gold/amber/red escalation colour. */
   opacity: 0.92;
+}
+
+.party-chip.is-downed .party-chip-badge,
+.party-chip.is-downed .party-chip-body {
+  filter: grayscale(0.4) brightness(0.7);
 }
 
 .party-chip.is-downed .party-chip-badge {
@@ -1119,6 +1124,27 @@
   color: #94a3b8;
   letter-spacing: 0.06em;
   font-size: 0.62rem;
+}
+
+/* LIV-52 "down #N" escalation pip: numeral badge after the DOWN tag. Geometry
+   and palette come from ui.json.knockout.autoRevive.pip via inline custom props. */
+.party-down-pip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--down-pip-size, 12px);
+  height: var(--down-pip-size, 12px);
+  margin-left: 3px;
+  border-radius: 50%;
+  background: var(--down-pip-color, #fde68a);
+  color: var(--down-pip-text, #020617);
+  border: var(--down-pip-rim-w, 1.5px) solid var(--down-pip-rim, #020617);
+  font-size: var(--down-pip-font, 0.52rem);
+  font-weight: 700;
+  font-style: normal;
+  line-height: 1;
+  vertical-align: middle;
+  box-shadow: 0 0 4px var(--down-pip-color, #fde68a);
 }
 
 .party-locator-pip {

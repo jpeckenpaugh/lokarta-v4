@@ -374,6 +374,12 @@ export class HUDManager {
     const glyph = downedToken.glyph || '✚';
     const pipColor = help.color || '#fde68a';
     const pipEnabled = help.enabled !== false;
+    // LIV-52 "down #N" escalation pip (ui.json.knockout.autoRevive.pip).
+    const autoPip = knockout.autoRevive?.pip || {};
+    const downPipColors = Array.isArray(autoPip.colors) && autoPip.colors.length
+      ? autoPip.colors
+      : ['#fde68a', '#fb923c', '#ef4444'];
+    const downPipMaxLabel = autoPip.labelMax || '3+';
     const members = party
       .map((member) => {
         const voc = member.vocation || 'magician';
@@ -399,11 +405,24 @@ export class HUDManager {
           ? `<span class="party-locator-pip" style="--pip-color:${pipColor}" aria-hidden="true"></span>`
           : '';
         const badge = downed ? glyph : label;
+        // "down #N" pip: gold/amber/red by escalated KO count within the tower
+        // (clamped to the last colour for 3rd+), so a longer 2nd/3rd+ timer reads.
+        const downCount = Math.max(1, Math.floor(Number(isActive ? player.downCount : member.downCount) || 1));
+        const downPipSize = Number.isFinite(Number(autoPip.diameterPx)) ? Number(autoPip.diameterPx) : 12;
+        const downPipFont = Number.isFinite(Number(autoPip.fontSizeRem)) ? Number(autoPip.fontSizeRem) : 0.52;
+        const downPipRimW = Number.isFinite(Number(autoPip.rimWidthPx)) ? Number(autoPip.rimWidthPx) : 1.5;
+        const downPipStyle = `--down-pip-color:${downPipColors[Math.min(downCount - 1, downPipColors.length - 1)]};`
+          + `--down-pip-size:${downPipSize}px;--down-pip-font:${downPipFont}rem;`
+          + `--down-pip-text:${autoPip.textColor || '#020617'};--down-pip-rim:${autoPip.rimColor || '#020617'};`
+          + `--down-pip-rim-w:${downPipRimW}px`;
+        const downPip = downed
+          ? `<em class="party-down-pip" style="${downPipStyle}" title="Down ${downCount}">${downCount >= downPipColors.length ? downPipMaxLabel : downCount}</em>`
+          : '';
         return `
           <div class="party-chip${isActive ? ' is-active' : ''}${downed ? ' is-downed' : ''}" data-member="${member.memberId || voc}" title="${name} · Lv ${member.level || 1}" style="--party-color: ${color}; --party-accent: ${accent}; --pip-color: ${pipColor};">
             <span class="party-chip-badge">${badge}</span>
             <span class="party-chip-body">
-              <span class="party-chip-name">${name}${isActive && !downed ? ' <em>★</em>' : ''}${downed ? ' <em class="party-downed-tag">DOWN</em>' : ''}</span>
+              <span class="party-chip-name">${name}${isActive && !downed ? ' <em>★</em>' : ''}${downed ? ` <em class="party-downed-tag">DOWN</em>${downPip}` : ''}</span>
               <span class="party-chip-bars">
                 <span class="party-hp"><i style="width:${hpPct}%"></i></span>
                 <span class="party-mp"><i style="width:${mpPct}%"></i></span>
