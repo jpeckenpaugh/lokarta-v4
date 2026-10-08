@@ -5,6 +5,7 @@
 import {
   CONFIG,
   TILE_TYPES,
+  TILE_TYPE_NAMES,
   LightingSystem,
   EntityAI,
   CombatSystem,
@@ -20,7 +21,7 @@ import {
   firstMonsterOnSegment,
   monstersCaughtByBeam,
 } from '../engine/projectile-collision.js';
-import { soundFX } from '../audio/index.js';
+import { soundFX, ambientDirector } from '../audio/index.js';
 import { KEYBINDINGS_CATALOG, UI_CATALOG, VOCATIONS_CATALOG } from '../data/index.js';
 import { setAnimState, advanceAnim } from './animation-state.js';
 import { swapWithPartyMemberAt } from '../engine/party-swap.js';
@@ -277,6 +278,14 @@ export const gameLoopMethods = {
       LightingSystem.applyAmbient(this.gridMap);
     } else {
       LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
+    }
+
+    // 3a. Ambient audio (LIV-82): the bed is retargeted on scene/floor load;
+    //     here we schedule positional, rate-limited one-shots around the active
+    //     member. Mute/volume flow through the shared master gain. Guarded so a
+    //     headless/partial app object never throws.
+    if (typeof ambientDirector.tick === 'function') {
+      ambientDirector.tick(this.nowMs(), { player: this.player });
     }
 
     // 3b. Overworld roamers (LIV-60 P3, revised LIV-68): roamers are placed once
@@ -833,7 +842,7 @@ export const gameLoopMethods = {
           if (swapped) {
             swapped.facing = EntityAI.getFacing(swapped.x, swapped.y, this.player.x, this.player.y);
             setAnimState(swapped, 'walk');
-            soundFX.play('footstep');
+            this.playFootstep();
             setAnimState(this.player, 'walk');
             if (this.resolvePlayerTileEntry()) return;
           }
@@ -854,7 +863,7 @@ export const gameLoopMethods = {
             this.player.y = targetY;
             // A real step re-arms bump-talk so the next walk into an NPC fires.
             this._bumpTalkNpcId = null;
-            soundFX.play('footstep');
+            this.playFootstep();
             setAnimState(this.player, 'walk');
             if (this.resolvePlayerTileEntry()) return;
           }
@@ -863,6 +872,16 @@ export const gameLoopMethods = {
     } else if (this.player) {
       setAnimState(this.player, 'idle');
     }
+  },
+  /**
+   * Plays the ambient step sound for the tile the active member occupies,
+   * resolved from the biome's surface map (sand vs. stone; LIV-82). Falls back
+   * to the default footstep for biomes with no authored material.
+   */
+  playFootstep() {
+    const tile = this.gridMap?.getTile?.(this.player.x, this.player.y);
+    const surface = tile ? TILE_TYPE_NAMES[tile.type] : null;
+    soundFX.play(ambientDirector.footstepSoundFor(surface));
   },
   /**
    * Resolves the world interactions for the tile the active member just entered:

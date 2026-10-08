@@ -14,7 +14,7 @@ import {
   setReturnSpot,
   clearReturnSpot,
 } from '../engine/index.js';
-import { soundFX } from '../audio/index.js';
+import { soundFX, ambientDirector } from '../audio/index.js';
 import { TOWER_LEVEL_COUNT, getTowerLevelCount } from '../services/floor-generator.js';
 import { listTowerDefinitions, getTowerDefinition, DEFAULT_TOWN_ID } from '../data/index.js';
 import { createAnimState } from './animation-state.js';
@@ -33,6 +33,11 @@ export const floorControllerMethods = {
     this.interactPromptTarget = null;
     this.currentFloorName = floorData.biome_name || 'The Gatehouse';
     this.gridMap.loadFromMatrix(floorData.tiles);
+
+    // LIV-82: retarget the ambient bed to the floor's biome (catalog `tierId`
+    // surfaced by floor-generator as `biome_id`). Falls back to the launch
+    // Gatehouse tier when a floor carries no biome id.
+    ambientDirector.setBiome(floorData.biome_id || 'crypt');
 
     // E8: retain the active floor's authored stair metadata + final-floor flag so
     // runtime traversal honors each stair's `dir`/`targetLevel` (D2 §3/§9.3)

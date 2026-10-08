@@ -13,6 +13,15 @@ export class AudioSystem {
     this.loadingPromise = null;
     this.volumePercent = 70;
 
+    // Ambient bed state (LIV-82). A single looping bed is live at a time; the
+    // gain is routed through `masterGain` so mute/volume apply for free.
+    // `_ambientRequestedId` is authoritative even before the AudioContext or
+    // sounds.json are ready, and is re-applied on init/load.
+    this._ambient = null; // { bedId, gain, sources, mods }
+    this._ambientBedId = null;
+    this._ambientRequestedId = null;
+    this._noiseBuffer = null;
+
     // Check saved mute preference
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
@@ -150,6 +159,8 @@ export class AudioSystem {
       }
 
       this.isInitialized = true;
+      // A bed requested before the context existed starts now (LIV-82).
+      this._applyAmbient();
     } catch (e) {
       console.warn('AudioContext initialization deferred or unavailable:', e);
     }
@@ -271,6 +282,229 @@ export class AudioSystem {
   /** Alias for play() */
   playSound(soundKey, volumeScale = 1.0) {
     this.play(soundKey, volumeScale);
+  }
+
+  // ==========================================================================
+  // Ambient Beds (LIV-82)
+  // ==========================================================================
+
+  /**
+   * Requests the looping ambient bed for the current biome/scene. Passing a
+   * falsy id stops the current bed. Idempotent; the request is remembered and
+   * applied once the AudioContext and sounds.json are available, so callers may
+   * set a bed before a user gesture unlocks audio.
+   * @param {string|null} bedId
+   */
+  setAmbientBed(bedId) {
+    const next = typeof bedId === 'string' && bedId ? bedId : null;
+    if (next === this._ambientRequestedId && next === this._ambientBedId) return;
+    this._ambientRequestedId = next;
+    this._applyAmbient();
+  }
+
+  /** Returns the currently playing ambient bed id, or null. */
+  getAmbientBedId() {
+    return this._ambientBedId;
+  }
+
+  /** Stops the ambient bed with a short fade. */
+  stopAmbient() {
+    this.setAmbientBed(null);
+  }
+
+  /**
+   * Reconciles the requested bed with what is playing. Called from `init`,
+   * `setAmbientBed`, and after sounds.json resolves.
+   */
+  _applyAmbient() {
+    const requested = this._ambientRequestedId;
+    if (requested === this._ambientBedId) return;
+    if (!this.ctx || !this.masterGain) return; // retried by init()
+    if (!this.sounds) {
+      this.loadSounds().then(() => this._applyAmbient()).catch(() => {});
+      return;
+    }
+    // Fade out the outgoing bed before swapping in the next.
+    if (this._ambient) this._stopAmbientNodes(this._ambient.fadeSec);
+    this._ambientBedId = requested;
+    if (!requested) return;
+    const config = this.sounds[requested];
+    if (!config || config.kind !== 'ambient') {
+      this._ambientBedId = null;
+      return;
+    }
+    this._startAmbientBed(requested, config);
+  }
+
+  /**
+   * Builds the looping graph for a bed config: one gain bus plus one node chain
+   * per `layers[]` voice. The dispatch table maps a layer `type` to its builder,
+   * so a new ambient voice is a catalog entry plus one handler (no JS branches).
+   * @param {string} bedId
+   * @param {object} config
+   */
+  _startAmbientBed(bedId, config) {
+    const now = this.ctx.currentTime;
+    const fadeSec = Number.isFinite(config.fadeSec) ? Math.max(0.05, config.fadeSec) : 2.0;
+    const target = Math.max(0.0001, Number.isFinite(config.gain) ? config.gain : 0.3);
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(target, now + fadeSec);
+    gain.connect(this.masterGain);
+
+    const sources = [];
+    const mods = [];
+    for (const layer of config.layers || []) {
+      const builder = AMBIENT_LAYER_BUILDERS[layer?.type];
+      if (!builder) continue;
+      const built = builder(this, layer, gain, now, fadeSec);
+      if (built) {
+        sources.push(...built.sources);
+        mods.push(...built.mods);
+      }
+    }
+    this._ambient = { bedId, gain, sources, mods, fadeSec };
+  }
+
+  /** Fades out and tears down the current bed graph. */
+  _stopAmbientNodes(fadeSec = 0.6) {
+    const cur = this._ambient;
+    this._ambient = null;
+    if (!cur) return;
+    const now = this.ctx.currentTime;
+    const fade = Math.max(0.05, Number.isFinite(fadeSec) ? fadeSec : 0.6);
+    try {
+      cur.gain.gain.cancelScheduledValues(now);
+      cur.gain.gain.setValueAtTime(Math.max(0.0001, cur.gain.gain.value), now);
+      cur.gain.gain.linearRampToValueAtTime(0.0001, now + fade);
+    } catch {
+      // Ignore scheduling errors on a torn-down graph.
+    }
+    const stopAt = now + fade + 0.05;
+    for (const src of cur.sources) {
+      try { src.stop(stopAt); } catch { /* already stopped */ }
+    }
+    for (const mod of cur.mods) {
+      try { mod.stop(stopAt); } catch { /* already stopped */ }
+    }
+    const delay = Math.ceil((fade + 0.15) * 1000);
+    if (typeof setTimeout === 'function') {
+      setTimeout(() => {
+        for (const src of cur.sources) { try { src.disconnect(); } catch { /* noop */ } }
+        for (const mod of cur.mods) { try { mod.disconnect(); } catch { /* noop */ } }
+        try { cur.gain.disconnect(); } catch { /* noop */ }
+      }, delay);
+    }
+  }
+
+  /** Lazily builds and caches a 2 s looping white-noise buffer for ambient beds. */
+  _getNoiseBuffer() {
+    if (this._noiseBuffer) return this._noiseBuffer;
+    const sampleRate = this.ctx.sampleRate || 44100;
+    const length = Math.max(1, Math.floor(sampleRate * 2));
+    const buffer = this.ctx.createBuffer(1, length, sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+    this._noiseBuffer = buffer;
+    return buffer;
+  }
+
+  /**
+   * Applies an optional LFO to a filter frequency or gain target.
+   * @returns {OscillatorNode|null} The mod oscillator, for teardown.
+   */
+  _attachAmbientLfo(lfo, param, now, scale = 1) {
+    if (!lfo || !param) return null;
+    const mod = this.ctx.createOscillator();
+    const modGain = this.ctx.createGain();
+    mod.type = lfo.oscType || 'sine';
+    mod.frequency.setValueAtTime(Math.max(0.001, lfo.freq || 0.1), now);
+    modGain.gain.setValueAtTime((lfo.gain != null ? lfo.gain : 0) * scale, now);
+    mod.connect(modGain);
+    modGain.connect(param);
+    mod.start(now);
+    return mod;
+  }
+
+  /**
+   * Builds a `noise` ambient layer: looping white noise through an optional
+   * biquad filter, with optional filter-frequency LFO and gain tremolo/swell.
+   * @returns {{ sources: AudioBufferSourceNode[], mods: OscillatorNode[] }}
+   */
+  _buildAmbientNoise(layer, dest, now) {
+    const src = this.ctx.createBufferSource();
+    src.buffer = this._getNoiseBuffer();
+    src.loop = true;
+
+    let node = src;
+    let filter = null;
+    const mods = [];
+    if (layer.filter) {
+      filter = this.ctx.createBiquadFilter();
+      filter.type = layer.filter.type || 'lowpass';
+      filter.frequency.setValueAtTime(Math.max(0.001, layer.filter.freq || 1000), now);
+      if (layer.filter.Q != null) filter.Q.setValueAtTime(layer.filter.Q, now);
+      node.connect(filter);
+      node = filter;
+    }
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(Math.max(0.0001, layer.gain != null ? layer.gain : 0.5), now);
+    node.connect(gain);
+    gain.connect(dest);
+
+    if (filter && layer.lfo) {
+      const mod = this._attachAmbientLfo(layer.lfo, filter.frequency, now);
+      if (mod) mods.push(mod);
+    }
+    if (layer.gainLfo) {
+      const mod = this._attachAmbientLfo(layer.gainLfo, gain.gain, now);
+      if (mod) mods.push(mod);
+    }
+
+    src.start(now);
+    return { sources: [src], mods };
+  }
+
+  /**
+   * Builds an `osc` ambient layer: a sustained oscillator through an optional
+   * filter, with optional filter-frequency LFO and gain tremolo/swell.
+   * @returns {{ sources: OscillatorNode[], mods: OscillatorNode[] }}
+   */
+  _buildAmbientOsc(layer, dest, now) {
+    const osc = this.ctx.createOscillator();
+    osc.type = layer.oscType || 'sine';
+    osc.frequency.setValueAtTime(Math.max(0.001, layer.freq || 100), now);
+    if (layer.detune != null && osc.detune) osc.detune.setValueAtTime(layer.detune, now);
+
+    let node = osc;
+    let filter = null;
+    const mods = [];
+    if (layer.filter) {
+      filter = this.ctx.createBiquadFilter();
+      filter.type = layer.filter.type || 'lowpass';
+      filter.frequency.setValueAtTime(Math.max(0.001, layer.filter.freq || 1000), now);
+      if (layer.filter.Q != null) filter.Q.setValueAtTime(layer.filter.Q, now);
+      node.connect(filter);
+      node = filter;
+    }
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(Math.max(0.0001, layer.gain != null ? layer.gain : 0.2), now);
+    node.connect(gain);
+    gain.connect(dest);
+
+    if (filter && layer.lfo) {
+      const mod = this._attachAmbientLfo(layer.lfo, filter.frequency, now);
+      if (mod) mods.push(mod);
+    }
+    if (layer.gainLfo) {
+      const mod = this._attachAmbientLfo(layer.gainLfo, gain.gain, now);
+      if (mod) mods.push(mod);
+    }
+
+    osc.start(now);
+    return { sources: [osc], mods };
   }
 
   // ==========================================================================
@@ -408,6 +642,15 @@ export class AudioSystem {
     };
   }
 }
+
+/**
+ * Ambient layer dispatch table (LIV-82). A new ambient voice `type` is a
+ * catalog entry plus one builder here — no branching in the bed loop.
+ */
+const AMBIENT_LAYER_BUILDERS = {
+  noise: (audio, layer, dest, now) => audio._buildAmbientNoise(layer, dest, now),
+  osc: (audio, layer, dest, now) => audio._buildAmbientOsc(layer, dest, now),
+};
 
 export const soundFX = AudioSystem.getInstance();
 export default AudioSystem;

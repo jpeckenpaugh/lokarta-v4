@@ -42,7 +42,7 @@ import {
   listQuestDefinitions,
 } from '../data/index.js';
 import { planSceneMonsters, makeSceneMonster } from '../services/scene-spawner.js';
-import { soundFX } from '../audio/index.js';
+import { soundFX, ambientDirector } from '../audio/index.js';
 import { ModalManager } from './modal-manager.js';
 import { createAnimState } from './animation-state.js';
 
@@ -167,6 +167,11 @@ export const sceneControllerMethods = {
 
     this.location = scene.sceneKind === 'town' ? 'town' : 'island';
     if (this.player) this.player.location = this.location;
+
+    // LIV-82: retarget the ambient bed to the scene's biome (`dawnreach_isle`
+    // / `havenreach_town`). The director reads the `ambience` block; a biome
+    // with no authored bed simply goes silent.
+    ambientDirector.setBiome(scene.biome || null);
 
     // LIV-60 P2: neutral NPCs. P3: quest ground items (fetch) + visible roaming
     // monsters (kill objectives) from the authored spawn zones/elites.

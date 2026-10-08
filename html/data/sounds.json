@@ -239,5 +239,167 @@
       { "freq": 659.25, "time": 0.00, "duration": 0.07 },
       { "freq": 987.77, "time": 0.06, "duration": 0.11 }
     ]
+  },
+
+  "gullCry": {
+    "kind": "sfx",
+    "type": "sequence",
+    "oscType": "triangle",
+    "gain": 0.16,
+    "notes": [
+      { "freq": 1400, "time": 0.00, "duration": 0.14 },
+      { "freq": 1180, "time": 0.12, "duration": 0.12 },
+      { "freq": 1520, "time": 0.25, "duration": 0.18 }
+    ]
+  },
+  "birdSong": {
+    "kind": "sfx",
+    "type": "sequence",
+    "oscType": "sine",
+    "gain": 0.1,
+    "notes": [
+      { "freq": 2200, "time": 0.00, "duration": 0.09 },
+      { "freq": 2640, "time": 0.09, "duration": 0.08 },
+      { "freq": 1980, "time": 0.18, "duration": 0.13 }
+    ]
+  },
+  "crowdMurmur": {
+    "kind": "sfx",
+    "type": "composite",
+    "oscType": "triangle",
+    "startFreq": 220,
+    "endFreq": 180,
+    "duration": 0.7,
+    "gain": 0.12,
+    "lfo": { "oscType": "sine", "freq": 3.5, "gain": 60 },
+    "filter": { "type": "bandpass", "startFreq": 820, "endFreq": 640, "Q": 2 }
+  },
+  "forgeHammer": {
+    "kind": "sfx",
+    "type": "composite",
+    "duration": 0.12,
+    "gain": 0.24,
+    "oscillators": [
+      { "type": "square", "startFreq": 900, "endFreq": 120 },
+      { "type": "triangle", "startFreq": 300, "endFreq": 90 }
+    ]
+  },
+  "shopBell": {
+    "kind": "sfx",
+    "type": "sequence",
+    "oscType": "sine",
+    "gain": 0.18,
+    "notes": [
+      { "freq": 1568, "time": 0.00, "duration": 0.5 },
+      { "freq": 2093, "time": 0.02, "duration": 0.45 },
+      { "freq": 2637, "time": 0.05, "duration": 0.3 }
+    ]
+  },
+  "cricketChirp": {
+    "kind": "sfx",
+    "type": "sequence",
+    "oscType": "square",
+    "gain": 0.07,
+    "notes": [
+      { "freq": 4200, "time": 0.00, "duration": 0.03 },
+      { "freq": 4200, "time": 0.05, "duration": 0.03 },
+      { "freq": 4200, "time": 0.10, "duration": 0.03 }
+    ]
+  },
+  "footstep_sand": {
+    "kind": "sfx",
+    "type": "sweep",
+    "oscType": "triangle",
+    "startFreq": 70,
+    "freqRandom": 20,
+    "endFreq": 28,
+    "duration": 0.07,
+    "gain": 0.07,
+    "filter": { "type": "lowpass", "freq": 320 }
+  },
+  "footstep_stone": {
+    "kind": "sfx",
+    "type": "sweep",
+    "oscType": "square",
+    "startFreq": 160,
+    "freqRandom": 40,
+    "endFreq": 60,
+    "duration": 0.04,
+    "gain": 0.07,
+    "filter": { "type": "highpass", "freq": 140 }
+  },
+
+  "amb_island_surf": {
+    "kind": "ambient",
+    "loop": true,
+    "gain": 0.32,
+    "fadeSec": 2.5,
+    "layers": [
+      { "type": "noise", "gain": 0.7, "filter": { "type": "lowpass", "freq": 620, "Q": 0.7 }, "lfo": { "freq": 0.09, "gain": 240 } },
+      { "type": "osc", "oscType": "sine", "freq": 78, "detune": 6, "gain": 0.22 },
+      { "type": "osc", "oscType": "triangle", "freq": 156, "gain": 0.06 }
+    ]
+  },
+  "amb_island_night": {
+    "kind": "ambient",
+    "loop": true,
+    "gain": 0.26,
+    "fadeSec": 3.0,
+    "layers": [
+      { "type": "noise", "gain": 0.5, "filter": { "type": "lowpass", "freq": 380, "Q": 0.6 }, "lfo": { "freq": 0.06, "gain": 120 } },
+      { "type": "osc", "oscType": "sine", "freq": 70, "gain": 0.18 },
+      { "type": "osc", "oscType": "sine", "freq": 523.25, "gain": 0.02, "gainLfo": { "freq": 0.25, "depth": 0.02 } }
+    ]
+  },
+  "amb_town_day": {
+    "kind": "ambient",
+    "loop": true,
+    "gain": 0.3,
+    "fadeSec": 2.0,
+    "layers": [
+      { "type": "noise", "gain": 0.45, "filter": { "type": "bandpass", "freq": 700, "Q": 0.9 }, "lfo": { "freq": 0.13, "gain": 180 } },
+      { "type": "osc", "oscType": "sine", "freq": 196, "gain": 0.08 },
+      { "type": "noise", "gain": 0.12, "filter": { "type": "bandpass", "freq": 2200, "Q": 1.4 } }
+    ]
+  },
+  "amb_town_night": {
+    "kind": "ambient",
+    "loop": true,
+    "gain": 0.24,
+    "fadeSec": 2.5,
+    "layers": [
+      { "type": "noise", "gain": 0.3, "filter": { "type": "lowpass", "freq": 500, "Q": 0.7 }, "lfo": { "freq": 0.2, "gain": 260 } },
+      { "type": "osc", "oscType": "sine", "freq": 110, "gain": 0.05 }
+    ]
+  },
+  "amb_dungeon": {
+    "kind": "ambient",
+    "loop": true,
+    "gain": 0.28,
+    "fadeSec": 2.0,
+    "layers": [
+      { "type": "osc", "oscType": "sine", "freq": 55, "gain": 0.3 },
+      { "type": "noise", "gain": 0.25, "filter": { "type": "lowpass", "freq": 300, "Q": 0.8 }, "lfo": { "freq": 0.05, "gain": 80 } }
+    ]
+  },
+  "amb_rain": {
+    "kind": "ambient",
+    "loop": true,
+    "gain": 0.34,
+    "fadeSec": 2.5,
+    "layers": [
+      { "type": "noise", "gain": 0.6, "filter": { "type": "highpass", "freq": 900, "Q": 0.5 }, "lfo": { "freq": 0.4, "gain": 300 } },
+      { "type": "noise", "gain": 0.25, "filter": { "type": "lowpass", "freq": 400, "Q": 0.7 } }
+    ]
+  },
+  "amb_mist": {
+    "kind": "ambient",
+    "loop": true,
+    "gain": 0.22,
+    "fadeSec": 3.0,
+    "layers": [
+      { "type": "noise", "gain": 0.4, "filter": { "type": "lowpass", "freq": 500, "Q": 0.5 }, "lfo": { "freq": 0.07, "gain": 140 } },
+      { "type": "osc", "oscType": "sine", "freq": 65, "gain": 0.12 }
+    ]
   }
 }

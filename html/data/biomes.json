@@ -1,56 +1,92 @@
 {
-  "crypt": { "id": "crypt", "name": "The Gatehouse", "minLevel": 1, "maxLevel": 1, "lightColor": "#ff8800" },
+  "crypt": { "id": "crypt", "name": "The Gatehouse", "minLevel": 1, "maxLevel": 1, "lightColor": "#ff8800", "ambience": { "bedId": "amb_dungeon", "defaultFootstep": "footstep_stone" } },
   "catacombs": {
     "id": "catacombs",
     "name": "The Hall of Banners",
     "minLevel": 2,
     "maxLevel": 2,
-    "lightColor": "#00d4ff"
+    "lightColor": "#00d4ff",
+    "ambience": { "bedId": "amb_dungeon", "defaultFootstep": "footstep_stone" }
   },
   "shadow_vaults": {
     "id": "shadow_vaults",
     "name": "The Bell Keep",
     "minLevel": 3,
     "maxLevel": 3,
-    "lightColor": "#a855f7"
+    "lightColor": "#a855f7",
+    "ambience": { "bedId": "amb_dungeon", "defaultFootstep": "footstep_stone" }
   },
   "abyssal_sanctum": {
     "id": "abyssal_sanctum",
     "name": "The Solar Gallery",
     "minLevel": 4,
     "maxLevel": 4,
-    "lightColor": "#ef4444"
+    "lightColor": "#ef4444",
+    "ambience": { "bedId": "amb_dungeon", "defaultFootstep": "footstep_stone" }
   },
   "crown_spire": {
     "id": "crown_spire",
     "name": "The Crown Spire",
     "minLevel": 5,
     "maxLevel": 5,
-    "lightColor": "#ffd700"
+    "lightColor": "#ffd700",
+    "ambience": { "bedId": "amb_dungeon", "defaultFootstep": "footstep_stone" }
   },
 
-  "cinder_gate": { "id": "cinder_gate", "name": "The Cinder Gate", "lightColor": "#ff6a00" },
-  "slagworks": { "id": "slagworks", "name": "The Slagworks", "lightColor": "#ff7a18" },
-  "molten_hall": { "id": "molten_hall", "name": "The Molten Hall", "lightColor": "#f97316" },
-  "forge_heart": { "id": "forge_heart", "name": "The Forge Heart", "lightColor": "#fb923c" },
-  "anvil_crown": { "id": "anvil_crown", "name": "The Anvil Crown", "lightColor": "#fbbf24" },
+  "cinder_gate": { "id": "cinder_gate", "name": "The Cinder Gate", "lightColor": "#ff6a00", "ambience": { "bedId": "amb_dungeon", "defaultFootstep": "footstep_stone" } },
+  "slagworks": { "id": "slagworks", "name": "The Slagworks", "lightColor": "#ff7a18", "ambience": { "bedId": "amb_dungeon", "defaultFootstep": "footstep_stone" } },
+  "molten_hall": { "id": "molten_hall", "name": "The Molten Hall", "lightColor": "#f97316", "ambience": { "bedId": "amb_dungeon", "defaultFootstep": "footstep_stone" } },
+  "forge_heart": { "id": "forge_heart", "name": "The Forge Heart", "lightColor": "#fb923c", "ambience": { "bedId": "amb_dungeon", "defaultFootstep": "footstep_stone" } },
+  "anvil_crown": { "id": "anvil_crown", "name": "The Anvil Crown", "lightColor": "#fbbf24", "ambience": { "bedId": "amb_dungeon", "defaultFootstep": "footstep_stone" } },
 
-  "frost_threshold": { "id": "frost_threshold", "name": "The Frost Threshold", "lightColor": "#7dd3fc" },
-  "bell_aerie": { "id": "bell_aerie", "name": "The Bell Aerie", "lightColor": "#a5b4fc" },
-  "choir_loft": { "id": "choir_loft", "name": "The Choir Loft", "lightColor": "#c4b5fd" },
+  "frost_threshold": { "id": "frost_threshold", "name": "The Frost Threshold", "lightColor": "#7dd3fc", "ambience": { "bedId": "amb_dungeon", "defaultFootstep": "footstep_stone" } },
+  "bell_aerie": { "id": "bell_aerie", "name": "The Bell Aerie", "lightColor": "#a5b4fc", "ambience": { "bedId": "amb_dungeon", "defaultFootstep": "footstep_stone" } },
+  "choir_loft": { "id": "choir_loft", "name": "The Choir Loft", "lightColor": "#c4b5fd", "ambience": { "bedId": "amb_dungeon", "defaultFootstep": "footstep_stone" } },
 
   "dawnreach_isle": {
     "id": "dawnreach_isle",
     "name": "Dawnreach Isle",
     "lightColor": "#ffd48a",
     "ambient": true,
-    "description": "LIV-58: open overworld biome. No minLevel/maxLevel, so the legacy 1..5 level scan (data-catalogs.test.mjs) still maps each floor to exactly one tower tier; island/town scenes resolve by scene `biome` id instead."
+    "description": "LIV-58: open overworld biome. No minLevel/maxLevel, so the legacy 1..5 level scan (data-catalogs.test.mjs) still maps each floor to exactly one tower tier; island/town scenes resolve by scene `biome` id instead.",
+    "ambience": {
+      "bedId": "amb_island_surf",
+      "nightBedId": "amb_island_night",
+      "dayOneShots": ["gullCry", "birdSong"],
+      "nightOneShots": ["cricketChirp"],
+      "weatherVariants": { "rain": "amb_rain", "mist": "amb_mist" },
+      "oneShotIntervalMs": 6000,
+      "oneShotChance": 0.6,
+      "oneShotRateLimitMs": 4000,
+      "oneShotRadiusTiles": 7,
+      "emitters": [],
+      "footsteps": { "SAND": "footstep_sand", "GRASS": "footstep", "PATH": "footstep" },
+      "defaultFootstep": "footstep"
+    }
   },
   "havenreach_town": {
     "id": "havenreach_town",
     "name": "Havenreach",
     "lightColor": "#ffcf7a",
     "ambient": true,
-    "description": "LIV-58: the town scene's biome (ambient daylight, town palette)."
+    "description": "LIV-58: the town scene's biome (ambient daylight, town palette).",
+    "ambience": {
+      "bedId": "amb_town_day",
+      "nightBedId": "amb_town_night",
+      "dayOneShots": ["gullCry", "crowdMurmur"],
+      "nightOneShots": ["cricketChirp"],
+      "weatherVariants": { "rain": "amb_rain", "mist": "amb_mist" },
+      "oneShotIntervalMs": 5000,
+      "oneShotChance": 0.55,
+      "oneShotRateLimitMs": 4000,
+      "oneShotRadiusTiles": 6,
+      "emitters": [
+        { "soundId": "forgeHammer", "x": 18, "y": 11, "rateLimitMs": 3500, "phase": "day" },
+        { "soundId": "forgeHammer", "x": 19, "y": 11, "rateLimitMs": 5200, "phase": "day" },
+        { "soundId": "shopBell", "x": 5, "y": 7, "rateLimitMs": 9000, "phase": "day" }
+      ],
+      "footsteps": { "PATH": "footstep_stone", "GRASS": "footstep", "SAND": "footstep_sand" },
+      "defaultFootstep": "footstep_stone"
+    }
   }
 }

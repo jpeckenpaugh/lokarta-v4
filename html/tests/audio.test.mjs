@@ -5,22 +5,40 @@ import { resolve } from 'node:path';
 import { AudioSystem } from '../audio/index.js';
 
 test('AudioSystem & JSON Sound Catalog', async (t) => {
-  await t.test('loads all 25 required sound definitions from sounds.json', () => {
+  const SFX_KEYS = [
+    'footstep', 'wandSpark', 'lightSpell', 'energyBeam', 'bowShot', 'powerShot',
+    'hit', 'monsterAttack', 'monsterDeath', 'playerHurt', 'itemPickup',
+    'potionDrink', 'equip', 'unequip', 'stairs', 'levelUp', 'victory', 'defeat', 'click',
+    'uiMove', 'uiBack', 'keyJangle', 'coins', 'koHandoff', 'controlSwap',
+    // LIV-82 positional ambience one-shots.
+    'gullCry', 'birdSong', 'crowdMurmur', 'forgeHammer', 'shopBell', 'cricketChirp',
+    'footstep_sand', 'footstep_stone'
+  ];
+  const AMBIENT_KEYS = [
+    'amb_island_surf', 'amb_island_night', 'amb_town_day', 'amb_town_night',
+    'amb_dungeon', 'amb_rain', 'amb_mist'
+  ];
+
+  await t.test('loads every required sound definition from sounds.json', () => {
     const soundsPath = resolve(process.cwd(), 'html/data/sounds.json');
     const soundsJson = JSON.parse(readFileSync(soundsPath, 'utf8'));
 
-    const expectedKeys = [
-      'footstep', 'wandSpark', 'lightSpell', 'energyBeam', 'bowShot', 'powerShot',
-      'hit', 'monsterAttack', 'monsterDeath', 'playerHurt', 'itemPickup',
-      'potionDrink', 'equip', 'unequip', 'stairs', 'levelUp', 'victory', 'defeat', 'click',
-      'uiMove', 'uiBack', 'keyJangle', 'coins', 'koHandoff', 'controlSwap'
-    ];
+    const expectedKeys = [...SFX_KEYS, ...AMBIENT_KEYS];
+    assert.equal(Object.keys(soundsJson).length, expectedKeys.length);
 
-    assert.equal(Object.keys(soundsJson).length, 25);
-
-    for (const key of expectedKeys) {
+    for (const key of SFX_KEYS) {
       assert.ok(soundsJson[key], `Missing sound definition for ${key}`);
+      assert.notEqual(soundsJson[key].kind, 'ambient', `${key} is a one-shot, not an ambient bed`);
       assert.ok(['sweep', 'sequence', 'composite'].includes(soundsJson[key].type), `Invalid sound type for ${key}: ${soundsJson[key].type}`);
+    }
+
+    for (const key of AMBIENT_KEYS) {
+      const bed = soundsJson[key];
+      assert.ok(bed, `Missing ambient bed ${key}`);
+      assert.equal(bed.kind, 'ambient', `${key} must be kind:"ambient"`);
+      assert.equal(bed.loop, true, `${key} must loop`);
+      assert.ok(Number.isFinite(bed.gain), `${key} must declare a gain`);
+      assert.ok(Array.isArray(bed.layers) && bed.layers.length > 0, `${key} must declare layers`);
     }
   });
 
@@ -54,5 +72,15 @@ test('AudioSystem & JSON Sound Catalog', async (t) => {
 
     // Distance floor -> minimum 10% (0.10)
     assert.equal(audio.computeDistanceScale(2, 2, 25, 2), 0.1); // 23 tiles away -> floors at 10%
+  });
+
+  await t.test('ambient bed requests are headless-safe and never throw', () => {
+    const audio = AudioSystem.getInstance();
+    // Without a running AudioContext the request is remembered but not started.
+    assert.doesNotThrow(() => audio.setAmbientBed('amb_island_surf'));
+    assert.equal(audio.getAmbientBedId(), null);
+    assert.doesNotThrow(() => audio.setAmbientBed(null));
+    assert.doesNotThrow(() => audio.stopAmbient());
+    assert.doesNotThrow(() => audio.playAt('gullCry', 4, 4, 1, 1));
   });
 });

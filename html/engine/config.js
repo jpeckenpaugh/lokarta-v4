@@ -30,6 +30,15 @@ export const TILE_TYPES = {
 };
 
 /**
+ * Reverse of `TILE_TYPES`: numeric code -> tile-type name. Catalog-driven
+ * surface lookups (e.g. footstep material) key off the name, never a magic
+ * number. Built once at module load.
+ */
+export const TILE_TYPE_NAMES = Object.freeze(
+  Object.fromEntries(Object.entries(TILE_TYPES).map(([name, code]) => [code, name]))
+);
+
+/**
  * Tile codes that always block movement regardless of any per-tile state.
  * Water is the overworld's impassable border; trees and building bodies are
  * solid scenery (LIV-55 D6). Doors/gates/springs resolve their own rules in

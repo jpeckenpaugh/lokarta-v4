@@ -222,7 +222,7 @@ test('JSON Data Catalogs', async (t) => {
   });
 
   await t.test('loads and validates sounds.json catalog', () => {
-    assert.equal(Object.keys(SOUNDS_CATALOG).length, 25);
+    assert.equal(Object.keys(SOUNDS_CATALOG).length, 40);
     assert.ok(SOUNDS_CATALOG.footstep);
     assert.ok(SOUNDS_CATALOG.wandSpark);
     assert.ok(SOUNDS_CATALOG.victory);
@@ -234,6 +234,16 @@ test('JSON Data Catalogs', async (t) => {
     // LIV-49: KO/handoff sting + control-swap cue.
     assert.ok(SOUNDS_CATALOG.koHandoff);
     assert.ok(SOUNDS_CATALOG.controlSwap);
+    // LIV-82: looping ambient beds (kind:"ambient") + material footsteps.
+    for (const bed of ['amb_island_surf', 'amb_town_day', 'amb_dungeon', 'amb_rain', 'amb_mist']) {
+      assert.equal(SOUNDS_CATALOG[bed].kind, 'ambient', `${bed} must be an ambient bed`);
+      assert.equal(SOUNDS_CATALOG[bed].loop, true, `${bed} must loop`);
+    }
+    assert.ok(SOUNDS_CATALOG.footstep_sand);
+    assert.ok(SOUNDS_CATALOG.footstep_stone);
+    assert.ok(SOUNDS_CATALOG.gullCry);
+    assert.ok(SOUNDS_CATALOG.forgeHammer);
+    assert.ok(SOUNDS_CATALOG.shopBell);
   });
 
   await t.test('loads and validates abilities.json catalog', () => {
