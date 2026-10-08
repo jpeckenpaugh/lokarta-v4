@@ -323,8 +323,19 @@ floating text and loot by routing single-target results through the existing
   `EntityAI.selectTarget(monster, targets)` is faction-gated and each result
   carries `target`, so the loop applies damage/status/animation to the actor
   actually struck. A one-target call (legacy) behaves exactly as before.
-- `canvas-renderer.render(..., party)` draws every living non-active member with
-  the shared `SpriteRenderer.drawPlayer` pipeline plus HP/MP bars.
+- `canvas-renderer.render(..., party)` draws every non-active member with the
+  shared `SpriteRenderer.drawPlayer` pipeline. Living members get HP/MP bars;
+  downed bodies use the frozen `DOWNED_DRAW_OPTS` grayscale + 90° "on back"
+  treatment (LIV-45/LIV-49) plus their call-for-help beacon, revive tether, and
+  auto-revive countdown ring.
+- **Knockout & revive (LIV-41/LIV-47/LIV-51).** A member at 0 HP stays on the
+  board as `downed` (collapsed, greyscale, immobile, untargeted, no light cone);
+  control hands off to a living ally. `html/engine/revive-system.js` owns the
+  downed lifecycle: full-party-wipe evaluation, the adjacency/safety-gated
+  interruptible ally channel (catalog `party_ai.json.revive`), and the
+  per-member time-based auto-revive (`autoRevive.secs` = 10/20/30, `capSec` 30)
+  that runs during combat and is cancelled by a completed ally revive. Only a
+  simultaneous full-party down wipes to the Temple of the Dawn.
 - Healing fountains (`game-loop.applySpringRegenToParty`) restore the **whole
   living party** while the active member is adjacent, gated by
   `economy.springs.healsParty` (default true); `healsParty: false` keeps the
@@ -332,8 +343,10 @@ floating text and loot by routing single-target results through the existing
   members are skipped, so a fountain is not a revive.
 - `hud-manager.renderPartyPanel` reads the active member's live HP/MP from the
   top-level player (no per-tick JSON capture).
-- `floor-controller.layoutPartyOnFloor()` revives downed allies between floors
-  and spreads any member sharing the active member's tile to a free adjacent
+- `floor-controller.layoutPartyOnFloor(transportAll, reviveDowned)` revives
+  downed allies only on a genuine floor transition (`reviveDowned`, gated by
+  `revive.reviveOnFloorTransition`); a same-floor reload leaves the body downed.
+  It spreads any member sharing the active member's tile to a free adjacent
   square.
 
 T0 coverage: `html/tests/liv13-party-ai.test.mjs`.

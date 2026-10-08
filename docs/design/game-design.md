@@ -46,7 +46,8 @@ other tower follows. Its layout and monster pools are catalog-driven via
 
 ## 4. Controls & Input Mapping
 
-* **Keyboard Movement:** `W`, `A`, `S`, `D` or Arrow Keys $\uparrow, \leftarrow, \downarrow, \rightarrow$.
+* **Keyboard Movement:** Arrow Keys $\uparrow, \leftarrow, \downarrow, \rightarrow$.
+* **Party Cycling:** `A` / `S` cycle control to the previous / next living member (LIV-27), playing the control-swap feedback beat (LIV-49, §5).
 * **Touch & Mobile Gestures:** Directional swipe for movement; tap for HUD buttons, loadout slots, and floor item pickup.
 * **Active Consumable Slots:** Keys `1`, `2`, `3`, `4` activate potions, torches, and active consumables.
 * **Equipment Hotkeys:** Keys `Q`, `W`, `E`, `R` map to `main_hand`, `off_hand`, `armor`, and `relic`.
