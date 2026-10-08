@@ -422,9 +422,10 @@ const TILE_RENDERERS = {
     const p = sceneTilePalette(theme, 'TREE');
     const outside = (theme && theme.outside) || DEFAULT_OUTSIDE;
     const u = size / 32;
-    const base = outside.grass && outside.grass.length
-      ? outside.grass[tileHash(opts.x || 0, opts.y || 0) % outside.grass.length]
-      : outside.grass[0];
+    // Same low-frequency grass field as the outside fill (LIV-74), so a tree
+    // stands on naturally rolling greens rather than a hashed checkerboard.
+    const grassRamp = outside.grass && outside.grass.length ? outside.grass : DEFAULT_OUTSIDE.grass;
+    const base = grassRamp[grassShadeIndex(opts.x || 0, opts.y || 0, grassRamp.length)];
     ctx.fillStyle = base;
     ctx.fillRect(screenX, screenY, size, size);
     ctx.fillStyle = p.trunk || outside.treeTrunk;
@@ -540,9 +541,12 @@ const DEFAULT_OUTSIDE = {
 function drawOutsideGrass(ctx, screenX, screenY, size, x, y, o) {
   const u = size / 32;
   const h = tileHash(x, y);
-  const grass = o.grass && o.grass.length ? o.grass[h % o.grass.length] : DEFAULT_OUTSIDE.grass[0];
-
-  ctx.fillStyle = grass;
+  // Low-frequency value-noise shade ramp (LIV-74): reuse the same field the
+  // island GRASS tile draws with so the town/tower exterior grass rolls between
+  // palette greens instead of alternating on a coordinate-hash checkerboard.
+  // Integer index only; allocation-free and deterministic.
+  const grassRamp = o.grass && o.grass.length ? o.grass : DEFAULT_OUTSIDE.grass;
+  ctx.fillStyle = grassRamp[grassShadeIndex(x, y, grassRamp.length)];
   ctx.fillRect(screenX, screenY, size, size);
 
   // Sparse grass blades for texture.

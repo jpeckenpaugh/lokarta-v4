@@ -17,7 +17,7 @@ import { ECONOMY_CATALOG, ITEMS_CATALOG, MONSTERS_CATALOG, UI_CATALOG } from '..
 const DEFAULTS = {
   gold: { starting: 0, cap: 999999 },
   passiveRecovery: { intervalSec: 10, hpPerTick: 1, mpPerTick: 1 },
-  springs: { hpPerSec: 5, mpPerSec: 5 },
+  springs: { hpPerSec: 5, mpPerSec: 5, rampFactor: 1 },
   temple: { healCostPerHp: 1, healCostPerMp: 1, reviveAt: 'town_temple', reviveCostPct: 0 },
   // Shop tunables are catalog-owned (economy.json "shop"); no JS duplication.
 };
@@ -117,12 +117,14 @@ export class EconomySystem {
     return { hp, mp };
   }
 
-  /** Healing-spring per-second regen tunables. */
+  /** Healing-spring per-second regen tunables (LIV-74 adds the ramp factor). */
   static springRegen() {
     const s = cfg('springs', DEFAULTS.springs);
+    const ramp = Number(s.rampFactor);
     return {
       hpPerSec: Number(s.hpPerSec) || 0,
       mpPerSec: Number(s.mpPerSec) || 0,
+      rampFactor: Number.isFinite(ramp) ? ramp : DEFAULTS.springs.rampFactor,
     };
   }
 
@@ -137,21 +139,32 @@ export class EconomySystem {
   }
 
   /**
-   * Applies one second of adjacent-spring regeneration.
-   * Restores up to `hpPerSec` / `mpPerSec`, never over max. Mutates the player
-   * and returns the amount actually restored `{ hp, mp }`.
+   * Applies one second of adjacent-spring regeneration. A sustained stay ramps
+   * the restore (LIV-74): the amount is `hpPerSec`/`mpPerSec` scaled by the
+   * consecutive-second count and the catalog `springs.rampFactor`, so the 1st
+   * second restores base, the 2nd 2x base, the 3rd 3x base, and so on. The
+   * caller owns the streak and resets it when the player leaves the spring.
+   * Never over max. Mutates the player and returns the amount actually restored
+   * `{ hp, mp }`.
+   *
+   * @param {object} player
+   * @param {number} [consecutiveSeconds=1] consecutive seconds of contact
    */
-  static applySpringRegen(player) {
-    const { hpPerSec, mpPerSec } = EconomySystem.springRegen();
+  static applySpringRegen(player, consecutiveSeconds = 1) {
+    if (!player) return { hp: 0, mp: 0 };
+    const { hpPerSec, mpPerSec, rampFactor } = EconomySystem.springRegen();
+    const seconds = Math.max(1, Math.floor(Number(consecutiveSeconds) || 1));
+    const multiplier = seconds * rampFactor;
+    const hpGain = Math.floor(hpPerSec * multiplier);
+    const mpGain = Math.floor(mpPerSec * multiplier);
     let hp = 0;
     let mp = 0;
-    if (!player) return { hp, mp };
-    if (hpPerSec > 0 && player.hp < player.max_hp) {
-      hp = Math.min(hpPerSec, player.max_hp - player.hp);
+    if (hpGain > 0 && player.hp < player.max_hp) {
+      hp = Math.min(hpGain, player.max_hp - player.hp);
       player.hp += hp;
     }
-    if (mpPerSec > 0 && player.mana < player.max_mana) {
-      mp = Math.min(mpPerSec, player.max_mana - player.mana);
+    if (mpGain > 0 && player.mana < player.max_mana) {
+      mp = Math.min(mpGain, player.max_mana - player.mana);
       player.mana += mp;
     }
     return { hp, mp };

@@ -60,8 +60,10 @@ export class LokartaApp {
     this._sceneInteraction = false;
     this.townConfig = EconomySystem.townConfig();
     this.passiveRecoveryAccumulator = 0;
-    // Adjacency spring regen accumulator (1 Hz).
+    // Adjacency spring regen accumulator (1 Hz) and sustained-stay streak
+    // (LIV-74): consecutive seconds in contact, reset on leaving the spring.
     this.springRegenAccumulator = 0;
+    this.springRegenStreak = 0;
 
     // E8: active-floor stair traversal state (dir/targetLevel + §9.3 arming).
     this.stairs = [];

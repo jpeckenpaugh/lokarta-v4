@@ -199,20 +199,9 @@ export const gameLoopMethods = {
 
     // Healing spring: while the active member stands on a square adjacent to a
     // fountain, the whole living party (catalog `economy.springs.healsParty`)
-    // restores +5 HP and +5 MP each second, capped at max.
-    if (this.findAdjacentSpring()) {
-      this.springRegenAccumulator += deltaSec;
-      if (this.springRegenAccumulator >= 1) {
-        this.springRegenAccumulator -= Math.floor(this.springRegenAccumulator);
-        const healed = this.applySpringRegenToParty();
-        if (healed > 0) {
-          soundFX.play('holyChime');
-          this.updateHUD();
-        }
-      }
-    } else {
-      this.springRegenAccumulator = 0;
-    }
+    // restores HP/MP each second, capped at max, ramping while the stay lasts
+    // and resetting the moment the player steps away (LIV-74).
+    this.updateSpringRegen(deltaSec);
 
     // Auto-Prayer Pulse (Luminous Amulet every 10 seconds)
     const equippedRelic = this.player.paperdoll?.relic;
@@ -425,26 +414,55 @@ export const gameLoopMethods = {
     this.updateHUD();
   },
   /**
+   * Advances the 1 Hz adjacent-spring regeneration. While the active member
+   * stands beside a fountain the whole living party recovers catalog-scaled
+   * HP/MP; a sustained stay ramps the amount (LIV-74) and the streak resets to
+   * 0 the moment the player leaves. Returns true when anything was restored.
+   * @param {number} deltaSec elapsed seconds since the previous tick
+   * @returns {boolean}
+   */
+  updateSpringRegen(deltaSec) {
+    if (!this.findAdjacentSpring()) {
+      this.springRegenAccumulator = 0;
+      this.springRegenStreak = 0;
+      return false;
+    }
+    this.springRegenAccumulator += deltaSec;
+    if (this.springRegenAccumulator < 1) return false;
+    this.springRegenAccumulator -= Math.floor(this.springRegenAccumulator);
+    this.springRegenStreak = (this.springRegenStreak || 0) + 1;
+    const healed = this.applySpringRegenToParty(this.springRegenStreak);
+    if (healed > 0) {
+      soundFX.play('holyChime');
+      this.updateHUD();
+    }
+    return healed > 0;
+  },
+  /**
    * Applies one second of healing-spring regen and floats the restored amounts.
    * Catalog rule `economy.springs.healsParty` (default true) restores every
    * living party member; `healsParty: false` keeps the legacy single-actor rule.
+   * `consecutiveSeconds` carries the sustained-stay streak (LIV-74) so the
+   * restore ramps while the player remains in contact.
+   * @param {number} [consecutiveSeconds] defaults to the live streak (or 1)
    * @returns {number} how many members actually recovered HP or MP
    */
-  applySpringRegenToParty() {
+  applySpringRegenToParty(consecutiveSeconds) {
+    const streak = Math.max(1, Math.floor(Number(consecutiveSeconds) || this.springRegenStreak || 1));
     if (!EconomySystem.springHealsParty()) {
-      return this.applySpringRegenToMember(this.player) ? 1 : 0;
+      return this.applySpringRegenToMember(this.player, streak) ? 1 : 0;
     }
     const allies = PartyAI.livingAllies(this.player);
     let healed = 0;
     for (let i = 0; i < allies.length; i++) {
-      if (this.applySpringRegenToMember(allies[i])) healed++;
+      if (this.applySpringRegenToMember(allies[i], streak)) healed++;
     }
     return healed;
   },
   /** Restores one member and floats its recovered HP/MP. Returns true when healed. */
-  applySpringRegenToMember(member) {
+  applySpringRegenToMember(member, consecutiveSeconds = 1) {
     if (!member) return false;
-    const restored = EconomySystem.applySpringRegen(member);
+    const restored = EconomySystem.applySpringRegen(member, consecutiveSeconds);
     if (restored.hp > 0) this.addFloatingText(`+${restored.hp} HP`, member.x, member.y, '#22c55e');
     if (restored.mp > 0) this.addFloatingText(`+${restored.mp} MP`, member.x, member.y, '#3b82f6');
     return restored.hp > 0 || restored.mp > 0;
