@@ -787,8 +787,12 @@ export const gameLoopMethods = {
       // earned key. If it opens, step through in the same input.
       const targetTile = this.gridMap.getTile(targetX, targetY);
       const isShutGate = targetTile && targetTile.type === TILE_TYPES.GATED_DOOR && !targetTile.gateOpen;
-      if (isShutGate && this.openDoorUnderPlayer(targetX, targetY)) {
-        // Door just opened — allow the step-through this turn.
+      if (isShutGate) {
+        // Scene gates (the island Tide Gate) resolve through the data-driven
+        // scene gate; tower-floor gates spend an earned key. Either just-opened
+        // gate allows the step-through this turn.
+        if (this.scene) this.openSceneGateAt(targetX, targetY);
+        else this.openDoorUnderPlayer(targetX, targetY);
       }
 
       // Walk Thru Walls (debug option): allows in-bounds non-walkable tiles.

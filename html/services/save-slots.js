@@ -282,12 +282,14 @@ export function normalizeSlotToTower(slot) {
 /**
  * Version of the persisted slot/character shape. v1 = 20-floor cave layout;
  * v2 = 5-level tower (floors clamped to `1..TOWER_LEVEL_COUNT`); v3 = party
- * knockout lifecycle (per-member `lifeState`/`downed*`/`reviveGraceSec`, LIV-44).
- * The storage layer stamps the current version and resets pre-v2 floor caches
- * (see `migrateLegacySave`); the v3 fields are backfilled idempotently by
- * `migratePlayerParty` on every load/save.
+ * knockout lifecycle (per-member `lifeState`/`downed*`/`reviveGraceSec`, LIV-44);
+ * v4 = Island 1 world state (per-character `questState`/`worldFlags`/`scene` and
+ * the data-driven Spire access gate, LIV-55 P4). The storage layer stamps the
+ * current version and resets pre-v2 floor caches (see `migrateLegacySave`); the
+ * v3/v4 fields are backfilled idempotently by `migratePlayerParty` and
+ * `migrateWorldSave` on load/upgrade.
  */
-export const SAVE_FORMAT_VERSION = 3;
+export const SAVE_FORMAT_VERSION = 4;
 
 /**
  * Reads the save-format version stamped on a stored slot/character. Missing or

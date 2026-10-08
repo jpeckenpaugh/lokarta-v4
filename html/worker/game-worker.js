@@ -15,11 +15,13 @@ import {
   migrateLegacySave,
   migrateTowerSave,
   migratePartySave,
+  migrateWorldSave,
   now,
   STORES,
   MIGRATION_GUARD_KEY,
   TOWER_MIGRATION_GUARD_KEY,
   PARTY_MIGRATION_GUARD_KEY,
+  WORLD_MIGRATION_GUARD_KEY,
 } from '../services/storage.js';
 import {
   slotId,
@@ -47,7 +49,7 @@ import {
   completePlayerTower,
   recruitMember,
   recruitableVocations,
-  isTowerUnlocked,
+  evaluateTowerAccess,
   partySize as partySizeOf,
 } from '../engine/index.js';
 import { DEFAULT_TOWER_ID, getTowerDefinition, islandForTower, DEFAULT_TOWN_ID } from '../data/index.js';
@@ -196,8 +198,9 @@ function makeSlotPlayer(vocation, slotIndex) {
   player.createdAt = timestamp;
   player.updatedAt = timestamp;
   player.lastPlayedAt = timestamp;
-  // Every save is a party save: one member at character creation, with only the
-  // first tower unlocked. Capturing the active member keeps `party` in sync.
+  // Every save is a party save: one member at character creation, with the
+  // data-driven Spire access gate still locked (LIV-55 D7). Capturing the active
+  // member keeps `party` in sync.
   return migratePlayerParty(player);
 }
 
@@ -251,6 +254,17 @@ async function handleBootstrap() {
     await migratePartySave();
   } catch (err) {
     console.warn('game-worker: party save migration failed; saves will party-migrate on load.', err);
+  }
+
+  // One-time world migration (LIV-55 P4, D7/D8): stamp the current save format,
+  // initialize per-slot scene pointers, and backfill veteran saves as
+  // Spire-unlocked so the new data-driven gate never removes a tower they could
+  // already enter. Runs after the party migration so a freshly party-migrated
+  // save is also world-migrated; new saves created later start locked.
+  try {
+    await migrateWorldSave();
+  } catch (err) {
+    console.warn('game-worker: world save migration failed; saves will clamp on load.', err);
   }
 
   const options = await readOptionsRecord();
@@ -338,13 +352,17 @@ async function handleSelectTower(payload = {}) {
     current_floor: 1,
     levelKeys: {},
     springCharges: {},
+    // Entering a tower leaves the overworld scene pointer behind (LIV-55 P4).
+    scene: null,
     saveVersion: SAVE_FORMAT_VERSION,
   });
-  // Campaign gate: a tower is only enterable once its prerequisites are
-  // complete. Completed towers stay replayable; locked ones are rejected even
-  // if a caller bypasses the picker.
-  if (!isTowerUnlocked(player.towerProgress, towerId)) {
-    throw new Error(`Tower '${towerId}' is locked — clear the previous tower first.`);
+  // Campaign gate: a tower is only enterable once its `accessGate`/campaign
+  // prerequisites are satisfied (LIV-55 D7). This is the authoritative check —
+  // it rejects a caller that bypasses the picker, including a quest-locked
+  // Spire of Light. Completed towers stay replayable.
+  const access = evaluateTowerAccess(player, towerId);
+  if (!access.unlocked) {
+    throw new Error(`Tower '${towerId}' is locked — its access gate is not yet satisfied.`);
   }
   const floor = generateFloor(1, null, towerId, partySizeOf(player));
   floor.slotIndex = slotIndex;
@@ -529,6 +547,7 @@ async function handleDeleteSlot(payload = {}) {
     await deleteRecord(STORES.CHARACTERS, slot.characterId);
   }
   await deleteRecord(STORES.SAVE_SLOTS, slotId(slotIndex));
+  await deleteRecord(STORES.SLOT_SCENES, slotIndex);
 
   const floors = await getAll(STORES.SLOT_FLOORS);
   for (const floor of floors || []) {
@@ -703,6 +722,14 @@ async function handleSaveCharacter(payload = {}) {
 
   if (player.slotIndex) {
     await refreshSlot(player.slotIndex, player, null, player.lastPlayedAt || savedAt);
+    // Mirror the overworld scene pointer into the per-slot store (LIV-55 P4).
+    await put(STORES.SLOT_SCENES, {
+      slotIndex: player.slotIndex,
+      sceneId: (player.scene && player.scene.sceneId) || null,
+      spawn: (player.scene && player.scene.spawn) || null,
+      towerId: player.towerId || null,
+      updatedAt: savedAt,
+    });
   }
 
   return { success: true, savedAt };
@@ -845,9 +872,11 @@ async function handleResetProgress() {
   await clearStore(STORES.DUNGEON_FLOORS);
   await clearStore(STORES.SAVE_SLOTS);
   await clearStore(STORES.SLOT_FLOORS);
+  await clearStore(STORES.SLOT_SCENES);
   await deleteRecord(STORES.GAME_SETTINGS, MIGRATION_GUARD_KEY);
   await deleteRecord(STORES.GAME_SETTINGS, TOWER_MIGRATION_GUARD_KEY);
   await deleteRecord(STORES.GAME_SETTINGS, PARTY_MIGRATION_GUARD_KEY);
+  await deleteRecord(STORES.GAME_SETTINGS, WORLD_MIGRATION_GUARD_KEY);
   await deleteRecord(STORES.GAME_SETTINGS, LAST_PLAYED_KEY);
 
   return { success: true };

@@ -14,7 +14,9 @@
 
 import {
   LightingSystem,
-  isTowerUnlocked,
+  evaluateTowerAccess,
+  evaluateSceneGate,
+  sceneGateAt,
   findInteractableNpc,
   spawnNpcsForScene,
   NPC_INTERACT_RADIUS,
@@ -26,6 +28,8 @@ import {
   ensureQuestState,
   getQuestStatus,
   getObjectiveCount,
+  canAcceptQuest,
+  canTurnIn,
 } from '../engine/index.js';
 import {
   UI_CATALOG,
@@ -34,6 +38,7 @@ import {
   ITEMS_CATALOG,
   getDialogueDefinition,
   getQuestDefinition,
+  listQuestDefinitions,
 } from '../data/index.js';
 import { planSceneMonsters, makeSceneMonster } from '../services/scene-spawner.js';
 import { soundFX } from '../audio/index.js';
@@ -100,6 +105,8 @@ export const sceneControllerMethods = {
     this.currentFloorName = scene.name || 'The World';
 
     this.gridMap.loadFromMatrix(scene.tiles);
+    // Re-apply any scene gate whose quest has since been turned in (LIV-55 P4).
+    this.syncSceneGates(scene);
 
     // Scenes carry no tower floor systems.
     this.stairs = [];
@@ -140,16 +147,68 @@ export const sceneControllerMethods = {
     // LIV-60 P2: neutral NPCs. P3: quest ground items (fetch) + visible roaming
     // monsters (kill objectives) from the authored spawn zones/elites.
     this.npcs = typeof spawnNpcsForScene === 'function' ? spawnNpcsForScene(scene) : [];
+    this.refreshQuestMarkers();
     this.spawnSceneGroundItems(scene);
     this.spawnSceneMonsters(scene);
     this.updateInteractPrompt();
 
     // `reach` objectives resolve on scene entry and every subsequent step.
     if (this.player) {
+      this.player.scene = { sceneId: scene.sceneId, spawn: { x: this.player.x, y: this.player.y } };
       this.fireQuestEvent({ type: 'reach', sceneId: scene.sceneId, x: this.player.x, y: this.player.y });
     }
 
     if (typeof this.updateHUD === 'function') this.updateHUD();
+  },
+
+  /**
+   * Opens every scene gate whose `accessGate` is already satisfied (LIV-55 P4).
+   * Runs on scene load so a gate the player unlocked last visit renders open
+   * without a re-trigger. No-op when the scene authors no gates.
+   * @param {object} scene
+   */
+  syncSceneGates(scene) {
+    const gates = scene && scene.gates;
+    if (!Array.isArray(gates) || !this.player) return;
+    for (const gate of gates) {
+      if (evaluateSceneGate(this.player, gate).open) this.setSceneGateTilesOpen(gate);
+    }
+  },
+
+  /** Marks every tile of `gate` open on the live grid (idempotent). */
+  setSceneGateTilesOpen(gate) {
+    for (const tile of gate?.tiles || []) {
+      const entry = this.gridMap?.getTile?.(tile[0], tile[1]);
+      if (entry) entry.gateOpen = true;
+    }
+  },
+
+  /**
+   * Walking into a scene gate tile (`GATED_DOOR`): open it when its quest gate
+   * is satisfied, otherwise show the authored locked prompt and block — never a
+   * silent soft-lock (LIV-55 P4). Returns true when the gate opened this step.
+   * @param {number} x
+   * @param {number} y
+   * @returns {boolean}
+   */
+  openSceneGateAt(x, y) {
+    if (!this.scene || !this.player) return false;
+    const gate = sceneGateAt(this.scene, x, y);
+    if (!gate) return false;
+    const state = evaluateSceneGate(this.player, gate);
+    if (state.open) {
+      this.setSceneGateTilesOpen(gate);
+      soundFX.play('keyJangle');
+      return true;
+    }
+    const key = `sceneGate:${x},${y}`;
+    if (this.stairHint !== key) {
+      this.stairHint = key;
+      this.logCombat(fmt(UI_CATALOG?.island?.tideGateLocked) || 'The way is sealed.', 'warning');
+      this.addFloatingText('SEALED', x, y, '#ef4444');
+      soundFX.play('uiBack');
+    }
+    return false;
   },
 
   /**
@@ -329,7 +388,7 @@ export const sceneControllerMethods = {
   async enterTowerFromScene(portal) {
     const towerId = portal?.towerId || portal?.target?.towerId || this.player?.towerId;
     if (!towerId) return;
-    if (!isTowerUnlocked(this.player?.towerProgress, towerId)) {
+    if (!evaluateTowerAccess(this.player, towerId).unlocked) {
       this.logCombat(fmt(UI_CATALOG?.island?.tideGateLocked) || 'The way is sealed.', 'warning');
       this.addFloatingText('SEALED', this.player.x, this.player.y, '#ef4444');
       soundFX.play('uiBack');
@@ -339,6 +398,7 @@ export const sceneControllerMethods = {
       const data = await this.gameClient.selectTower(this.player.slotIndex, towerId);
       this.player = data.player || this.player;
       this.scene = null;
+      this.player.scene = null;
       this.npcs = [];
       this.applyDungeonData(data.floor, { reviveDowned: true });
       LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
@@ -396,6 +456,7 @@ export const sceneControllerMethods = {
       }
     }
     if (typeof this.updateHUD === 'function') this.updateHUD();
+    this.refreshQuestMarkers();
     this.persistSave?.(false);
   },
 
@@ -433,6 +494,32 @@ export const sceneControllerMethods = {
         y: target.object.y,
         text: fmt(UI_CATALOG?.island?.interactExaminePrompt || 'Examine', { name: target.object.name }),
       };
+    }
+  },
+
+  /**
+   * Recomputes the quest marker (`available` | `turnin` | null) on every scene
+   * NPC from the live quest state (LIV-55 P5). Purely data-driven: each quest's
+   * `giverNpcId`/`turnInNpcId` is matched against the NPC's catalog id — no
+   * per-NPC JS branch.
+   */
+  refreshQuestMarkers() {
+    if (!Array.isArray(this.npcs) || !this.player) return;
+    ensureQuestState(this.player);
+    const state = this.player.questState;
+    const defs = listQuestDefinitions();
+    for (const npc of this.npcs) {
+      if (!npc) continue;
+      let marker = null;
+      for (const def of defs) {
+        if (def.turnInNpcId === npc.npcId && canTurnIn(state, def.id)) { marker = 'turnin'; break; }
+      }
+      if (!marker) {
+        for (const def of defs) {
+          if (def.giverNpcId === npc.npcId && canAcceptQuest(state, this.player, def.id).ok) { marker = 'available'; break; }
+        }
+      }
+      npc.questMarker = marker;
     }
   },
 
@@ -531,6 +618,7 @@ export const sceneControllerMethods = {
       const copy = UI_CATALOG?.quests || {};
       this.logCombat(fmt(copy.newQuestCue, { quest: getQuestDefinition(questId)?.name || questId }), 'spell');
       this.updateHUD();
+      this.refreshQuestMarkers();
       this.persistSave?.(false);
       if (context.dialogueId) {
         this.openDialogue(context.dialogueId, context);
@@ -548,6 +636,7 @@ export const sceneControllerMethods = {
       this.logCombat(fmt(copy.turnedInCue, { quest: getQuestDefinition(questId)?.name || questId }), 'spell');
       this.announceRewards(res.rewards);
       this.updateHUD();
+      this.refreshQuestMarkers();
       this.persistSave?.(false);
       if (context.dialogueId) {
         this.openDialogue(context.dialogueId, context);

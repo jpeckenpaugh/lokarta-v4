@@ -74,7 +74,7 @@ const MEMBER_EXCLUDED_KEYS = new Set([
   'slotId', 'slotIndex', 'saveVersion', 'playtimeMs',
   'createdAt', 'updatedAt', 'lastPlayedAt', 'floorEntry',
   // Shared run state (the whole party is on the same floor).
-  'current_floor', 'towerId', 'location', 'townVisits',
+  'current_floor', 'towerId', 'location', 'scene', 'townVisits',
   // Shared party backpack: one grid for the whole party (LIV-22).
   'backpack',
   // Shared party key ring: one earned-key store for the whole party (LIV-33).
@@ -461,18 +461,22 @@ export function cycleActiveMember(player, direction = 1) {
 }
 
 /**
- * Creates the default campaign progress: no towers completed and only the first
- * tower in campaign order unlocked.
+ * Creates the default campaign progress for a **new** save (LIV-55 D7): no
+ * towers completed and none unlocked. The Spire of Light starts locked behind
+ * its `accessGate`; the Q3 `unlock_tower` reward (or the legacy backfill in
+ * `migrateWorldSave`) is what opens it. See `engine/access-gate.js`.
  * @returns {{ completedTowerIds: string[], unlockedTowerIds: string[] }}
  */
 export function createTowerProgress() {
-  return { completedTowerIds: [], unlockedTowerIds: [firstTowerId()] };
+  return { completedTowerIds: [], unlockedTowerIds: [] };
 }
 
 /**
- * Normalizes campaign progress: filters to authored tower ids, always keeps the
- * first tower unlocked, and re-derives unlocks from completed towers using each
- * tower's catalog `unlockRequires`. Returns the original reference when clean.
+ * Normalizes campaign progress: filters to authored tower ids and re-derives
+ * unlocks from completed towers using each tower's catalog `unlockRequires`.
+ * A tower with an **empty** `unlockRequires` is *not* auto-unlocked — an
+ * authored `accessGate` (or an explicit `unlockedTowerIds` entry) governs it.
+ * Returns the original reference when clean.
  * @param {object|null} progress
  * @returns {{ completedTowerIds: string[], unlockedTowerIds: string[] }}
  */
@@ -481,11 +485,10 @@ export function normalizeTowerProgress(progress) {
   const completed = uniqueTowerIds(source.completedTowerIds);
 
   const unlockedSet = new Set(uniqueTowerIds(source.unlockedTowerIds));
-  unlockedSet.add(firstTowerId());
   for (const id of completed) unlockedSet.add(id);
   for (const towerId of authoredTowerIds()) {
     const requires = towerUnlockRequires(towerId);
-    if (requires.every((req) => completed.includes(req))) unlockedSet.add(towerId);
+    if (requires.length > 0 && requires.every((req) => completed.includes(req))) unlockedSet.add(towerId);
   }
   const unlocked = authoredTowerIds().filter((id) => unlockedSet.has(id));
 
@@ -498,6 +501,26 @@ export function normalizeTowerProgress(progress) {
     && progress.unlockedTowerIds.every((id, i) => id === unlocked[i]);
   if (clean) return progress;
   return { completedTowerIds: completed, unlockedTowerIds: unlocked };
+}
+
+/**
+ * Legacy Spire-unlock backfill (LIV-55 D8): a save written before the data-driven
+ * gate treated the first tower as always unlocked, so existing players could
+ * already enter the Spire. Add the first tower to `unlockedTowerIds` so a
+ * migrated veteran save never loses a tower it could previously enter. New
+ * saves are never backfilled (they are stamped at the current save format and
+ * start locked). Idempotent: an already-unlocked progress is returned as-is.
+ * @param {object|null} progress
+ * @returns {{ completedTowerIds: string[], unlockedTowerIds: string[] }}
+ */
+export function backfillLegacyTowerProgress(progress) {
+  const normalized = normalizeTowerProgress(progress);
+  const first = firstTowerId();
+  if (!first || normalized.unlockedTowerIds.includes(first)) return normalized;
+  return normalizeTowerProgress({
+    completedTowerIds: [...normalized.completedTowerIds],
+    unlockedTowerIds: [...normalized.unlockedTowerIds, first],
+  });
 }
 
 /** True when `towerId` is currently unlocked in `progress`. */
@@ -536,7 +559,8 @@ export function completeTower(progress, towerId) {
  *   - a legacy single-character save is wrapped into a one-member party with the
  *     top-level state preserved exactly (level, xp, inventory, gold, keys,
  *     spring charges, ...);
- *   - `towerProgress` is initialized with only the first tower unlocked.
+ *   - `towerProgress` is normalized (a new save starts with nothing unlocked;
+ *     `migrateWorldSave` backfills legacy saves so the Spire stays enterable).
  *
  * Returns the original reference when no field needs changing.
  * @param {object|null} player

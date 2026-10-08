@@ -13,12 +13,12 @@ import {
   normalizeSlotPartyProgress,
   migratePlayerToTower,
 } from './save-slots.js';
-import { migratePlayerParty } from '../engine/party.js';
+import { migratePlayerParty, backfillLegacyTowerProgress } from '../engine/party.js';
 import { LOKARTA_DATABASE_NAMES } from './build-version.js';
 
 /** Single source of truth is the flush guard's database-name list. */
 export const DB_NAME = LOKARTA_DATABASE_NAMES[0];
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 
 export const STORES = {
   PROFILE: 'profile',
@@ -27,6 +27,7 @@ export const STORES = {
   GAME_SETTINGS: 'game_settings',
   SAVE_SLOTS: 'save_slots',
   SLOT_FLOORS: 'slot_floors',
+  SLOT_SCENES: 'slot_scenes',
 };
 
 export const MIGRATION_GUARD_KEY = 'migration_slot_v2';
@@ -46,6 +47,15 @@ export const TOWER_MIGRATION_GUARD_KEY = 'migration_tower_v3';
  * and spring charges are preserved and floor caches are left alone.
  */
 export const PARTY_MIGRATION_GUARD_KEY = 'migration_party_v4';
+
+/**
+ * One-time guard for the Island 1 world migration (LIV-55 P4, D7/D8). When
+ * absent, every persisted character/slot is stamped at the current save format
+ * and **legacy saves are backfilled as already Spire-unlocked** so no veteran
+ * loses a tower they could enter; new saves created at the current format stay
+ * locked. Idempotent: reruns after the guard exists are no-ops.
+ */
+export const WORLD_MIGRATION_GUARD_KEY = 'migration_world_v5';
 
 let dbInstance = null;
 
@@ -106,6 +116,11 @@ export function openStorage() {
       // 6. Slot floors store: per-slot cached floor states, keyed [slotIndex, floor_number] (v2)
       if (!db.objectStoreNames.contains(STORES.SLOT_FLOORS)) {
         db.createObjectStore(STORES.SLOT_FLOORS, { keyPath: ['slotIndex', 'floor_number'] });
+      }
+
+      // 7. Slot scenes store: per-slot overworld scene pointer (v3, LIV-55 P4)
+      if (!db.objectStoreNames.contains(STORES.SLOT_SCENES)) {
+        db.createObjectStore(STORES.SLOT_SCENES, { keyPath: 'slotIndex' });
       }
     };
 
@@ -535,4 +550,87 @@ export async function migratePartySave() {
   });
 
   return { recordsMigrated, recovered: false };
+}
+
+/**
+ * One-time world migration (LIV-55 P4, D7/D8): the data-driven Spire access
+ * gate makes new saves start **locked** (D7). Every save present the first time
+ * this migration runs predates the gate, so — idempotently — the first tower is
+ * **backfilled into `unlockedTowerIds`** (D8) so no veteran loses a tower they
+ * could previously enter. Slots and characters are stamped at the current save
+ * format and a `slot_scenes` pointer is initialized for occupied slots.
+ *
+ * New saves created at the current format are never backfilled (the guard is
+ * already set by the time they exist), so they correctly start locked.
+ * Idempotent via `WORLD_MIGRATION_GUARD_KEY`: reruns are no-ops.
+ *
+ * @returns {Promise<{ recordsMigrated: number, towersBackfilled: number, recovered: boolean }>}
+ */
+export async function migrateWorldSave() {
+  await openStorage();
+
+  const guard = await read(STORES.GAME_SETTINGS, WORLD_MIGRATION_GUARD_KEY);
+  if (guard && guard.done) {
+    return { recordsMigrated: 0, towersBackfilled: 0, recovered: false };
+  }
+
+  let recordsMigrated = 0;
+  let towersBackfilled = 0;
+  const migratedCharacters = new Map();
+
+  const characters = await getAll(STORES.CHARACTERS);
+  for (const character of characters || []) {
+    if (!character || typeof character !== 'object') continue;
+    const partyMigrated = migratePlayerParty(character);
+    // Backfill unconditionally: every save seen here predates the gate.
+    const backfilled = backfillLegacyTowerProgress(partyMigrated.towerProgress);
+    const backfilledChanged = backfilled !== partyMigrated.towerProgress;
+    let next = backfilledChanged ? { ...partyMigrated, towerProgress: backfilled } : partyMigrated;
+    if (backfilledChanged) towersBackfilled += 1;
+    const needsStamp = saveFormatVersion(character) !== SAVE_FORMAT_VERSION;
+    if (next !== character || needsStamp) {
+      next = { ...next, saveVersion: SAVE_FORMAT_VERSION };
+      await put(STORES.CHARACTERS, next);
+      recordsMigrated += 1;
+    }
+    if (next.id) migratedCharacters.set(next.id, next);
+  }
+
+  const slots = await getAll(STORES.SAVE_SLOTS);
+  for (const slot of slots || []) {
+    if (!slot || typeof slot !== 'object') continue;
+    const migratedCharacter = slot.characterId ? migratedCharacters.get(slot.characterId) : null;
+    let next = normalizeSlotPartyProgress(slot);
+    // Occupied slots mirror their character's backfilled progress.
+    if (next.status === 'occupied') {
+      const base = (migratedCharacter && migratedCharacter.towerProgress) || next.towerProgress;
+      const backfilled = backfillLegacyTowerProgress(base);
+      if (backfilled !== next.towerProgress) next = { ...next, towerProgress: backfilled };
+    }
+    const needsStamp = saveFormatVersion(slot) !== SAVE_FORMAT_VERSION;
+    if (next !== slot || needsStamp) {
+      await put(STORES.SAVE_SLOTS, { ...next, saveVersion: SAVE_FORMAT_VERSION });
+      recordsMigrated += 1;
+    }
+    if (next.status === 'occupied' && Number.isInteger(next.slotIndex)) {
+      const scene = migratedCharacter ? migratedCharacter.scene : null;
+      await put(STORES.SLOT_SCENES, {
+        slotIndex: next.slotIndex,
+        sceneId: (scene && scene.sceneId) || null,
+        spawn: (scene && scene.spawn) || null,
+        towerId: next.towerId || null,
+        updatedAt: now(),
+      });
+    }
+  }
+
+  await put(STORES.GAME_SETTINGS, {
+    key: WORLD_MIGRATION_GUARD_KEY,
+    done: true,
+    doneAt: now(),
+    recordsMigrated,
+    towersBackfilled,
+  });
+
+  return { recordsMigrated, towersBackfilled, recovered: false };
 }

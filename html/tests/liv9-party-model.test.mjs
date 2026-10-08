@@ -231,7 +231,9 @@ test('LIV-9 party model: members are catalog-shaped and one per vocation', () =>
   const player = createPartyPlayer('paladin');
   assert.equal(player.party.length, 1);
   assert.equal(player.activeMemberId, makeMemberId('paladin'));
-  assert.deepEqual(player.towerProgress.unlockedTowerIds, [firstTowerId()]);
+  // LIV-55 D7: a new save starts with nothing unlocked (the Spire is gated).
+  assert.deepEqual(player.towerProgress.unlockedTowerIds, []);
+  assert.equal(isTowerUnlocked(player.towerProgress, firstTowerId()), false);
   assert.deepEqual(partyVocationIds(player), ['paladin']);
 });
 
@@ -245,7 +247,9 @@ test('LIV-9 migration: legacy single-character save wraps without data loss', ()
   assert.equal(migrated.vocation, 'archer', 'top-level vocation preserved');
   assert.equal(migrated.party.length, 1);
   assert.equal(migrated.activeMemberId, makeMemberId('archer'));
-  assert.deepEqual(migrated.towerProgress, { completedTowerIds: [], unlockedTowerIds: [firstTowerId()] });
+  // The party wrap only normalizes progress; the legacy Spire-unlock backfill is
+  // a separate world migration (`migrateWorldSave`, LIV-55 D8).
+  assert.deepEqual(migrated.towerProgress, { completedTowerIds: [], unlockedTowerIds: [] });
 
   const member = migrated.party[0];
   assert.equal(member.faction, PARTY_FACTION);
@@ -289,7 +293,7 @@ test('LIV-9 migration: already-party saves are normalized and repaired', () => {
   assert.equal(cleaned.party.length, 1, 'malformed members are dropped');
   assert.equal(cleaned.party[0].vocation, 'paladin');
   assert.equal(cleaned.activeMemberId, makeMemberId('paladin'));
-  assert.deepEqual(cleaned.towerProgress.unlockedTowerIds, [firstTowerId()]);
+  assert.deepEqual(cleaned.towerProgress.unlockedTowerIds, []);
 });
 
 test('LIV-9 party model: capture/apply keeps the active member in sync', () => {
@@ -321,12 +325,13 @@ test('LIV-9 party model: capture/apply keeps the active member in sync', () => {
   assert.equal(activeMemberIndex({ party: [] }), -1);
 });
 
-test('LIV-9 towerProgress: first tower only, unlocks follow completion', () => {
+test('LIV-9 towerProgress: new saves start locked; unlocks follow completion', () => {
   const ordered = listTowerDefinitionsByOrder();
   const progress = createTowerProgress();
-  assert.deepEqual(progress.unlockedTowerIds, [firstTowerId()]);
+  // LIV-55 D7: the Spire is quest-gated, so a fresh save has nothing unlocked.
+  assert.deepEqual(progress.unlockedTowerIds, []);
   assert.equal(normalizeTowerProgress(progress), progress, 'clean progress is a reference no-op');
-  assert.equal(isTowerUnlocked(progress, firstTowerId()), true);
+  assert.equal(isTowerUnlocked(progress, firstTowerId()), false);
   assert.equal(isTowerUnlocked(progress, ordered[1].id), false);
   assert.equal(allTowersCompleted(progress), false);
 
@@ -361,7 +366,7 @@ test('LIV-9 persistence: createSlot/saveCharacter/loadSlot round-trip the party'
   const created = await COMMAND_HANDLERS.createSlot({ slotIndex: 1, vocation: 'magician' });
   assert.equal(created.player.party.length, 1);
   assert.equal(created.player.party[0].faction, PARTY_FACTION);
-  assert.deepEqual(created.player.towerProgress.unlockedTowerIds, [firstTowerId()]);
+  assert.deepEqual(created.player.towerProgress.unlockedTowerIds, []);
   assert.equal(created.player.party[0].x, created.player.x, 'member mirrors the spawn tile');
 
   created.player.hp = 17;
@@ -373,15 +378,15 @@ test('LIV-9 persistence: createSlot/saveCharacter/loadSlot round-trip the party'
   assert.equal(stored.party.length, 2, 'the whole party persists');
   assert.equal(stored.party[0].hp, 17, 'capture mirrors the live active member');
   assert.equal(stored.party[0].xp, 321);
-  assert.deepEqual(stored.towerProgress.unlockedTowerIds, [firstTowerId()]);
+  assert.deepEqual(stored.towerProgress.unlockedTowerIds, []);
 
   const loaded = await COMMAND_HANDLERS.loadSlot({ slotIndex: 1 });
   assert.equal(loaded.player.party.length, 2);
   assert.equal(loaded.player.activeMemberId, makeMemberId('magician'));
-  assert.deepEqual(loaded.player.towerProgress.unlockedTowerIds, [firstTowerId()]);
+  assert.deepEqual(loaded.player.towerProgress.unlockedTowerIds, []);
 
   const meta = deriveSlotMeta(loaded.player, 1, loaded.floor.biome_name);
-  assert.deepEqual(meta.towerProgress.unlockedTowerIds, [firstTowerId()]);
+  assert.deepEqual(meta.towerProgress.unlockedTowerIds, []);
 });
 
 test('LIV-9 migration: migratePartySave wraps legacy saves and is idempotent', async (t) => {
@@ -406,7 +411,7 @@ test('LIV-9 migration: migratePartySave wraps legacy saves and is idempotent', a
   const character = await read(STORES.CHARACTERS, 'char_legacy');
   assert.equal(character.party.length, 1);
   assert.equal(character.activeMemberId, makeMemberId('archer'));
-  assert.deepEqual(character.towerProgress, { completedTowerIds: [], unlockedTowerIds: [firstTowerId()] });
+  assert.deepEqual(character.towerProgress, { completedTowerIds: [], unlockedTowerIds: [] });
   assert.deepEqual(character.levelKeys, LEGACY_PLAYER.levelKeys, 'keys survive migration on the shared party store');
   assert.equal(character.party[0].levelKeys, undefined, 'members carry no key ring of their own');
   assert.deepEqual(character.party[0].springCharges, LEGACY_PLAYER.springCharges, 'spring charges survive migration');
@@ -429,7 +434,7 @@ test('LIV-9 migration: legacy slot records gain towerProgress lazily', () => {
   };
   const normalized = normalizeSlotPartyProgress(legacySlot);
   assert.notEqual(normalized, legacySlot);
-  assert.deepEqual(normalized.towerProgress.unlockedTowerIds, [firstTowerId()]);
+  assert.deepEqual(normalized.towerProgress.unlockedTowerIds, []);
   assert.equal(normalizeSlotPartyProgress(normalized), normalized, 'already-normalized slot is a reference no-op');
 
   const empty = { id: 'slot_3', slotIndex: 3, status: 'empty' };

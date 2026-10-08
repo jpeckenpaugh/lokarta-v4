@@ -24,4 +24,5 @@ export * from './stair-system.js';
 export * from './fate-grant-system.js';
 export * from './gesture-engine.js';
 export * from './quest-system.js';
+export * from './access-gate.js';
 export * from './npc-system.js';

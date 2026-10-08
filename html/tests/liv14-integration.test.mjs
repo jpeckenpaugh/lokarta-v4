@@ -92,11 +92,15 @@ test('LIV-14 integration: one-member party ascends every tower, recruiting one p
   const player = createPartyPlayer('magician');
   player.towerId = firstTowerId();
 
-  // Only the first tower is available at campaign start.
+  // LIV-55 D7: a new save starts locked; the Spire unlocks when Q3 completes.
   assert.deepEqual(player.towerProgress.completedTowerIds, []);
-  assert.deepEqual(player.towerProgress.unlockedTowerIds, [firstTowerId()]);
+  assert.deepEqual(player.towerProgress.unlockedTowerIds, []);
+  assert.equal(isTowerUnlocked(player.towerProgress, firstTowerId()), false);
   assert.equal(isTowerUnlocked(player.towerProgress, ordered[1].id), false);
   assert.deepEqual(towerUnlockInfo(player.towerProgress, ordered[1].id).requires, [ordered[0].id]);
+
+  // Simulate Elder Rowan's Q3 turn-in opening the Tide Gate (unlock_tower).
+  player.towerProgress = { completedTowerIds: [], unlockedTowerIds: [firstTowerId()] };
 
   for (let i = 0; i < ordered.length; i++) {
     const tower = ordered[i];
@@ -200,7 +204,7 @@ test('LIV-14 integration: the worker campaign pipeline persists party, unlocks a
 
     let stored = await read(STORES.CHARACTERS, 'char_slot_1');
     assert.equal(stored.party.length, 1, 'every save is a party save');
-    assert.deepEqual(stored.towerProgress.unlockedTowerIds, [firstTowerId()]);
+    assert.deepEqual(stored.towerProgress.unlockedTowerIds, []);
 
     // Criterion 7: a later tower is rejected before its prerequisite clears.
     await assert.rejects(
@@ -269,7 +273,7 @@ test('LIV-14 integration: a legacy single-character save migrates to a one-membe
   assert.deepEqual(migrated.levelKeys, { 1: { copper: true } }, 'keys live on the shared party store');
   assert.equal(migrated.party[0].levelKeys, undefined, 'keys are party-shared, not per member');
   assert.equal(migrated.activeMemberId, migrated.party[0].memberId);
-  assert.deepEqual(migrated.towerProgress.unlockedTowerIds, [firstTowerId()]);
+  assert.deepEqual(migrated.towerProgress.unlockedTowerIds, []);
   assert.equal(migratePlayerParty(migrated), migrated, 'migration is idempotent');
 });
 
