@@ -26,3 +26,4 @@ export * from './gesture-engine.js';
 export * from './quest-system.js';
 export * from './access-gate.js';
 export * from './npc-system.js';
+export * from './return-spot.js';

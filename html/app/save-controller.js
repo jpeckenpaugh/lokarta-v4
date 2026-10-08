@@ -471,6 +471,9 @@ export const saveControllerMethods = {
     this.location = 'town';
     // Refresh the floor-entry snapshot so re-entry lands on the entry floor.
     this.player.floorEntry = snapshotFloorEntry(this.player);
+    // A wipe also exits the tower to town, so arm the return spot (LIV-75) on
+    // the entry floor the Temple returns the party to.
+    this.rememberTowerExit?.();
 
     try {
       await this.persistSave(true);

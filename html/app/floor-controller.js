@@ -11,6 +11,8 @@ import {
   recruitableVocations,
   ReviveSystem,
   FateGrantSystem,
+  setReturnSpot,
+  clearReturnSpot,
 } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
 import { TOWER_LEVEL_COUNT, getTowerLevelCount } from '../services/floor-generator.js';
@@ -323,6 +325,7 @@ export const floorControllerMethods = {
       onContinue: () => this.promptRecruit(data),
       onReturnToTown: () => {
         this.isFloorCleared = false;
+        this.rememberTowerExit();
         this.enterScene(DEFAULT_TOWN_ID);
       },
     });
@@ -354,6 +357,7 @@ export const floorControllerMethods = {
     } catch (err) {
       console.error('Recruit error:', err);
       this.isFloorCleared = false;
+      this.rememberTowerExit();
       this.enterScene(DEFAULT_TOWN_ID);
       return;
     }
@@ -366,6 +370,7 @@ export const floorControllerMethods = {
   async proceedToNextTower(nextTowerId) {
     this.isFloorCleared = false;
     if (!nextTowerId || nextTowerId === this.player?.towerId) {
+      this.rememberTowerExit();
       this.enterScene(DEFAULT_TOWN_ID);
       return;
     }
@@ -526,9 +531,61 @@ export const floorControllerMethods = {
     this.updateHUD();
     this.persistSave();
   },
+  /**
+   * Remembers the tower + floor the player is leaving so the town return spot
+   * (LIV-75) can re-enter it. Persisted on the shared run envelope; a no-op when
+   * the active tower/floor is invalid (never records junk).
+   */
+  rememberTowerExit() {
+    const towerId = this.towerId || this.player?.towerId || null;
+    const floor = this.player?.current_floor;
+    if (setReturnSpot(this.player, towerId, floor)) {
+      this.persistSave?.(false);
+    }
+  },
+  /**
+   * Town return spot (LIV-75): re-enters the last-exited tower/floor through the
+   * data-driven town teleporter. Reuses the existing tower-entry path (worker
+   * access gate + `applyDungeonData` + `enterTower`). On any failure the spot is
+   * cleared and the player stays in town — never a soft-lock.
+   * @returns {Promise<boolean>} true when the tower was entered
+   */
+  async returnToTower() {
+    const spot = this.returnSpot;
+    if (!spot || this._returningToTower) return false;
+    const slotIndex = this.player?.slotIndex;
+    if (!slotIndex) return false;
+    this._returningToTower = true;
+    // Consume the spot immediately so a mid-transition tick cannot re-fire it.
+    this.returnSpot = null;
+    try {
+      const data = await this.gameClient.enterTowerFloor(slotIndex, spot.towerId, spot.floor);
+      this.player = data.player || this.player;
+      this.scene = null;
+      this.player.scene = null;
+      this.npcs = [];
+      this.applyDungeonData(data.floor, { reviveDowned: false });
+      LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
+      this.updateHUD();
+      await this.persistSave(true);
+      this.enterTower();
+      return true;
+    } catch (err) {
+      console.error('Tower return error:', err);
+      // The remembered tower is no longer enterable: hide the spot and keep the
+      // player in town rather than leaving a dead teleporter on the ground.
+      clearReturnSpot(this.player);
+      this.logCombat('The return gate is sealed — that tower cannot be entered yet.', 'warning');
+      this.persistSave?.(false);
+      return false;
+    } finally {
+      this._returningToTower = false;
+    }
+  },
   /** Leave the tower and return to the walkable Havenreach town scene. */
   leaveTower() {
     if (!this.isInGameplay) return;
+    this.rememberTowerExit();
     this.player.location = 'town';
     this.transition.run('townVisit', () => this.enterScene(DEFAULT_TOWN_ID));
   }

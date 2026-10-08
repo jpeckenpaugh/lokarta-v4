@@ -47,6 +47,12 @@
         "x": 12,
         "y": 21
       },
+      "returnSpot": {
+        "x": 13,
+        "y": 22,
+        "name": "Tower Return",
+        "promptText": "Return to the Tower"
+      },
       "portals": [
         {
           "id": "to_island",

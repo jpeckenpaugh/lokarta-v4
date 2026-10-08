@@ -75,6 +75,9 @@ const MEMBER_EXCLUDED_KEYS = new Set([
   'createdAt', 'updatedAt', 'lastPlayedAt', 'floorEntry',
   // Shared run state (the whole party is on the same floor).
   'current_floor', 'towerId', 'location', 'scene', 'townVisits',
+  // Last-exited tower/floor for the town return spot (LIV-75): envelope state,
+  // never swapped per member.
+  'lastTowerExit',
   // Shared party backpack: one grid for the whole party (LIV-22).
   'backpack',
   // Shared party key ring: one earned-key store for the whole party (LIV-33).

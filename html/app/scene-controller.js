@@ -30,6 +30,7 @@ import {
   getObjectiveCount,
   canAcceptQuest,
   canTurnIn,
+  resolveReturnSpot,
 } from '../engine/index.js';
 import {
   UI_CATALOG,
@@ -66,6 +67,15 @@ const BUILDING_INTERACTION_HANDLERS = {
 const PORTAL_HANDLERS = {
   scene: (app, portal) => app.enterScene(portal.target?.sceneId, portal.target?.spawn || null),
   tower: (app, portal) => app.enterTowerFromScene(portal),
+};
+
+/**
+ * Scene world-object action dispatch table (`interactables[].action`). Lets a
+ * catalog-placed object run a direct action instead of opening a dialogue —
+ * adding one is a catalog value plus one entry here (LIV-75 return spot).
+ */
+const SCENE_OBJECT_ACTION_HANDLERS = {
+  return_to_tower: (app) => app.returnToTower(),
 };
 
 /**
@@ -166,6 +176,7 @@ export const sceneControllerMethods = {
     this.refreshQuestMarkers();
     this.spawnSceneGroundItems(scene);
     this.spawnSceneMonsters(scene);
+    this.activateReturnSpot(scene);
     this.updateInteractPrompt();
 
     // `reach` objectives resolve on scene entry and every subsequent step.
@@ -284,6 +295,43 @@ export const sceneControllerMethods = {
     });
     this.monsters = plan.map((spawn) => this.buildSceneMonster(spawn));
     this._sceneMonsterSeq = plan.length;
+  },
+
+  /**
+   * Activates the town return spot (LIV-75) from the scene's authored placement
+   * plus the player's persisted last-exited tower/floor. Only engages when both
+   * a valid exit record and a placed spot exist, so the teleporter never appears
+   * without somewhere to go. The runtime object joins `scene.interactables` so
+   * the existing prompt/tap/interact plumbing reaches it, and a walk-on check in
+   * the movement path fires it too. Data-driven: placement comes from towns.json.
+   * @param {object} scene
+   */
+  activateReturnSpot(scene) {
+    this.returnSpot = null;
+    const exit = resolveReturnSpot(this.player);
+    const placement = scene && scene.returnSpot;
+    if (!exit || !placement) return;
+    if (!Number.isInteger(placement.x) || !Number.isInteger(placement.y)) return;
+    const spot = {
+      towerId: exit.towerId,
+      floor: exit.floor,
+      x: placement.x,
+      y: placement.y,
+      name: placement.name || 'Tower Return',
+      promptText: placement.promptText || placement.name || 'Return to the Tower',
+    };
+    this.returnSpot = spot;
+    if (Array.isArray(this.scene.interactables)) {
+      this.scene.interactables.push({
+        kind: 'object',
+        id: 'tower_return_spot',
+        name: spot.name,
+        promptText: spot.promptText,
+        action: 'return_to_tower',
+        x: spot.x,
+        y: spot.y,
+      });
+    }
   },
 
   /**
@@ -517,7 +565,8 @@ export const sceneControllerMethods = {
       this.interactPromptTarget = {
         x: target.object.x,
         y: target.object.y,
-        text: fmt(UI_CATALOG?.island?.interactExaminePrompt || 'Examine', { name: target.object.name }),
+        text: target.object.promptText
+          || fmt(UI_CATALOG?.island?.interactExaminePrompt || 'Examine', { name: target.object.name }),
       };
     }
   },
@@ -606,9 +655,16 @@ export const sceneControllerMethods = {
     return this.openNpcDialogue(npc) !== false;
   },
 
-  /** Opens a scene object's world-prompt dialogue (e.g. the Drowned Shrine). */
+  /**
+   * Runs a scene object's direct action (e.g. the return spot) when it declares
+   * one, otherwise opens its world-prompt dialogue (e.g. the Drowned Shrine).
+   */
   interactWithSceneObject(entry) {
     if (!entry) return false;
+    if (entry.action) {
+      const handler = SCENE_OBJECT_ACTION_HANDLERS[entry.action];
+      if (handler) return handler(this) !== false;
+    }
     const dialogueId = entry.promptKey || entry.dialogueId || entry.interaction?.dialogueId;
     if (!dialogueId) return false;
     return this.openDialogue(dialogueId, {

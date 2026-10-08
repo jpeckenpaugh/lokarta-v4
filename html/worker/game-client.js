@@ -218,6 +218,18 @@ export class GameClient {
   }
 
   /**
+   * Re-enters the tower/floor the player last exited (LIV-75 town return spot).
+   * Applies the same access gate as `selectTower` but lands on `floorNumber`.
+   * @param {number} slotIndex
+   * @param {string} towerId
+   * @param {number} floorNumber
+   * @returns {Promise<{ player: object, floor: object, slot: object }>}
+   */
+  async enterTowerFloor(slotIndex, towerId, floorNumber) {
+    return this.request('enterTowerFloor', { slotIndex, towerId, floorNumber });
+  }
+
+  /**
    * Records a tower completion for an occupied slot and unlocks the next tower
    * in campaign order.
    * @param {number} slotIndex

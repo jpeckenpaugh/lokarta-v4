@@ -389,6 +389,71 @@ async function handleSelectTower(payload = {}) {
 }
 
 /**
+ * Re-enters the tower/floor the player last exited (LIV-75 town return spot).
+ * Mirrors `handleSelectTower`'s authoritative access gate but lands on the
+ * requested floor instead of level 1 and preserves the run's earned keys, so a
+ * return can never soft-lock behind a gate already opened. Rejects a locked
+ * tower so the caller can hide the spot rather than strand the player.
+ * @param {{ slotIndex: number, towerId: string, floorNumber?: number }} payload
+ * @returns {Promise<{ player: object, floor: object, slot: object }>}
+ */
+async function handleEnterTowerFloor(payload = {}) {
+  const slotIndex = clampSlotIndex(payload.slotIndex);
+  const towerId = resolveTowerId(payload.towerId);
+  await openStorage();
+
+  const slot = await read(STORES.SAVE_SLOTS, slotId(slotIndex));
+  if (!slot || slot.status !== 'occupied' || !slot.characterId) {
+    throw new Error(`Slot ${slotIndex} is empty.`);
+  }
+  const stored = await read(STORES.CHARACTERS, slot.characterId);
+  if (!stored) {
+    throw new Error(`Could not load Slot ${slotIndex}. Try again.`);
+  }
+
+  const floorNumber = clampFloor(payload.floorNumber, towerId);
+  const player = migratePlayerParty({
+    ...stored,
+    towerId,
+    current_floor: floorNumber,
+    // Returning to the tower leaves the overworld scene pointer behind.
+    scene: null,
+    saveVersion: SAVE_FORMAT_VERSION,
+  });
+  // Same authoritative gate as the picker: a caller cannot bypass it, including
+  // a stale return spot pointing at a tower that has since locked.
+  const access = evaluateTowerAccess(player, towerId);
+  if (!access.unlocked) {
+    throw new Error(`Tower '${towerId}' is locked — its access gate is not yet satisfied.`);
+  }
+
+  const floor = await loadOrGenerateSlotFloor(slotIndex, floorNumber, towerId, false, partySizeOf(player));
+  // Land at the floor's start (its entrance / arrival from below). Earned keys
+  // are preserved on the player and reopened by `DoorSystem.syncPlayerGates`
+  // when the floor loads, so a re-entry never soft-locks behind a spent gate.
+  const start = floor.spawn_coords || floor.entrance;
+  if (start) {
+    player.x = start.x;
+    player.y = start.y;
+  }
+  player.slotId = slotId(slotIndex);
+  player.slotIndex = slotIndex;
+  player.floorEntry = snapshotFloorEntry(player);
+  const timestamp = now();
+  player.updatedAt = timestamp;
+  player.lastPlayedAt = timestamp;
+  captureActiveMember(player);
+
+  await put(STORES.CHARACTERS, player);
+  await put(STORES.SLOT_FLOORS, floor);
+  await put(STORES.DUNGEON_FLOORS, floor);
+  const updatedSlot = await refreshSlot(slotIndex, player, floor.biome_name, timestamp);
+  await writeLastPlayed(slotIndex);
+
+  return { player, floor, slot: updatedSlot || slot };
+}
+
+/**
  * Records a tower completion for an occupied slot: marks the tower in
  * `towerProgress.completedTowerIds`, unlocks the next tower in campaign order,
  * and persists. Non-terminal: the caller decides whether this was the final
@@ -946,6 +1011,7 @@ export const COMMAND_HANDLERS = {
   createSlot: handleCreateSlot,
   loadSlot: handleLoadSlot,
   selectTower: handleSelectTower,
+  enterTowerFloor: handleEnterTowerFloor,
   completeTower: handleCompleteTower,
   recruitMember: handleRecruitMember,
   deleteSlot: handleDeleteSlot,

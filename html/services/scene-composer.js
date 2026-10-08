@@ -188,6 +188,9 @@ export function composeScene(kind, def) {
     height,
     tiles,
     spawn: def.spawn ? { x: def.spawn.x, y: def.spawn.y } : { x: 1, y: 1 },
+    // Town return teleporter placement (LIV-75). Authored data only; the live
+    // spot is activated per save by the app when a last-exited tower exists.
+    returnSpot: def.returnSpot ? { ...def.returnSpot } : null,
     portals: (def.portals || []).map(copyPortal),
     interactables: interactablesFor(kind, def),
     gates: (def.gates || []).map((gate) => ({ ...gate, tiles: (gate.tiles || []).map((t) => [...t]) })),

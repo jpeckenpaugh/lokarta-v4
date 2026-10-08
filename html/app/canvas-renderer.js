@@ -476,6 +476,11 @@ export class CanvasRenderer {
       }
     }
 
+    // 1a-2. Town return spot (LIV-75): a glowing ground teleporter back to the
+    //       last-exited tower/floor. Data-placed; drawn only while the app
+    //       exposes an active spot, so an empty town has no marker.
+    if (this.returnSpot) this.drawReturnSpot(ctx, this.returnSpot);
+
     // 1b. Decor Layer (rugs): under ground items, so loot always draws on top.
     this.renderProps(ctx, props, 'decor', gridMap, clampStartX, clampEndX, clampStartY, clampEndY);
 
@@ -1121,6 +1126,49 @@ export class CanvasRenderer {
         CONFIG.GRID_SIZE
       );
     }
+  }
+
+  /**
+   * Draws the town return teleporter (LIV-75): a pulsing gold ground ring with a
+   * rising light beam. Reads `spot.x/y` (grid coords) and uses `globalAlpha` for
+   * the pulse so no per-frame strings are allocated.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {{x:number,y:number}} spot
+   */
+  drawReturnSpot(ctx, spot) {
+    const size = CONFIG.GRID_SIZE;
+    const sx = spot.x * size - this.cameraX;
+    const sy = spot.y * size - this.cameraY;
+    const cx = sx + size / 2;
+    const cy = sy + size / 2;
+    const now = this._now();
+    const pulse = 0.5 + 0.5 * Math.sin((now / 450) % 6.2831853);
+
+    ctx.save();
+    // Ground glow.
+    ctx.globalAlpha = 0.18 + 0.14 * pulse;
+    ctx.fillStyle = '#e5b95c';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + size * 0.12, size * 0.42, size * 0.24, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Ring.
+    ctx.globalAlpha = 0.55 + 0.35 * pulse;
+    ctx.strokeStyle = '#f6d98a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + size * 0.12, size * 0.30, size * 0.17, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    // Rising beam.
+    ctx.globalAlpha = 0.22 + 0.22 * pulse;
+    ctx.fillStyle = '#ffe9a8';
+    ctx.fillRect(cx - size * 0.09, sy + size * 0.08, size * 0.18, size * 0.74);
+    // Core.
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = '#fff6d5';
+    ctx.beginPath();
+    ctx.arc(cx, cy + size * 0.10, size * 0.09 + size * 0.02 * pulse, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
   renderProjectiles(ctx, projectiles) {

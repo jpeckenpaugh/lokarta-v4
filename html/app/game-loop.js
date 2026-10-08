@@ -733,6 +733,8 @@ export const gameLoopMethods = {
     // Neutral NPCs + the interaction prompt target for this frame (LIV-60 P2).
     this.renderer.npcs = Array.isArray(this.npcs) ? this.npcs : null;
     this.renderer.interactPrompt = this.interactPromptTarget || null;
+    // Active town return spot (LIV-75) for the ground teleporter marker.
+    this.renderer.returnSpot = this.returnSpot || null;
     this.renderer.render(
       this.gridMap,
       this.player,
@@ -894,6 +896,13 @@ export const gameLoopMethods = {
       // `reach` objectives fire on every tile entry (LIV-60 P3).
       this.fireQuestEvent({ type: 'reach', sceneId: this.scene.sceneId, x: this.player.x, y: this.player.y });
       this.updateInteractPrompt();
+      // Town return spot (LIV-75): stepping onto the teleporter re-enters the
+      // last-exited tower/floor. A deliberate walk-on (never the arrival tile),
+      // so returning to town does not immediately re-fire it.
+      if (this.returnSpot && this.player.x === this.returnSpot.x && this.player.y === this.returnSpot.y) {
+        this.returnToTower();
+        return true;
+      }
       // Walk-up/adjacency story beats (LIV-71), e.g. the Drowned Shrine auto-
       // triggering its rite. Fires once per approach; a fire halts the step.
       if (this.tryAutoTriggerSceneObjects()) return true;
