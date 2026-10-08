@@ -115,7 +115,7 @@
     "reviveStartCue": "Reviving {member}...",
     "reviveCompleteCue": "{member} is revived!",
     "reviveInterruptedCue": "The revive is interrupted.",
-    "selfReviveCue": "{member} steadies themselves.",
+    "autoReviveCue": "{member} pulls themselves back up.",
     "handoffCue": "Control passes to {member}.",
     "partyWipeTitle": "THE LIGHT FAILS",
     "partyWipeBody": "The last of your party falls on Floor {floor}. The Temple of the Dawn draws you back and restores you at the tower gate.",
@@ -173,6 +173,56 @@
       "sfx": {
         "koHandoff": "koHandoff",
         "controlSwap": "controlSwap"
+      }
+    },
+    "autoRevive": {
+      "description": "Time-based auto-revive countdown (LIV-51, LIV-41 plan rev 2). A downed member's per-member timer (party_ai.json.revive.autoRevive -> secs[downCount-1], capSec) is drawn as a countdown ring on the body. Data-only geometry + palette: the renderer reads each downed member's `autoReviveTotalSec` (the escalated window) and `autoReviveRemainingSec` (>= 0), so it never recomputes the schedule. The remaining fraction is autoReviveRemainingSec / autoReviveTotalSec: the sweep starts full and drains to empty, and the empty frame coincides with the revive. An ally revive cancels the pending timer, so the ring vanishes the instant a channel completes. `ring.startAngleDeg` (-90 = 12 o'clock) + `ring.sweepDir` fix the origin; `ring.tickMode: smooth` drains every frame with a once-per-second `beatHz` alpha emphasis, while `reducedMotion.tickMode: step` redraws only when the whole second changes. `numeric` prints ceil(seconds) just below the body (always on; it is the reduced-motion read). `pip` is the party-panel 'down #N' badge; its `colors` are indexed by downCount-1 and clamped to the last entry for 3rd+. This block layers over the E1 beacon (LIV-45): the ring draws first (closest to the body) on its opaque track so the beacon's expanding gold ring and the revive tether stay legible on top.",
+      "enabled": true,
+      "ring": {
+        "radiusTiles": 0.6,
+        "lineWidthPx": 4,
+        "trackColor": "#334155",
+        "trackAlpha": 0.85,
+        "sweepColor": "#fde68a",
+        "sweepCoreColor": "#fffbeb",
+        "sweepAlpha": 0.95,
+        "startAngleDeg": -90,
+        "sweepDir": "clockwise",
+        "lineCap": "round",
+        "tickMode": "smooth",
+        "beatHz": 1.0,
+        "beatMinAlpha": 0.7,
+        "completeFlashMs": 450,
+        "completeFlashColor": "#fffbeb"
+      },
+      "numeric": {
+        "show": true,
+        "format": "ceil",
+        "fontFamily": "monospace",
+        "fontSizePx": 16,
+        "fontWeight": 700,
+        "color": "#f8fafc",
+        "outlineColor": "#020617",
+        "outlineWidthPx": 2,
+        "offsetBelowTiles": 0.72
+      },
+      "pip": {
+        "diameterPx": 12,
+        "rimColor": "#020617",
+        "rimWidthPx": 1.5,
+        "colors": ["#fde68a", "#fb923c", "#ef4444"],
+        "labelMax": "3+",
+        "fontSizeRem": 0.52,
+        "textColor": "#020617",
+        "placement": "inlineAfterDownTag",
+        "flashOnDownMs": 400,
+        "beatHz": 1.0
+      },
+      "reducedMotion": {
+        "tickMode": "step",
+        "beatHz": 0,
+        "numericAlways": true,
+        "completeFlashMs": 0
       }
     }
   },

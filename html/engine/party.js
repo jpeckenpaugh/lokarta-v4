@@ -240,6 +240,11 @@ export function createPartyMember(vocation, overrides = {}) {
   member.downedAtSec = 0;
   member.downedFloor = Number(member.current_floor) > 0 ? Number(member.current_floor) : 1;
   member.reviveGraceSec = 0;
+  // LIV-52 auto-revive escalation: per-member down counter within the tower and
+  // the derived countdown window (stamped by `markDowned`, drained by the UI).
+  member.downCount = 0;
+  member.autoReviveTotalSec = 0;
+  member.autoReviveRemainingSec = 0;
   // The party shares one backpack (LIV-22) and one key ring (LIV-33) held on
   // the top-level player; a member never carries its own copy. The hotbar and
   // equipment stay per member.
@@ -305,6 +310,25 @@ function normalizeMember(member) {
   }
   if (!Number.isFinite(Number(out.reviveGraceSec))) {
     out.reviveGraceSec = 0;
+    changed = true;
+  }
+  // LIV-52 auto-revive escalation backfill. A pre-LIV-52 downed save has no
+  // `downCount`; treat it as the 1st down. The window is restamped on the next
+  // `markDowned`, so a stale `autoRevive*` is cleared here.
+  const rawDownCount = Math.floor(Number(out.downCount));
+  if (!Number.isFinite(rawDownCount) || rawDownCount < 0) {
+    out.downCount = downed ? 1 : 0;
+    changed = true;
+  } else if (downed && rawDownCount < 1) {
+    out.downCount = 1;
+    changed = true;
+  }
+  if (!Number.isFinite(Number(out.autoReviveTotalSec))) {
+    out.autoReviveTotalSec = 0;
+    changed = true;
+  }
+  if (!Number.isFinite(Number(out.autoReviveRemainingSec))) {
+    out.autoReviveRemainingSec = 0;
     changed = true;
   }
   return changed ? out : member;

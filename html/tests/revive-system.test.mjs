@@ -28,6 +28,9 @@ import {
   tickReviveChannel,
   evaluateParty,
   reviverChannelDamageReduction,
+  autoReviveSecForCount,
+  autoReviveRemainingSec,
+  resetAutoReviveCounts,
 } from '../engine/revive-system.js';
 import { CombatSystem } from '../engine/combat-system.js';
 import { createPartyPlayer, createPartyMember } from '../engine/party.js';
@@ -57,11 +60,20 @@ test('LIV-44 catalog schema: revive keys, revive sources, wipe + copy blocks', (
   for (const key of [
     'enabled', 'channelSec', 'cooldownSec', 'manaCost', 'hpPct', 'manaPct',
     'graceSec', 'idleSec', 'safetyRadius', 'interruptOnDamage', 'interruptOnMove',
-    'channelDecayMult', 'reviveOnFloorTransition', 'selfReviveSec',
-    'selfReviveHpPct', 'bleedOutSec', 'boss', 'potion',
+    'channelDecayMult', 'reviveOnFloorTransition', 'bleedOutSec', 'boss', 'potion',
+    'autoRevive',
   ]) {
     assert.ok(key in revive, `revive.${key} is part of the schema`);
   }
+  assert.equal(revive.selfReviveSec, undefined, 'the 45s self-stabilize net is retired (LIV-52)');
+  assert.equal(revive.selfReviveHpPct, undefined, 'the 45s self-stabilize restore is retired (LIV-52)');
+  assert.deepEqual(revive.autoRevive.secs, [10, 20, 30], 'escalating 10/20/30s schedule');
+  assert.equal(revive.autoRevive.capSec, 30);
+  assert.equal(revive.autoRevive.hpPct, 0.25, 'auto-revive restores >=25% HP');
+  assert.equal(revive.autoRevive.manaPct, 0.25, 'auto-revive restores >=25% MP');
+  assert.equal(revive.autoRevive.cancelledByAllyRevive, true);
+  assert.equal(revive.autoRevive.resetOnTowerReentry, true);
+  assert.equal(revive.autoRevive.runsDuringCombat, true);
   assert.equal(revive.bleedOutSec, 0, 'no hard death timer at launch');
   assert.equal(revive.safetyRadius, 8);
   assert.equal(revive.idleSec, 3.0);
@@ -85,7 +97,10 @@ test('LIV-44 config: baseline resolves and per-vocation overrides win', () => {
   assert.equal(base.hpPct, 0.3);
   assert.equal(base.manaPct, 0.25);
   assert.equal(base.graceSec, 1.0);
-  assert.equal(base.selfReviveSec, DEFAULT_REVIVE_CONFIG.selfReviveSec);
+  // LIV-52 auto-revive config resolves from the catalog (no self-stabilize net).
+  assert.deepEqual(base.autoRevive.secs, [10, 20, 30]);
+  assert.equal(base.autoRevive.capSec, DEFAULT_REVIVE_CONFIG.autoRevive.capSec);
+  assert.equal('selfReviveSec' in base, false, 'the retired net is gone from the resolved config');
 
   // LIV-45 E3 "Vigils": a vocation's partial override wins and untouched keys
   // still inherit the baseline (no per-class branches).
@@ -176,13 +191,13 @@ test('LIV-44 handoff: a downed active member passes control to a living ally', (
   assert.equal(wipe.handoff, null);
 });
 
-test('LIV-44 solo wipe is immediate: a lone hero never self-stabilizes', () => {
+test('LIV-44 solo wipe is immediate: a lone hero never auto-revives', () => {
   const solo = createPartyPlayer('magician');
   solo.hp = 0;
   solo.downedAtSec = 0;
   const res = evaluateParty(solo, { elapsedSec: 999, floor: 1, monsters: [], combatIdleSec: 0 });
   assert.equal(res.wiped, true);
-  assert.equal(res.events.some((e) => e.type === 'selfRevive'), false);
+  assert.equal(res.events.some((e) => e.type === 'autoRevive'), false, 'the timer never fires on a wipe');
 });
 
 test('LIV-44 revive start gate: safety radius AND damage idle', () => {
@@ -257,21 +272,139 @@ test('LIV-44 channel: damage / move / hostile re-entry interrupt and decay at 2x
   assert.ok(broken && broken.type === 'reviveInterrupted', 'a re-entering hostile breaks the channel');
 });
 
-test('LIV-44 self-stabilize: a resourceless member steadies at selfReviveSec', () => {
-  const downed = createPartyMember('archer', { x: 1, y: 1, hp: 0 });
-  downed.lifeState = 'downed';
-  downed.downedAtSec = 0;
-  const player = partyOf('magician', [downed]);
-  const cfg = resolveReviveConfig('archer');
+/** A party member created alive, then knocked down through the real seam. */
+function downMember(vocation, opts = {}, elapsedSec = 0) {
+  const m = createPartyMember(vocation, opts);
+  m.hp = 0;
+  markDowned(m, { elapsedSec, floor: 1 });
+  return m;
+}
 
-  const early = evaluateParty(player, { elapsedSec: cfg.selfReviveSec - 1, floor: 1, monsters: [], combatIdleSec: 0 });
-  assert.equal(downed.lifeState, 'downed', 'not yet steady');
-  assert.equal(early.events.some((e) => e.type === 'selfRevive'), false);
+test('LIV-52 escalation schedule: 1st 10s, 2nd 20s, 3rd+ 30s (cap 30)', () => {
+  const auto = resolveReviveConfig('archer').autoRevive;
+  assert.equal(autoReviveSecForCount(auto, 1), 10);
+  assert.equal(autoReviveSecForCount(auto, 2), 20);
+  assert.equal(autoReviveSecForCount(auto, 3), 30);
+  assert.equal(autoReviveSecForCount(auto, 4), 30, '3rd+ clamps to capSec');
+  assert.equal(autoReviveSecForCount(auto, 0), 10, 'a fresh/legacy down is the 1st');
+});
 
-  const late = evaluateParty(player, { elapsedSec: cfg.selfReviveSec, floor: 1, monsters: [], combatIdleSec: 0 });
-  assert.equal(downed.lifeState, 'alive', 'self-stabilize revives the member');
-  assert.equal(downed.hp, Math.max(1, Math.ceil(downed.max_hp * cfg.selfReviveHpPct)));
-  assert.ok(late.events.some((e) => e.type === 'selfRevive'));
+test('LIV-52 auto-revive: fires at 10s (1st down), runs during combat, restores >=25%/25%', () => {
+  const target = downMember('archer', { x: 1, y: 1 });
+  const player = partyOf('magician', [target]);
+  assert.equal(target.downCount, 1);
+  assert.equal(target.autoReviveTotalSec, 10);
+  assert.ok(autoReviveRemainingSec(target, 0) === 10);
+
+  // Combat is active (a hostile in range AND combatIdleSec 0): the timer still
+  // ticks, unlike the ally-channel start gate.
+  const early = evaluateParty(player, { elapsedSec: 9.9, floor: 1, monsters: [monster(1, 3)], combatIdleSec: 0 });
+  assert.equal(target.lifeState, 'downed', 'not yet elapsed inside combat');
+  assert.ok(target.autoReviveRemainingSec > 0, 'the ring still drains');
+  assert.equal(early.events.some((e) => e.type === 'autoRevive'), false);
+
+  const late = evaluateParty(player, { elapsedSec: 10, floor: 1, monsters: [monster(1, 3)], combatIdleSec: 0 });
+  assert.equal(target.lifeState, 'alive', 'auto-revive fires at 10s during combat');
+  assert.equal(target.hp, Math.max(1, Math.ceil(target.max_hp * 0.25)), 'restores >=25% HP');
+  assert.equal(target.mana, Math.ceil(target.max_mana * 0.25), 'restores >=25% MP');
+  assert.ok(late.events.some((e) => e.type === 'autoRevive'));
+  assert.equal(target.autoReviveRemainingSec, 0, 'the pending window clears on revive');
+  assert.equal(target.downCount, 1, 'downCount persists across the revive');
+});
+
+test('LIV-52 escalation: downCount increments per down and never resets on revive', () => {
+  const m = createPartyMember('fighter', { x: 2, y: 2 });
+  const player = partyOf('magician', [m]);
+  const cfg = resolveReviveConfig('fighter');
+
+  m.hp = 0; markDowned(m, { elapsedSec: 0, floor: 1 });
+  assert.equal(m.downCount, 1);
+  assert.equal(m.autoReviveTotalSec, 10);
+  applyRevive(m, cfg);
+
+  m.hp = 0; markDowned(m, { elapsedSec: 100, floor: 1 });
+  assert.equal(m.downCount, 2, 'the counter survives a revive');
+  assert.equal(m.autoReviveTotalSec, 20);
+  applyRevive(m, cfg);
+
+  m.hp = 0; markDowned(m, { elapsedSec: 200, floor: 1 });
+  assert.equal(m.downCount, 3);
+  assert.equal(m.autoReviveTotalSec, 30);
+  applyRevive(m, cfg);
+
+  m.hp = 0; markDowned(m, { elapsedSec: 300, floor: 1 });
+  assert.equal(m.downCount, 4);
+  assert.equal(m.autoReviveTotalSec, 30, 'capSec holds for 3rd+');
+
+  // The escalated window actually fires at 20s (not 10s) for the 2nd down.
+  const esc = createPartyMember('fighter', { x: 4, y: 4 });
+  esc.downCount = 1; // already went down once this tower visit
+  esc.hp = 0;
+  markDowned(esc, { elapsedSec: 0, floor: 1 });
+  assert.equal(esc.downCount, 2);
+  assert.equal(esc.autoReviveTotalSec, 20);
+  const player2 = partyOf('magician', [esc]);
+  const atTen = evaluateParty(player2, { elapsedSec: 10, floor: 1, monsters: [], combatIdleSec: 0 });
+  assert.equal(esc.lifeState, 'downed', 'the 2nd down does not revive at 10s');
+  assert.equal(atTen.events.some((e) => e.type === 'autoRevive'), false);
+  const atTwenty = evaluateParty(player2, { elapsedSec: 20, floor: 1, monsters: [], combatIdleSec: 0 });
+  assert.equal(esc.lifeState, 'alive', 'the 2nd down revives at 20s');
+  assert.ok(atTwenty.events.some((e) => e.type === 'autoRevive'));
+});
+
+test('LIV-52 reset: downCount clears only on exiting + re-entering a tower', () => {
+  const m = createPartyMember('fighter', { x: 2, y: 2 });
+  const player = partyOf('magician', [m]);
+  const cfg = resolveReviveConfig('fighter');
+  m.hp = 0; markDowned(m, { elapsedSec: 0, floor: 1 });
+  applyRevive(m, cfg);
+  m.hp = 0; markDowned(m, { elapsedSec: 50, floor: 1 });
+  applyRevive(m, cfg);
+  assert.equal(m.downCount, 2, 'a floor change / revive keeps the escalation');
+
+  // `resetAutoReviveOnTowerReentry` is the only thing that clears it.
+  assert.equal(resetAutoReviveCounts(player), true, 'tower re-entry clears the counters');
+  assert.equal(m.downCount, 0);
+  assert.equal(m.autoReviveTotalSec, 0);
+  assert.equal(resetAutoReviveCounts(player), false, 'idempotent once cleared');
+
+  m.hp = 0; markDowned(m, { elapsedSec: 500, floor: 1 });
+  assert.equal(m.autoReviveTotalSec, 10, 'the first down in the new tower is 10s again');
+});
+
+test('LIV-52 cancel: a completed ally revive cancels the pending auto-revive', () => {
+  const player = partyOf('magician');
+  const reviver = createPartyMember('paladin', { x: 5, y: 5, mana: 100, hp: 120 });
+  const target = downMember('fighter', { x: 5, y: 6 });
+  player.party.push(reviver, target);
+  assert.equal(target.autoReviveTotalSec, 10, 'the timer is pending at down time');
+
+  const cfg = resolveReviveConfig('paladin');
+  beginRevive(reviver, target, cfg);
+  tickReviveChannel(reviver, player, { deltaSec: 1.0, monsters: [] }, cfg);
+  tickReviveChannel(reviver, player, { deltaSec: 1.0, monsters: [] }, cfg);
+
+  assert.equal(target.lifeState, 'alive', 'the ally channel completed');
+  assert.equal(target.autoReviveTotalSec, 0, 'the pending auto-revive is cancelled');
+  assert.equal(target.autoReviveRemainingSec, 0);
+  // At the former 10s deadline no auto-revive must fire (it was cancelled).
+  const res = evaluateParty(player, { elapsedSec: 30, floor: 1, monsters: [], combatIdleSec: 0 });
+  assert.equal(res.events.some((e) => e.type === 'autoRevive'), false);
+  assert.equal(target.downCount, 1, 'the escalation counter is kept for the next down');
+});
+
+test('LIV-52 wipe unchanged: a simultaneous all-down ejects before any timer fires', () => {
+  const player = partyOf('magician');
+  const ally = createPartyMember('fighter', { x: 2, y: 2 });
+  player.party.push(ally);
+  player.hp = 0;
+  player.combatState = 'downed'; player.lifeState = 'downed'; player.downedAtSec = 0;
+  ally.hp = 0; ally.combatState = 'downed'; ally.lifeState = 'downed'; ally.downedAtSec = 0;
+
+  const res = evaluateParty(player, { elapsedSec: 60, floor: 1, monsters: [], combatIdleSec: 0 });
+  assert.equal(res.wiped, true, 'a simultaneous full-party down still wipes');
+  assert.equal(res.events.some((e) => e.type === 'autoRevive'), false, 'no timer fires on a wipe');
+  assert.equal(ally.lifeState, 'downed', 'the timer may only fire while a member stands');
 });
 
 test('LIV-44 regression: shared XP level-up never revives a downed member', () => {

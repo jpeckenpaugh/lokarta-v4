@@ -84,6 +84,8 @@ export const gameLoopMethods = {
     // resets it. The player's post-revive grace window counts down here.
     this.elapsedSec = (this.elapsedSec || 0) + deltaSec;
     this.combatIdleSec = (this.combatIdleSec || 0) + deltaSec;
+    // LIV-52: wall-clock anchor for smooth per-frame auto-revive ring drain.
+    this._lastTickAtMs = this.nowMs();
     if (this.player.reviveGraceSec > 0) {
       this.player.reviveGraceSec = Math.max(0, this.player.reviveGraceSec - deltaSec);
     }
@@ -576,9 +578,16 @@ export const gameLoopMethods = {
       this.persistSave();
       return;
     }
-    if (ev.type === 'selfRevive') {
-      this.addFloatingText('STEADIED', member.x, member.y, '#fde68a');
+    if (ev.type === 'autoRevive') {
+      // LIV-52: the pending timer elapsed — the member stands back up in place.
+      soundFX.play('holyChime');
+      this.addFloatingText('REVIVED', member.x, member.y, '#fde68a');
+      const vocab = VOCATIONS_CATALOG?.[member.vocation];
+      const nameOf = (vocab && vocab.name) || (member.vocation ? member.vocation.charAt(0).toUpperCase() + member.vocation.slice(1) : 'An ally');
+      const cue = UI_CATALOG?.knockout?.autoReviveCue;
+      this.logCombat(cue ? cue.replace('{member}', nameOf) : `${nameOf} pulls themselves back up.`, 'spell');
       this.updateHUD();
+      this.persistSave();
     }
   },
   /** Applies an auto-ally potion drink: cue, log, float text, HUD + save. */
@@ -658,6 +667,12 @@ export const gameLoopMethods = {
     if (cue) soundFX.play(cue);
   },
   render() {
+    // LIV-52: drain each downed member's auto-revive window at render rate so the
+    // countdown ring glides between the 10 Hz simulation ticks. The engine still
+    // owns the authoritative window; this only refreshes the display scalar.
+    if (this.isRunning && !this.isPaused && !this.isGameOver && !this.isFloorCleared) {
+      this.updateAutoReviveCountdowns();
+    }
     this.renderer.render(
       this.gridMap,
       this.player,
@@ -672,6 +687,26 @@ export const gameLoopMethods = {
       this.props,
       this.player.party
     );
+  },
+  /**
+   * Refreshes every downed member's `autoReviveRemainingSec` from the wall-clock
+   * (sub-tick interpolation) for a smooth countdown ring. Reads/writes scalars
+   * only — no allocation in the per-frame path.
+   */
+  updateAutoReviveCountdowns() {
+    const party = this.player && this.player.party;
+    if (!Array.isArray(party)) return;
+    const now = this.nowMs();
+    const anchor = Number.isFinite(this._lastTickAtMs) ? this._lastTickAtMs : now;
+    const sinceTick = Math.max(0, Math.min(CONFIG.TICK_INTERVAL_MS, now - anchor)) / 1000;
+    const renderElapsed = (this.elapsedSec || 0) + sinceTick;
+    for (let i = 0; i < party.length; i++) {
+      const m = party[i];
+      if (!m) continue;
+      if (m.combatState === 'downed' || m.lifeState === 'downed' || !(Number(m.hp) > 0)) {
+        m.autoReviveRemainingSec = ReviveSystem.autoReviveRemainingSec(m, renderElapsed);
+      }
+    }
   },
   processMovementInput() {
     // Player control statuses (catalog `onHit`): stun skips input entirely;

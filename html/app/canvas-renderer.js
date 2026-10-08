@@ -5,7 +5,7 @@
 import { CONFIG, LightingSystem, TILE_TYPES, ReviveSystem } from '../engine/index.js';
 import { SpriteRenderer, themeForFloor } from './sprite-renderer.js';
 import { UI_CATALOG, PARTY_AI_CATALOG } from '../data/index.js';
-import { resolveEasing } from './swap-feedback.js';
+import { resolveEasing, prefersReducedMotion } from './swap-feedback.js';
 
 /** Static entity-bar token cache from `ui.json.entityBars` (D1 §3.2). */
 const OUTLINE_COLOR = '#0b0d12';
@@ -108,6 +108,47 @@ const KNOCKOUT = (() => {
       progressRadiusTiles: n(c.progressRadiusTiles, 0.42),
       progressLineWidthPx: n(c.progressLineWidthPx, 4),
     },
+    // LIV-52 auto-revive countdown ring (ui.json.knockout.autoRevive). Data-only
+    // geometry/palette; the remaining/total seconds come from the member fields
+    // the engine stamps. Resolved once so the per-frame drain allocates nothing.
+    autoRevive: (() => {
+      const a = UI_CATALOG?.knockout?.autoRevive || {};
+      const ring = a.ring || {};
+      const num = a.numeric || {};
+      const rm = a.reducedMotion || {};
+      return {
+        enabled: a.enabled !== false,
+        radiusTiles: n(ring.radiusTiles, 0.6),
+        lineWidthPx: n(ring.lineWidthPx, 4),
+        trackColor: ring.trackColor || '#334155',
+        trackAlpha: n(ring.trackAlpha, 0.85),
+        sweepColor: ring.sweepColor || '#fde68a',
+        sweepCoreColor: ring.sweepCoreColor || '#fffbeb',
+        sweepAlpha: n(ring.sweepAlpha, 0.95),
+        startAngleDeg: n(ring.startAngleDeg, -90),
+        sweepDir: ring.sweepDir || 'clockwise',
+        lineCap: ring.lineCap || 'round',
+        tickMode: ring.tickMode || 'smooth',
+        beatHz: n(ring.beatHz, 1.0),
+        beatMinAlpha: n(ring.beatMinAlpha, 0.7),
+        completeFlashMs: n(ring.completeFlashMs, 450),
+        numeric: {
+          show: num.show !== false,
+          format: num.format || 'ceil',
+          fontFamily: num.fontFamily || 'monospace',
+          fontSizePx: n(num.fontSizePx, 16),
+          fontWeight: n(num.fontWeight, 700),
+          color: num.color || '#f8fafc',
+          outlineColor: num.outlineColor || '#020617',
+          outlineWidthPx: n(num.outlineWidthPx, 2),
+          offsetBelowTiles: n(num.offsetBelowTiles, 0.72),
+        },
+        reducedMotion: {
+          tickMode: rm.tickMode || 'step',
+          beatHz: n(rm.beatHz, 0),
+        },
+      };
+    })(),
   };
 })();
 
@@ -717,6 +758,20 @@ export class CanvasRenderer {
       if (target && isDownedEntry(target)) this.drawReviveChannel(ctx, member, target);
     }
 
+    // LIV-52 auto-revive countdown ring: drawn first (closest to the body) on its
+    // opaque track, so the E1 beacon, tether and progress arc stay legible on
+    // top. The remaining/total scalars are stamped by the engine each tick and
+    // drained per frame by the app.
+    const auto = KNOCKOUT.autoRevive;
+    if (auto.enabled) {
+      const reduced = prefersReducedMotion();
+      for (const member of party) {
+        if (!isDownedEntry(member)) continue;
+        if (!(Number(member.autoReviveTotalSec) > 0)) continue;
+        this.drawAutoReviveRing(ctx, member, now, reduced);
+      }
+    }
+
     // E1 beacon over each downed body (only while an ally can answer it).
     const beacon = KNOCKOUT.beacon;
     if (!beacon.enabled) return;
@@ -817,6 +872,93 @@ export class CanvasRenderer {
     ctx.arc(tx, ty, radius, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
     ctx.stroke();
     ctx.restore();
+  }
+
+  /**
+   * LIV-52 countdown ring on a downed body. Geometry/palette come from
+   * `ui.json.knockout.autoRevive`; the remaining/total seconds come from the
+   * member scalars the engine stamps. The slate track draws first, then a gold
+   * sweep that starts at `ring.startAngleDeg` (12 o'clock) and drains
+   * `ring.sweepDir` from full to empty as the timer elapses — the empty frame
+   * coincides with the auto-revive. `ui.json.knockout.autoRevive.numeric` prints
+   * `ceil` seconds below the body. Reduced motion swaps the smooth drain + beat
+   * for a static once-per-second stepped arc.
+   *
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {object} downed downed party entry
+   * @param {number} now ms clock (for the beat)
+   * @param {boolean} [reduced] prefers-reduced-motion
+   */
+  drawAutoReviveRing(ctx, downed, now, reduced = false) {
+    const a = KNOCKOUT.autoRevive;
+    const total = Math.max(0.0001, Number(downed.autoReviveTotalSec) || 0);
+    if (!(total > 0)) return;
+    let remaining = Math.max(0, Number(downed.autoReviveRemainingSec) || 0);
+    if (remaining > total) remaining = total;
+
+    const rm = reduced ? a.reducedMotion : null;
+    const beatHz = rm ? rm.beatHz : a.beatHz;
+    let frac = remaining / total;
+    if (rm && rm.tickMode === 'step') {
+      // Static arc that redraws only when the whole second changes.
+      frac = Math.min(1, Math.ceil(remaining) / Math.max(1, Math.ceil(total)));
+    }
+
+    const size = CONFIG.GRID_SIZE;
+    const cx = downed.x * size + size / 2 - this.cameraX;
+    const cy = downed.y * size + size / 2 - this.cameraY;
+    const radius = a.radiusTiles * size;
+    const start = (a.startAngleDeg * Math.PI) / 180;
+    const dir = a.sweepDir === 'counterclockwise' ? -1 : 1;
+    const end = start + dir * frac * Math.PI * 2;
+    const anticlockwise = dir < 0;
+
+    ctx.save();
+    ctx.lineCap = a.lineCap || 'round';
+
+    // 1. Opaque track (closest to the body).
+    ctx.globalAlpha = a.trackAlpha;
+    ctx.strokeStyle = a.trackColor;
+    ctx.lineWidth = a.lineWidthPx;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 2. Gold sweep: full at down, empty at revive.
+    if (frac > 0) {
+      const beat = beatHz > 0
+        ? a.beatMinAlpha + (1 - a.beatMinAlpha) * (0.5 + 0.5 * Math.cos((now / 1000) * beatHz * Math.PI * 2))
+        : 1;
+      ctx.globalAlpha = Math.min(1, a.sweepAlpha * beat);
+      ctx.strokeStyle = a.sweepColor;
+      ctx.lineWidth = a.lineWidthPx;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, start, end, anticlockwise);
+      ctx.stroke();
+
+      ctx.strokeStyle = a.sweepCoreColor;
+      ctx.lineWidth = Math.max(1, a.lineWidthPx * 0.4);
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, start, end, anticlockwise);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // 3. Numeric ceil-seconds read below the body (guarded for headless spies).
+    const numeric = a.numeric;
+    if (numeric.show && typeof ctx.fillText === 'function') {
+      const label = String(Math.ceil(remaining));
+      ctx.save();
+      ctx.font = `${numeric.fontWeight} ${numeric.fontSizePx}px ${numeric.fontFamily}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.lineWidth = numeric.outlineWidthPx;
+      ctx.strokeStyle = numeric.outlineColor;
+      ctx.strokeText(label, cx, cy + numeric.offsetBelowTiles * size);
+      ctx.fillStyle = numeric.color;
+      ctx.fillText(label, cx, cy + numeric.offsetBelowTiles * size);
+      ctx.restore();
+    }
   }
 
   /**
