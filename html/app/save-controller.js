@@ -378,7 +378,10 @@ export const saveControllerMethods = {
 
       const isActionBarEmpty = this.player.action_bar?.every(s => s === null);
       if (this.player.location !== 'tower' || (isActionBarEmpty && this.player.level === 1)) {
-        await this.enterScene(DEFAULT_TOWN_ID);
+        // Resume the exact overworld scene the save pointed at (island vs town),
+        // falling back to the town for legacy saves that never stored `scene`.
+        const sceneId = this.player.scene?.sceneId;
+        await this.enterScene(sceneId || DEFAULT_TOWN_ID, this.player.scene?.spawn || null);
       }
     } catch (err) {
       console.error('Failed to load saved game:', err);

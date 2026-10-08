@@ -6,7 +6,7 @@ import { FateGrantSystem } from '../engine/index.js';
 import { towerUnlockInfo } from '../engine/campaign.js';
 import { soundFX } from '../audio/index.js';
 import { HUDManager } from './hud-manager.js';
-import { UI_CATALOG, VOCATIONS_CATALOG, listTowerDefinitions, getTowerDefinition } from '../data/index.js';
+import { UI_CATALOG, VOCATIONS_CATALOG, listTowerDefinitions, getTowerDefinition, getQuestDefinition } from '../data/index.js';
 import {
   SAVE_SLOT_COUNT,
   formatPlaytime,
@@ -647,9 +647,14 @@ export class ModalManager {
         const active = tower.id === currentTowerId;
         const levels = Number(tower.levelCount) || 1;
         const { unlocked, requires } = towerUnlockInfo(progress, tower.id);
-        const requiredNames = requires
-          .map((id) => getTowerDefinition(id)?.name || id)
-          .join(', ');
+        // A quest-gated tower (LIV-55 D7) has no `unlockRequires` chain; name the
+        // rite from its catalog `accessGate` instead of an empty hint.
+        const gateQuest = tower.accessGate && tower.accessGate.questId
+          ? getQuestDefinition(tower.accessGate.questId)
+          : null;
+        const requiredNames = requires.length > 0
+          ? requires.map((id) => getTowerDefinition(id)?.name || id).join(', ')
+          : (gateQuest?.name || '');
         const hint = lockedHint.replace('{required}', requiredNames);
         const icon = tower.icon
           ? `<img class="openmoji-icon card-emoji" src="./assets/openmoji/${tower.icon}.svg" alt="${tower.name}" />`

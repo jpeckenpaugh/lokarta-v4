@@ -577,6 +577,16 @@ export class CanvasRenderer {
           size: CONFIG.GRID_SIZE,
           tint: npc.renderTheme || undefined,
         });
+        // Quest marker (LIV-55 P5): `available` (!) / `turnin` (?). Only marked
+        // NPCs draw, so the hot path stays allocation-free for everyone else.
+        if (npc.questMarker) {
+          this.drawQuestMarker(
+            ctx,
+            npc.questMarker,
+            npcScreenX + CONFIG.GRID_SIZE / 2,
+            npcScreenY - 4
+          );
+        }
       }
     }
 
@@ -662,6 +672,30 @@ export class CanvasRenderer {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, px, py - h / 2);
+    ctx.restore();
+  }
+
+  /**
+   * Draws a quest-status marker bubble above an NPC (LIV-55 P5):
+   * `available` (!, gold) for a quest that can be accepted, `turnin` (?, green)
+   * for a completed quest ready to hand in. Presentation-only, no allocation
+   * beyond the cached literals.
+   */
+  drawQuestMarker(ctx, marker, centerX, topY) {
+    const turnIn = marker === 'turnin';
+    ctx.save();
+    ctx.fillStyle = 'rgba(5, 6, 8, 0.85)';
+    ctx.beginPath();
+    ctx.arc(centerX, topY, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = turnIn ? '#34d399' : '#facc15';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = turnIn ? '#34d399' : '#facc15';
+    ctx.font = '700 11px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(turnIn ? '?' : '!', centerX, topY + 0.5);
     ctx.restore();
   }
 
