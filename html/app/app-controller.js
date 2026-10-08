@@ -18,6 +18,7 @@ import { inventoryControllerMethods } from './inventory-controller.js';
 import { shopControllerMethods } from './shop-controller.js';
 import { floorControllerMethods } from './floor-controller.js';
 import { saveControllerMethods } from './save-controller.js';
+import { sceneControllerMethods } from './scene-controller.js';
 import { ModalManager } from './modal-manager.js';
 import { InputController } from './input-controller.js';
 import { AbilityBar } from './ability-bar.js';
@@ -49,6 +50,10 @@ export class LokartaApp {
     this.currentFloorName = 'The Gatehouse';
     // The player begins in the Town outside the tower.
     this.location = 'town';
+    // Walkable overworld scene descriptor (island/town), or null while in a
+    // tower floor. Populated by scene-controller.js (LIV-59 P1).
+    this.scene = null;
+    this._sceneInteraction = false;
     this.townConfig = EconomySystem.townConfig();
     this.passiveRecoveryAccumulator = 0;
     // Adjacency spring regen accumulator (1 Hz).
@@ -256,6 +261,8 @@ export class LokartaApp {
 Object.assign(LokartaApp.prototype, saveControllerMethods);
 
 Object.assign(LokartaApp.prototype, floorControllerMethods);
+
+Object.assign(LokartaApp.prototype, sceneControllerMethods);
 
 Object.assign(LokartaApp.prototype, shopControllerMethods);
 

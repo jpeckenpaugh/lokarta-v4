@@ -55,7 +55,7 @@ export const shopControllerMethods = {
       onBuy: itemId => this.buyShopItem(itemId),
       onUpgrade: (source, index) => this.upgradeShopItem(source, index),
       onPawn: (source, index) => this.pawnShopItem(source, index),
-      onBack: () => this.showTown(),
+      onBack: () => this.closeInteraction(),
     });
   },
   buyShopItem(itemId) {
@@ -139,7 +139,7 @@ export const shopControllerMethods = {
   openTemple() {
     ModalManager.renderTownTemple(this.townEl, { ...this, templeCost: EconomySystem.templeHealCost(this.player) }, {
       onHeal: () => this.templeHeal(),
-      onBack: () => this.showTown(),
+      onBack: () => this.closeInteraction(),
     });
   },
   templeHeal() {

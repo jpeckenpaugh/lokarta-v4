@@ -53,6 +53,19 @@ export function themeForFloor(floorNumber, towerId = DEFAULT_TOWER_ID) {
 }
 
 /**
+ * Resolves the tile theme for an overworld scene: `tile_themes.json` stores
+ * scene palettes at the root keyed by theme id (`island_dawnreach`,
+ * `town_havenreach`), outside the tower `levels` scan. Falls back to the root
+ * theme when the id is unknown.
+ * @param {string} themeId
+ * @returns {object}
+ */
+export function sceneTheme(themeId) {
+  const scene = themeId ? TILE_THEMES_CATALOG[themeId] : null;
+  return scene || TILE_THEMES_CATALOG;
+}
+
+/**
  * Deterministic tile-coordinate hash (docs/art-direction-tower.md §3.3).
  * Integer-exact across runs; never Math.random().
  */
@@ -168,9 +181,18 @@ function drawPropFrame(ctx, def, frameId, dx, dy, size) {
   return true;
 }
 
+/**
+ * Per-tile palette lookup for the overworld scene tiles. Scene themes carry a
+ * `tiles` map keyed by tile-type name (tile_themes.json `island_dawnreach` /
+ * `town_havenreach`). Missing entries fall back to a neutral `{}` so a partial
+ * theme never throws on the render path.
+ */
+function sceneTilePalette(theme, name) {
+  return (theme && theme.tiles && theme.tiles[name]) || {};
+}
+
 const TILE_RENDERERS = {
-  [TILE_TYPES.WALL]: (ctx, screenX, screenY, size, theme, opts = {}) => {
-    const u = size / 32;
+  [TILE_TYPES.WALL]: (ctx, screenX, screenY, size, theme, opts = {}) => {    const u = size / 32;
 
     // Slight per-tile shade variation (data-driven `wall.shades`) so a wall run
     // of otherwise identical tiles reads with texture. Deterministic by tile
@@ -264,6 +286,133 @@ const TILE_RENDERERS = {
     ctx.beginPath();
     ctx.arc(screenX + size * 0.5, screenY + size * 0.5, 3 * u, 0, Math.PI * 2);
     ctx.stroke();
+  },
+  // ---- Overworld scene tiles (LIV-59 P1) -------------------------------
+  // Palettes come from the scene theme's `tiles` map; placement is a pure
+  // integer hash. Integer fillRect only — no per-frame allocation.
+  [TILE_TYPES.GRASS]: (ctx, screenX, screenY, size, theme, opts = {}) => {
+    const p = sceneTilePalette(theme, 'GRASS');
+    const u = size / 32;
+    const h = tileHash(opts.x || 0, opts.y || 0);
+    ctx.fillStyle = (h % 2 === 0 && p.alt) ? p.alt : (p.fill || '#2b4a24');
+    ctx.fillRect(screenX, screenY, size, size);
+    ctx.fillStyle = p.blade || '#4a7d3f';
+    ctx.fillRect(screenX + (6 + (h % 3) * 8) * u, screenY + (9 + ((h >> 3) % 3) * 7) * u, 2 * u, 6 * u);
+    ctx.fillRect(screenX + (17 + ((h >> 5) % 3) * 4) * u, screenY + (16 + ((h >> 7) % 3) * 5) * u, 2 * u, 5 * u);
+  },
+  [TILE_TYPES.WATER]: (ctx, screenX, screenY, size, theme, opts = {}) => {
+    const p = sceneTilePalette(theme, 'WATER');
+    const u = size / 32;
+    const h = tileHash(opts.x || 0, opts.y || 0);
+    ctx.fillStyle = p.fill || '#14324a';
+    ctx.fillRect(screenX, screenY, size, size);
+    ctx.fillStyle = p.crest || '#2f6f9e';
+    for (let i = 0; i < 2; i++) {
+      const yy = (7 + i * 11 + (h % 6)) * u;
+      ctx.fillRect(screenX + (4 + (h % 7)) * u, screenY + yy, 9 * u, 2 * u);
+      ctx.fillRect(screenX + (18 + ((h >> 4) % 6)) * u, screenY + yy + 5 * u, 7 * u, 2 * u);
+    }
+    ctx.fillStyle = p.foam || '#8fd3ff';
+    ctx.fillRect(screenX + (20 + ((h >> 2) % 5) * 2) * u, screenY + (20 + ((h >> 6) % 4)) * u, 3 * u, 2 * u);
+  },
+  [TILE_TYPES.SAND]: (ctx, screenX, screenY, size, theme, opts = {}) => {
+    const p = sceneTilePalette(theme, 'SAND');
+    const u = size / 32;
+    const h = tileHash(opts.x || 0, opts.y || 0);
+    ctx.fillStyle = p.fill || '#c9b177';
+    ctx.fillRect(screenX, screenY, size, size);
+    ctx.fillStyle = p.dark || '#a88f57';
+    ctx.fillRect(screenX + (5 + (h % 5) * 3) * u, screenY + (8 + ((h >> 3) % 5) * 4) * u, 3 * u, 2 * u);
+    ctx.fillStyle = p.shell || '#e6d6a8';
+    ctx.fillRect(screenX + (14 + ((h >> 5) % 6) * 2) * u, screenY + (20 + ((h >> 7) % 3) * 3) * u, 2 * u, 2 * u);
+  },
+  [TILE_TYPES.PATH]: (ctx, screenX, screenY, size, theme, opts = {}) => {
+    const p = sceneTilePalette(theme, 'PATH');
+    const u = size / 32;
+    const h = tileHash(opts.x || 0, opts.y || 0);
+    ctx.fillStyle = p.fill || '#8a7250';
+    ctx.fillRect(screenX, screenY, size, size);
+    ctx.fillStyle = p.dark || '#6d5a3e';
+    ctx.fillRect(screenX + (4 + (h % 4) * 5) * u, screenY + (6 + ((h >> 3) % 4) * 5) * u, 4 * u, 2 * u);
+    ctx.fillRect(screenX + (16 + ((h >> 5) % 4) * 3) * u, screenY + (20 + ((h >> 7) % 3) * 3) * u, 3 * u, 2 * u);
+    if (p.edge) {
+      ctx.strokeStyle = p.edge;
+      ctx.lineWidth = HAIRLINE(u);
+      ctx.strokeRect(screenX + 0.5, screenY + 0.5, size - 1, size - 1);
+    }
+  },
+  [TILE_TYPES.TREE]: (ctx, screenX, screenY, size, theme, opts = {}) => {
+    const p = sceneTilePalette(theme, 'TREE');
+    const outside = (theme && theme.outside) || DEFAULT_OUTSIDE;
+    const u = size / 32;
+    const base = outside.grass && outside.grass.length
+      ? outside.grass[tileHash(opts.x || 0, opts.y || 0) % outside.grass.length]
+      : outside.grass[0];
+    ctx.fillStyle = base;
+    ctx.fillRect(screenX, screenY, size, size);
+    ctx.fillStyle = p.trunk || outside.treeTrunk;
+    ctx.fillRect(screenX + 14 * u, screenY + 18 * u, 5 * u, 11 * u);
+    ctx.fillStyle = p.canopy || outside.treeCanopy;
+    ctx.fillRect(screenX + 5 * u, screenY + 4 * u, 22 * u, 17 * u);
+    ctx.fillStyle = p.canopyLight || outside.treeCanopyLight;
+    ctx.fillRect(screenX + 9 * u, screenY + 7 * u, 9 * u, 8 * u);
+  },
+  [TILE_TYPES.BRIDGE]: (ctx, screenX, screenY, size, theme, opts = {}) => {
+    const p = sceneTilePalette(theme, 'BRIDGE');
+    const u = size / 32;
+    ctx.fillStyle = p.plank || '#6b4a2a';
+    ctx.fillRect(screenX, screenY, size, size);
+    ctx.fillStyle = p.plankDark || '#523720';
+    for (let i = 1; i < 4; i++) ctx.fillRect(screenX, screenY + i * 8 * u, size, u);
+    ctx.fillStyle = p.rail || '#3f2a18';
+    ctx.fillRect(screenX, screenY, size, 3 * u);
+    ctx.fillRect(screenX, screenY + size - 3 * u, size, 3 * u);
+  },
+  [TILE_TYPES.BUILDING_WALL]: (ctx, screenX, screenY, size, theme, opts = {}) => {
+    const p = sceneTilePalette(theme, 'BUILDING_WALL');
+    const u = size / 32;
+    ctx.fillStyle = p.fill || '#7a6a55';
+    ctx.fillRect(screenX, screenY, size, size);
+    ctx.fillStyle = p.roof || '#a8452e';
+    ctx.fillRect(screenX, screenY, size, 8 * u);
+    ctx.fillStyle = p.roofPeak || '#7d2f1f';
+    ctx.fillRect(screenX, screenY, size, 2 * u);
+    ctx.fillStyle = p.trim || '#d9b45a';
+    ctx.fillRect(screenX, screenY + 8 * u, size, u);
+    ctx.fillStyle = p.shade || '#5f5242';
+    ctx.fillRect(screenX, screenY + size - 3 * u, size, 3 * u);
+    ctx.fillStyle = p.window || '#ffcf7a';
+    ctx.fillRect(screenX + 11 * u, screenY + 14 * u, 10 * u, 7 * u);
+  },
+  [TILE_TYPES.DOORWAY]: (ctx, screenX, screenY, size, theme, opts = {}) => {
+    const p = sceneTilePalette(theme, 'DOORWAY');
+    const u = size / 32;
+    ctx.fillStyle = p.glow || '#ffd48a';
+    ctx.fillRect(screenX, screenY, size, size);
+    ctx.fillStyle = p.frame || '#2f1e10';
+    ctx.fillRect(screenX, screenY, 4 * u, size);
+    ctx.fillRect(screenX + size - 4 * u, screenY, 4 * u, size);
+    ctx.fillRect(screenX, screenY, size, 4 * u);
+    ctx.fillStyle = p.fill || '#5a3a1e';
+    ctx.fillRect(screenX + 8 * u, screenY + 6 * u, 16 * u, 26 * u);
+    ctx.fillStyle = '#facc15';
+    ctx.fillRect(screenX + 20 * u, screenY + 18 * u, 2 * u, 2 * u);
+  },
+  [TILE_TYPES.TOWER_ENTRANCE]: (ctx, screenX, screenY, size, theme, opts = {}) => {
+    const p = sceneTilePalette(theme, 'TOWER_ENTRANCE');
+    const u = size / 32;
+    ctx.fillStyle = p.fill || '#6b6f7a';
+    ctx.fillRect(screenX, screenY, size, size);
+    ctx.fillStyle = p.shade || '#4d515c';
+    ctx.fillRect(screenX, screenY + size - 4 * u, size, 4 * u);
+    ctx.fillStyle = p.glow || '#ffd48a';
+    ctx.beginPath();
+    ctx.arc(screenX + size / 2, screenY + size / 2, 6 * u, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = p.orb || '#ffe9a8';
+    ctx.beginPath();
+    ctx.arc(screenX + size / 2, screenY + size / 2, 3 * u, 0, Math.PI * 2);
+    ctx.fill();
   },
   default: (ctx, screenX, screenY, size, theme, opts = {}) => {
     const u = size / 32;

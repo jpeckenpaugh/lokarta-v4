@@ -3,7 +3,7 @@
  */
 
 import { CONFIG, LightingSystem, TILE_TYPES, ReviveSystem } from '../engine/index.js';
-import { SpriteRenderer, themeForFloor } from './sprite-renderer.js';
+import { SpriteRenderer, themeForFloor, sceneTheme } from './sprite-renderer.js';
 import { UI_CATALOG, PARTY_AI_CATALOG } from '../data/index.js';
 import { resolveEasing, prefersReducedMotion } from './swap-feedback.js';
 
@@ -365,7 +365,14 @@ export class CanvasRenderer {
     const clampEndY = Math.min(gridMap.height - 1, endTileY);
 
     // Resolve the tower floor theme once; per-level variation is data-driven.
-    const theme = themeForFloor(player.current_floor || 1, player.towerId);
+    // Outdoors (island/town scenes) resolve their scene theme instead, and an
+    // ambient lighting mode disables the unlit cull + fog mask (LIV-59 P1).
+    const scene = this.scene || null;
+    const ambient = Boolean(scene && scene.lighting === 'ambient');
+    this._ambient = ambient;
+    const theme = scene && scene.theme
+      ? sceneTheme(scene.theme)
+      : themeForFloor(player.current_floor || 1, player.towerId);
     const featureScan = !!(theme.decor && theme.decor.banner > 0);
     // Reused per-tile options object: no per-frame allocation in the tile loop.
     const tileOpts = {
@@ -392,7 +399,7 @@ export class CanvasRenderer {
         }
 
         const tile = gridMap.tiles[y][x];
-        if (!tile.isLit) continue;
+        if (!tile.isLit && !ambient) continue;
 
         tileOpts.x = x;
         tileOpts.y = y;
@@ -476,7 +483,7 @@ export class CanvasRenderer {
     for (let y = clampStartY; y <= clampEndY; y++) {
       for (let x = clampStartX; x <= clampEndX; x++) {
         const tile = gridMap.tiles[y][x];
-        if (!tile.isLit || tile.items.length === 0) continue;
+        if ((!tile.isLit && !ambient) || tile.items.length === 0) continue;
         const screenX = x * CONFIG.GRID_SIZE - this.cameraX;
         const screenY = y * CONFIG.GRID_SIZE - this.cameraY;
         const topItem = tile.items[tile.items.length - 1];
@@ -490,7 +497,7 @@ export class CanvasRenderer {
       if (!chest) continue;
       if (chest.x < clampStartX || chest.x > clampEndX || chest.y < clampStartY || chest.y > clampEndY) continue;
       const tile = gridMap.tiles[chest.y]?.[chest.x];
-      if (!tile || !tile.isLit) continue;
+      if (!tile || (!tile.isLit && !ambient)) continue;
       SpriteRenderer.drawChest(
         ctx,
         chest,
@@ -504,7 +511,10 @@ export class CanvasRenderer {
     this.renderProps(ctx, props, 'prop', gridMap, clampStartX, clampEndX, clampStartY, clampEndY);
 
     // 3. World light: fog hides unexplored space, not visible enemies. Actors    // and projectiles therefore draw after the mask (docs/art-direction.md §6.3).
-    this.renderLightMask(ctx, gridMap, player, ambientLights, width, height, projectiles);
+    // Ambient outdoor scenes are fully lit — skip the fog mask entirely.
+    if (!ambient) {
+      this.renderLightMask(ctx, gridMap, player, ambientLights, width, height, projectiles);
+    }
 
     // 4. Transient death effects (actors playing their collapse animation)
     for (const fx of deathEffects) {
@@ -1020,7 +1030,7 @@ export class CanvasRenderer {
       if (wantDecor !== isDecor) continue;
       if (prop.x < startX || prop.x > endX || prop.y < startY || prop.y > endY) continue;
       const tile = gridMap.tiles[prop.y] && gridMap.tiles[prop.y][prop.x];
-      if (!tile || !tile.isLit) continue;
+      if (!tile || (!tile.isLit && !this._ambient)) continue;
       SpriteRenderer.drawProp(
         ctx,
         prop,

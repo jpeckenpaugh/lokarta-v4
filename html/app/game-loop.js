@@ -280,8 +280,13 @@ export const gameLoopMethods = {
       }
     }
 
-    // 3. Update lighting
-    LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
+    // 3. Update lighting. Outdoor scenes are ambient (fully lit); tower floors
+    // keep the player-radius FOV unchanged (LIV-59 P1).
+    if (this.scene && this.scene.lighting === 'ambient') {
+      LightingSystem.applyAmbient(this.gridMap);
+    } else {
+      LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
+    }
 
     // 4. Update monster AI (targets the nearest living party member)
     const positionsBefore = this.monsters.map(m => ({ m, x: m.x, y: m.y }));
@@ -673,6 +678,8 @@ export const gameLoopMethods = {
     if (this.isRunning && !this.isPaused && !this.isGameOver && !this.isFloorCleared) {
       this.updateAutoReviveCountdowns();
     }
+    // The renderer resolves the scene theme + ambient mode from this handle.
+    this.renderer.scene = this.scene || null;
     this.renderer.render(
       this.gridMap,
       this.player,
@@ -810,6 +817,15 @@ export const gameLoopMethods = {
     if (this.gridMap.isTownGate(this.player.x, this.player.y)) {
       this.handleTownGate(this.player.x, this.player.y);
       return true;
+    }
+
+    // Walkable overworld seams (LIV-59 P1): scene portals (town <-> island <->
+    // tower entrance) fire before building doorways, then doorway interactions.
+    if (this.scene) {
+      const portal = this.scenePortalAt(this.player.x, this.player.y);
+      if (portal) return this.handleScenePortal(portal);
+      const building = this.sceneBuildingAt(this.player.x, this.player.y);
+      if (building) return this.handleSceneBuilding(building);
     }
     return false;
   },

@@ -13,7 +13,7 @@ import {
 } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
 import { TOWER_LEVEL_COUNT, getTowerLevelCount } from '../services/floor-generator.js';
-import { listTowerDefinitions, getTowerDefinition } from '../data/index.js';
+import { listTowerDefinitions, getTowerDefinition, DEFAULT_TOWN_ID } from '../data/index.js';
 import { createAnimState } from './animation-state.js';
 import { ModalManager } from './modal-manager.js';
 
@@ -23,6 +23,8 @@ import { ModalManager } from './modal-manager.js';
  */
 export const floorControllerMethods = {
   applyDungeonData(floorData, options = {}) {
+    // A tower floor replaces any walkable overworld scene (LIV-59 P1).
+    this.scene = null;
     this.currentFloorName = floorData.biome_name || 'The Gatehouse';
     this.gridMap.loadFromMatrix(floorData.tiles);
 
@@ -317,7 +319,7 @@ export const floorControllerMethods = {
       onContinue: () => this.promptRecruit(data),
       onReturnToTown: () => {
         this.isFloorCleared = false;
-        this.showTown();
+        this.enterScene(DEFAULT_TOWN_ID);
       },
     });
   },
@@ -348,7 +350,7 @@ export const floorControllerMethods = {
     } catch (err) {
       console.error('Recruit error:', err);
       this.isFloorCleared = false;
-      this.showTown();
+      this.enterScene(DEFAULT_TOWN_ID);
       return;
     }
     this.proceedToNextTower(nextTowerId);
@@ -360,7 +362,7 @@ export const floorControllerMethods = {
   async proceedToNextTower(nextTowerId) {
     this.isFloorCleared = false;
     if (!nextTowerId || nextTowerId === this.player?.towerId) {
-      this.showTown();
+      this.enterScene(DEFAULT_TOWN_ID);
       return;
     }
     try {
@@ -373,7 +375,7 @@ export const floorControllerMethods = {
       this.enterTower();
     } catch (err) {
       console.error('Next-tower transition error:', err);
-      this.showTown();
+      this.enterScene(DEFAULT_TOWN_ID);
     }
   },
   /**
@@ -517,10 +519,10 @@ export const floorControllerMethods = {
     this.updateHUD();
     this.persistSave();
   },
-  /** Leave the tower and return to the Town hub. */
+  /** Leave the tower and return to the walkable Havenreach town scene. */
   leaveTower() {
     if (!this.isInGameplay) return;
     this.player.location = 'town';
-    this.transition.run('townVisit', () => this.showTown());
+    this.transition.run('townVisit', () => this.enterScene(DEFAULT_TOWN_ID));
   }
 };

@@ -34,6 +34,22 @@ export class LightingSystem {
   }
 
   /**
+   * Marks every tile lit for an ambient (outdoor) scene — the overworld is
+   * daylight, so the player-radius FOV is skipped (LIV-59 P1). Additive: cave
+   * floors keep using `updateLighting`. Scalar writes only, no allocation.
+   * @param {import('./grid-map.js').GridMap} gridMap
+   */
+  static applyAmbient(gridMap) {
+    for (let y = 0; y < gridMap.height; y++) {
+      for (let x = 0; x < gridMap.width; x++) {
+        const tile = gridMap.tiles[y][x];
+        tile.isLit = true;
+        tile.lightIntensity = 1;
+      }
+    }
+  }
+
+  /**
    * Recalculates lighting map and entity visibility across the dungeon.
    * @param {import('./grid-map.js').GridMap} gridMap
    * @param {object} player

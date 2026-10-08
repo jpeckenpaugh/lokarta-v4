@@ -4,7 +4,7 @@
 
 import { ChestSystem, CombatSystem, canRecruit, nextRecruitVocation, ReviveSystem } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
-import { UI_CATALOG } from '../data/index.js';
+import { UI_CATALOG, DEFAULT_TOWN_ID } from '../data/index.js';
 import {
   normalizeOptions,
   resolveReducedMotion,
@@ -221,7 +221,7 @@ export const saveControllerMethods = {
       return;
     }
     if (this.optionsReturnTo === 'town') {
-      this.showTown();
+      this.enterScene(DEFAULT_TOWN_ID);
       return;
     }
     this.showTitleScreen();
@@ -348,7 +348,8 @@ export const saveControllerMethods = {
         this.startGameLoop();
       });
 
-      this.showTown();
+      // A fresh save starts on foot in the Havenreach town scene (LIV-59 P1).
+      await this.enterScene(DEFAULT_TOWN_ID);
     } catch (err) {
       console.error('Failed to start new game:', err);
       this.showLoadError(slotIndex);
@@ -376,8 +377,8 @@ export const saveControllerMethods = {
       });
 
       const isActionBarEmpty = this.player.action_bar?.every(s => s === null);
-      if (isActionBarEmpty && this.player.level === 1) {
-        this.showTown();
+      if (this.player.location !== 'tower' || (isActionBarEmpty && this.player.level === 1)) {
+        await this.enterScene(DEFAULT_TOWN_ID);
       }
     } catch (err) {
       console.error('Failed to load saved game:', err);
@@ -486,7 +487,7 @@ export const saveControllerMethods = {
     this.isGameOver = false;
     this.isFloorCleared = false;
     this.closeModal();
-    this.showTown();
+    this.enterScene(DEFAULT_TOWN_ID);
   },
   showVictoryModal() {
     ModalManager.showVictoryModal(this.modalOverlayEl, this.player, {
