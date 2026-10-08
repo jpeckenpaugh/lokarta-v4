@@ -916,9 +916,9 @@ gate is a runtime lock, not a solid (`sceneAccessReport`).
 | Landmark | Coordinates | Notes |
 | :--- | :--- | :--- |
 | Water border | rows/cols `0–4` and `91–95` | all-water surround; no grass ring at the edge |
-| **Havenreach** overmap marker | `x43–52, y76–85` (10×10) | compact walled cluster, **north gate** `DOORWAY (48,76)`, **south gate** `DOORWAY (48,85)` → the `to_town` portal (LIV-70) |
+| **Havenreach** overmap marker | `x43–52, y76–85` (10×10) | compact walled cluster, solid north wall `BUILDING_WALL (48,76)`, single **south gate** `DOORWAY (48,85)` → the `to_town` portal (LIV-70, LIV-73) |
 | Player island spawn | `(48,86)` | just **south** of the marker gate |
-| **Pilgrim's Road** (safe) | column `x48, y9–76` | straight teaching path into the marker's north gate; **no wrap-around loop** (LIV-70) |
+| **Pilgrim's Road** (safe) | column `x48, y9–75` | straight teaching path that ends at the marker's south-anchored wall; the south gate is reached by rounding the marker apron; **no wrap-around loop** (LIV-70) |
 | **Tidal channel** | `y20`, full width (`WATER`) | full impassable strait; **only** crossing is the Tide Gate |
 | **Tide Gate** | tiles `(47–49,20)` (`GATED_DOOR`) | gated cause: `rite_of_the_beacon`; the sole threshold |
 | Spire causeway + base | column `x48, y9–19`; block `x44–52,y5–8`, `TOWER_ENTRANCE (48,8)` | gated by the Tide Gate |
@@ -1088,7 +1088,7 @@ full-size and took too many steps to walk around.
 | Item | Resolution |
 | :--- | :--- |
 | Island town footprint | `islands.json` south enclosure shrunk from ~28×29 (`x34–61,y56–84`) + a ~36-tile-wide road loop to a compact **10×10** walled marker (`x43–52,y76–85`). |
-| Approach | Straight Pilgrim's Road (`x48`) runs into a **north gate**; the **south gate** `(48,85)` is the `to_town` portal, one tile north of the `(48,86)` spawn. Round trip unchanged; `sceneAccessReport` stays soft-lock-free. |
+| Approach | Straight Pilgrim's Road (`x48`) dead-ends at the marker's **solid north wall** (LIV-73 removed the false north doorway); the **south gate** `(48,85)` is the single `to_town` portal, one tile north of the `(48,86)` spawn. Round trip unchanged; `sceneAccessReport` stays soft-lock-free. |
 | Interior untouched | `towns.json` (24×24 Havenreach) is **not changed** — the player still plays the full town. |
 | Budget | 8 texture trees re-added in the reclaimed field (net ~50). No new tiles/legend, palette, or engine work — a pure data re-author. `liv70-island-town-footprint` locks the footprint, the removed loop, and the round trip. |
 
