@@ -7,6 +7,7 @@ import { LightingSystem } from './lighting-system.js';
 import { ABILITIES_CATALOG, MONSTERS_CATALOG, ITEMS_CATALOG } from '../data/index.js';
 import { getEffectiveDamage, getEffectiveRange, getEffectiveManaCost, getEffectiveCooldown as projectCooldown } from './item-stats.js';
 import { isFriendly, isHostile, sameActor, factionOf } from './faction.js';
+import { reviverChannelDamageReduction } from './revive-system.js';
 
 /**
  * Actor contract (LIV-11 WS3): every `executeX` method takes the **acting
@@ -147,6 +148,10 @@ export class CombatSystem {
    * mitigation %, then the Paladin holy bubble absorb. The remainder lands on
    * player HP (clamped at 0).
    *
+   * LIV-47: a member channeling a revive also scales damage by
+   * `1 - revive.damageReductionPct` (Fighter Drag to Safety), read through the
+   * data-driven revive resolver.
+   *
    * @returns {{ damageToPlayer: number, absorbed: number, dodged: boolean, rawDamage: number }}
    */
   static applyIncomingDamage(player, damage, attacker = null) {
@@ -211,6 +216,15 @@ export class CombatSystem {
     //     class mitigations below so the toggle keeps the tester alive.
     if (CombatSystem.DEBUG_INCOMING_DAMAGE_MULTIPLIER < 1 && dmg > 0) {
       dmg = Math.round(dmg * CombatSystem.DEBUG_INCOMING_DAMAGE_MULTIPLIER);
+    }
+
+    // 1c. LIV-47 Fighter Vigil "Drag to Safety": a living member actively
+    //     channeling a revive takes reduced incoming damage. The lever is data
+    //     (`revive.damageReductionPct`, resolved per vocation) and is `0` for
+    //     every other vocation, so this seam never needs a vocation branch.
+    const reviveReductionPct = reviverChannelDamageReduction(player);
+    if (reviveReductionPct > 0 && dmg > 0) {
+      dmg = Math.round(dmg * (1 - reviveReductionPct));
     }
 
     // 2. Fortify Stance: halve incoming damage while active (10 s).

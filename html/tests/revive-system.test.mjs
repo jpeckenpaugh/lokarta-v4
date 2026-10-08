@@ -27,7 +27,9 @@ import {
   beginRevive,
   tickReviveChannel,
   evaluateParty,
+  reviverChannelDamageReduction,
 } from '../engine/revive-system.js';
+import { CombatSystem } from '../engine/combat-system.js';
 import { createPartyPlayer, createPartyMember } from '../engine/party.js';
 import { awardPartyXp } from '../engine/party-progression.js';
 import {
@@ -76,16 +78,27 @@ test('LIV-44 catalog schema: revive keys, revive sources, wipe + copy blocks', (
 });
 
 test('LIV-44 config: baseline resolves and per-vocation overrides win', () => {
-  const paladin = resolveReviveConfig('paladin');
-  assert.equal(paladin.channelSec, 2.0);
-  assert.equal(paladin.safetyRadius, 8);
-  assert.equal(paladin.hpPct, 0.3);
-  assert.equal(paladin.manaPct, 0.25);
-  assert.equal(paladin.graceSec, 1.0);
+  // Baseline (no profile): the top-level `revive` block plus defaults.
+  const base = resolveReviveConfig('not_a_vocation');
+  assert.equal(base.channelSec, 2.0);
+  assert.equal(base.safetyRadius, 8);
+  assert.equal(base.hpPct, 0.3);
+  assert.equal(base.manaPct, 0.25);
+  assert.equal(base.graceSec, 1.0);
+  assert.equal(base.selfReviveSec, DEFAULT_REVIVE_CONFIG.selfReviveSec);
 
-  const unknown = resolveReviveConfig('not_a_vocation');
-  assert.equal(unknown.hpPct, DEFAULT_REVIVE_CONFIG.hpPct);
-  assert.equal(unknown.selfReviveSec, DEFAULT_REVIVE_CONFIG.selfReviveSec);
+  // LIV-45 E3 "Vigils": a vocation's partial override wins and untouched keys
+  // still inherit the baseline (no per-class branches).
+  const paladin = resolveReviveConfig('paladin');
+  assert.equal(paladin.hpPct, 0.35, 'Paladin Holy Prayer restores more HP');
+  assert.equal(paladin.channelSec, 2.0, 'Paladin keeps the standard channel');
+  const magician = resolveReviveConfig('magician');
+  assert.equal(magician.channelSec, 1.4, 'Magician Arcane Suture is the fastest channel');
+  assert.equal(magician.manaCost, 40, 'Magician pays more mana');
+  assert.equal(magician.hpPct, 0.3, 'Magician inherits the baseline restore');
+  const archer = resolveReviveConfig('archer');
+  assert.equal(archer.channelSec, 1.6);
+  assert.equal(archer.hpPct, 0.2);
 });
 
 test('LIV-44 markDowned: one idempotent seam, entity kept, tile not nulled', () => {
@@ -283,4 +296,117 @@ test('LIV-44 helpers: broadphase radius + adjacency', () => {
   assert.equal(orthogonalAdjacent({ x: 0, y: 0 }, { x: 1, y: 0 }), true);
   assert.equal(orthogonalAdjacent({ x: 0, y: 0 }, { x: 1, y: 1 }), false, 'diagonal is not orthogonal');
   assert.equal(applyRevive(createPartyMember('magician', { hp: 0 }), resolveReviveConfig('magician')).lifeState, 'alive');
+});
+
+/** Minimal walkability stub for the LIV-47 drag tests. */
+function stubGrid(isWalkable = () => true) {
+  return {
+    width: 20,
+    height: 20,
+    isInBounds: (x, y) => x >= 0 && y >= 0 && x < 20 && y < 20,
+    isWalkable,
+  };
+}
+
+/** A party whose active mirror and one ally sit at (0,0) so they never block. */
+function dragParty(reviver, target, extra = []) {
+  const player = partyOf('magician', [reviver, target, ...extra]);
+  player.x = 0;
+  player.y = 0;
+  player.party[0].x = 0;
+  player.party[0].y = 0;
+  return player;
+}
+
+test('LIV-47 config: Fighter drag + reduction levers resolve; other vocations are 0', () => {
+  const fighter = resolveReviveConfig('fighter');
+  assert.equal(fighter.dragTiles, 1, 'Fighter Drag to Safety pulls the body one tile');
+  assert.equal(fighter.damageReductionPct, 0.25, 'Fighter takes 25% less while channeling');
+  for (const vocation of ['paladin', 'magician', 'archer', 'not_a_vocation']) {
+    const cfg = resolveReviveConfig(vocation);
+    assert.equal(cfg.dragTiles, 0, `${vocation} dragTiles defaults to 0`);
+    assert.equal(cfg.damageReductionPct, 0, `${vocation} damageReductionPct defaults to 0`);
+  }
+  assert.equal(DEFAULT_REVIVE_CONFIG.dragTiles, 0);
+  assert.equal(DEFAULT_REVIVE_CONFIG.damageReductionPct, 0);
+});
+
+test('LIV-47 drag: a Fighter reviver pulls the downed body one tile toward itself', () => {
+  const reviver = createPartyMember('fighter', { x: 5, y: 5, hp: 140, max_hp: 140, mana: 100 });
+  const target = createPartyMember('archer', { x: 5, y: 7, hp: 0 });
+  const player = dragParty(reviver, target);
+  const cfg = resolveReviveConfig('fighter');
+  beginRevive(reviver, target, cfg);
+
+  tickReviveChannel(reviver, player, { deltaSec: 0.5, monsters: [], gridMap: stubGrid() }, cfg);
+  assert.equal(target.y, 6, 'the body is dragged one tile toward the reviver');
+  assert.equal(target.x, 5, 'the drag stays orthogonal');
+  assert.equal(reviver._reviveDraggedTiles, 1);
+  assert.equal(orthogonalAdjacent(reviver, target), true, 'the pull closes to adjacency');
+  assert.equal(reviver._reviveBlocked, false, 'the channel is live after the pull');
+
+  // The pull is bounded by dragTiles: a second tick must not move the body again.
+  tickReviveChannel(reviver, player, { deltaSec: 0.5, monsters: [], gridMap: stubGrid() }, cfg);
+  assert.equal(target.y, 6, 'drag is bounded by dragTiles');
+
+  // The channel completes normally on the dragged body.
+  tickReviveChannel(reviver, player, { deltaSec: 1.5, monsters: [], gridMap: stubGrid() }, cfg);
+  assert.equal(target.lifeState, 'alive', 'the dragged body is revived');
+});
+
+test('LIV-47 drag: dragTiles 0 never moves the body (other vocations inert)', () => {
+  const reviver = createPartyMember('paladin', { x: 5, y: 5, hp: 120, max_hp: 120, mana: 100 });
+  const target = createPartyMember('fighter', { x: 5, y: 7, hp: 0 });
+  const player = dragParty(reviver, target);
+  const cfg = resolveReviveConfig('paladin');
+  beginRevive(reviver, target, cfg);
+
+  tickReviveChannel(reviver, player, { deltaSec: 0.5, monsters: [], gridMap: stubGrid() }, cfg);
+  assert.equal(target.x, 5, 'no horizontal drag');
+  assert.equal(target.y, 7, 'a non-Fighter reviver never drags the body');
+});
+
+test('LIV-47 drag: the body is never dragged into a wall', () => {
+  const reviver = createPartyMember('fighter', { x: 5, y: 5, hp: 140, max_hp: 140, mana: 100 });
+  const target = createPartyMember('archer', { x: 5, y: 7, hp: 0 });
+  const player = dragParty(reviver, target);
+  const cfg = resolveReviveConfig('fighter');
+  beginRevive(reviver, target, cfg);
+
+  const wallAt = (x, y) => !(x === 5 && y === 6);
+  tickReviveChannel(reviver, player, { deltaSec: 0.5, monsters: [], gridMap: stubGrid(wallAt) }, cfg);
+  assert.equal(target.y, 7, 'a walled pull tile blocks the drag');
+  assert.equal(reviver._reviveDraggedTiles, 0);
+});
+
+test('LIV-47 drag: the body is never dragged onto another actor', () => {
+  const reviver = createPartyMember('fighter', { x: 5, y: 5, hp: 140, max_hp: 140, mana: 100 });
+  const target = createPartyMember('archer', { x: 5, y: 7, hp: 0 });
+  const blocker = createPartyMember('archer', { x: 5, y: 6, hp: 90, max_hp: 90 });
+  const player = dragParty(reviver, target, [blocker]);
+  const cfg = resolveReviveConfig('fighter');
+  beginRevive(reviver, target, cfg);
+
+  tickReviveChannel(reviver, player, { deltaSec: 0.5, monsters: [], gridMap: stubGrid() }, cfg);
+  assert.equal(target.y, 7, 'an occupied pull tile blocks the drag');
+  assert.equal(reviver._reviveDraggedTiles, 0);
+});
+
+test('LIV-47 damage reduction: a channeling Fighter takes 25% less; inert otherwise', () => {
+  const channeling = { hp: 100, max_hp: 100, vocation: 'fighter', _reviveTargetId: 'downed_ally' };
+  assert.equal(reviverChannelDamageReduction(channeling), 0.25);
+  const reduced = CombatSystem.applyIncomingDamage(channeling, 40);
+  assert.equal(reduced.damageToPlayer, 30, '25% reduction applies to incoming damage');
+  assert.equal(channeling.hp, 70);
+
+  const idle = { hp: 100, max_hp: 100, vocation: 'fighter' };
+  assert.equal(reviverChannelDamageReduction(idle), 0);
+  const plain = CombatSystem.applyIncomingDamage(idle, 40);
+  assert.equal(plain.damageToPlayer, 40, 'no channel -> no reduction');
+  assert.equal(idle.hp, 60);
+
+  const otherVocation = { hp: 100, max_hp: 100, vocation: 'paladin', _reviveTargetId: 'x' };
+  assert.equal(reviverChannelDamageReduction(otherVocation), 0);
+  const pHit = CombatSystem.applyIncomingDamage(otherVocation, 40);
+  assert.equal(pHit.damageToPlayer, 40, 'only the Fighter Vigil reduces damage');
 });

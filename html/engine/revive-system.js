@@ -46,6 +46,11 @@ export const DEFAULT_REVIVE_CONFIG = Object.freeze({
   selfReviveSec: 45,
   selfReviveHpPct: 0.15,
   bleedOutSec: 0,
+  // LIV-47 E3 "Vigils": generic revive-channel levers. `0` is a no-op for every
+  // vocation that does not override them (Fighter sets dragTiles:1 /
+  // damageReductionPct:0.25 in party_ai.json; no per-class branch reads them).
+  dragTiles: 0,
+  damageReductionPct: 0,
   boss: Object.freeze({ safetyRadius: 5, channelSec: 3.0 }),
   potion: Object.freeze({ enabled: true, itemId: 'health_potion', hpPct: 0.2 }),
 });
@@ -54,7 +59,7 @@ export const DEFAULT_REVIVE_CONFIG = Object.freeze({
 const REVIVE_NUMBER_KEYS = [
   'channelSec', 'cooldownSec', 'manaCost', 'hpPct', 'manaPct', 'graceSec',
   'idleSec', 'safetyRadius', 'channelDecayMult', 'selfReviveSec',
-  'selfReviveHpPct', 'bleedOutSec',
+  'selfReviveHpPct', 'bleedOutSec', 'dragTiles', 'damageReductionPct',
 ];
 const REVIVE_BOOL_KEYS = ['enabled', 'interruptOnDamage', 'interruptOnMove', 'reviveOnFloorTransition'];
 
@@ -147,6 +152,7 @@ export function markDowned(actor, ctx = {}) {
   actor._reviveTargetId = null;
   actor._reviveProgressSec = 0;
   actor._reviveBlocked = false;
+  actor._reviveDraggedTiles = 0;
   return true;
 }
 
@@ -213,6 +219,94 @@ export function hasLivingMember(player) {
 export function orthogonalAdjacent(a, b) {
   if (!a || !b) return false;
   return Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === 1;
+}
+
+/**
+ * LIV-47 "Drag to Safety" damage lever (pure). A living reviver actively
+ * channeling a revive (`_reviveTargetId` set) benefits from its resolved
+ * `damageReductionPct`; every other actor — and every vocation without the
+ * override — resolves to 0, so the combat seam is a no-op by default. No
+ * vocation branch: identity is data via `resolveReviveConfig`.
+ * @param {object} reviver candidate damage target
+ * @param {object} [config] resolved revive config; resolved from the actor when omitted
+ * @returns {number} 0..1 incoming-damage reduction fraction
+ */
+export function reviverChannelDamageReduction(reviver, config = null) {
+  if (!reviver || !reviver._reviveTargetId) return 0;
+  if (isDowned(reviver)) return 0;
+  const cfg = config || resolveReviveConfig(reviver.vocation);
+  const pct = toNumber(cfg.damageReductionPct, 0);
+  return pct > 0 ? Math.min(1, pct) : 0;
+}
+
+/**
+ * True when no living actor already stands on (x, y). Checks living monsters
+ * and every party member except `self`, and requires the tile to be in bounds
+ * and walkable when a `gridMap` is supplied (without one the drag is skipped,
+ * since walkability cannot be proven).
+ * @param {object} ctx `{ gridMap, monsters }`
+ * @param {object} player top-level player (party owner)
+ * @param {number} x
+ * @param {number} y
+ * @param {object} self the actor being displaced (never blocks itself)
+ * @returns {boolean}
+ */
+function dragDestinationFree(ctx, player, x, y, self) {
+  const grid = ctx && ctx.gridMap;
+  if (!grid || typeof grid.isWalkable !== 'function') return false;
+  if (typeof grid.isInBounds === 'function' && !grid.isInBounds(x, y)) return false;
+  if (!grid.isWalkable(x, y)) return false;
+  const monsters = ctx && ctx.monsters;
+  if (Array.isArray(monsters)) {
+    for (let i = 0; i < monsters.length; i++) {
+      const m = monsters[i];
+      if (m && m.hp > 0 && m.x === x && m.y === y) return false;
+    }
+  }
+  const party = player && Array.isArray(player.party) ? player.party : null;
+  if (party) {
+    for (let i = 0; i < party.length; i++) {
+      const m = party[i];
+      if (!m || m === self) continue;
+      if (m.x === x && m.y === y) return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * LIV-47 "Drag to Safety": displace the downed `target` one orthogonal tile
+ * toward `reviver`, bounded to `cfg.dragTiles` tiles over the whole channel and
+ * guarded against walls/occupied tiles. A single step per live tick; a broken
+ * channel does not drag. Returns true when the target actually moved.
+ */
+function dragTargetTowardReviver(reviver, target, player, ctx, cfg) {
+  const maxDrag = Math.floor(toNumber(cfg.dragTiles, 0));
+  if (!(maxDrag > 0)) return false;
+  const dragged = toNumber(reviver._reviveDraggedTiles, 0);
+  if (dragged >= maxDrag) return false;
+
+  const dx = reviver.x - target.x;
+  const dy = reviver.y - target.y;
+  if (dx === 0 && dy === 0) return false;
+
+  // Prefer the dominant axis; fall back to the other when the first is blocked.
+  const steps = Math.abs(dx) >= Math.abs(dy)
+    ? [[Math.sign(dx), 0], [0, Math.sign(dy)]]
+    : [[0, Math.sign(dy)], [Math.sign(dx), 0]];
+  for (let i = 0; i < steps.length; i++) {
+    const sx = steps[i][0];
+    const sy = steps[i][1];
+    if (sx === 0 && sy === 0) continue;
+    const nx = target.x + sx;
+    const ny = target.y + sy;
+    if (!dragDestinationFree(ctx, player, nx, ny, target)) continue;
+    target.x = nx;
+    target.y = ny;
+    reviver._reviveDraggedTiles = dragged + 1;
+    return true;
+  }
+  return false;
 }
 
 /** True when any living monster stands within `radius` of (x, y). */
@@ -328,6 +422,7 @@ export function clearReviveChannel(reviver) {
   reviver._reviveTargetId = null;
   reviver._reviveProgressSec = 0;
   reviver._reviveBlocked = false;
+  reviver._reviveDraggedTiles = 0;
 }
 
 /**
@@ -339,6 +434,7 @@ export function beginRevive(reviver, target, config = DEFAULT_REVIVE_CONFIG) {
   const targetId = target.memberId || target.id || null;
   if (reviver._reviveTargetId !== targetId) {
     reviver._reviveProgressSec = 0;
+    reviver._reviveDraggedTiles = 0;
   }
   reviver._reviveTargetId = targetId;
   reviver._reviveBlocked = false;
@@ -365,6 +461,10 @@ export function findPartyMemberById(player, targetId) {
  * Interrupts (progress retained, decays at `channelDecayMult` while broken):
  * reviver damage, reviver move, hostiles re-entering `safetyRadius`, or the
  * reviver losing orthogonal adjacency.
+ *
+ * LIV-47 "Drag to Safety": when the resolved `dragTiles > 0` (Fighter), a live
+ * channel also pulls the downed `target` toward the reviver, one orthogonal step
+ * per tick up to `dragTiles` total, only onto a walkable/unoccupied tile.
  */
 export function tickReviveChannel(reviver, player, ctx = {}, config = null) {
   if (!reviver || !reviver._reviveTargetId) return null;
@@ -377,6 +477,14 @@ export function tickReviveChannel(reviver, player, ctx = {}, config = null) {
   }
 
   const wasBlocked = reviver._reviveBlocked === true;
+
+  // LIV-47 "Drag to Safety": a live (unbroken) channel pulls the downed body up
+  // to `dragTiles` orthogonal steps toward the reviver. Only the reviver's own
+  // movement interrupts the channel (`interruptOnMove`), never the dragged body.
+  if (!wasBlocked && toNumber(cfg.dragTiles, 0) > 0) {
+    dragTargetTowardReviver(reviver, target, player, ctx, cfg);
+  }
+
   const adjacency = orthogonalAdjacent(reviver, target);
   const moved = cfg.interruptOnMove
     && (reviver.x !== reviver._reviveX || reviver.y !== reviver._reviveY);
@@ -461,7 +569,7 @@ export function markPartyDowned(player, ctx = {}) {
  *   4. ticks interruptible revive channels + the self-stabilize safety net.
  *
  * @param {object} player top-level (active-authoritative) player
- * @param {object} [ctx] { deltaSec, elapsedSec, monsters, combatIdleSec, active, floor }
+ * @param {object} [ctx] { deltaSec, elapsedSec, monsters, combatIdleSec, active, floor, gridMap }
  * @returns {{ wiped: boolean, handoff: object|null, events: object[] }}
  */
 export function evaluateParty(player, ctx = {}) {
@@ -533,6 +641,7 @@ export const ReviveSystem = {
   evaluateWipe,
   hasLivingMember,
   orthogonalAdjacent,
+  reviverChannelDamageReduction,
   hasLivingHostileWithin,
   canStartRevive,
   findReviveAbility,

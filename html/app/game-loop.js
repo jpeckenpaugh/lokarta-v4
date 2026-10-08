@@ -362,6 +362,7 @@ export const gameLoopMethods = {
       monsters: this.monsters,
       combatIdleSec: this.combatIdleSec,
       floor: this.player.current_floor,
+      gridMap: this.gridMap,
     });
     if (partyStep.handoff) this.handleActiveHandoff(partyStep.handoff);
     for (const ev of partyStep.events) this.applyPartyEvent(ev);
