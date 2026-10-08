@@ -692,6 +692,14 @@
         "frame": "#2f1e10",
         "glow": "#ffd48a"
       },
+      "DOOR": {
+        "fill": "#4a2f1b",
+        "border": "#2d1c10"
+      },
+      "GATED_DOOR": {
+        "fill": "#6b6f7a",
+        "border": "#4d515c"
+      },
       "TOWER_ENTRANCE": {
         "fill": "#6b6f7a",
         "shade": "#4d515c",

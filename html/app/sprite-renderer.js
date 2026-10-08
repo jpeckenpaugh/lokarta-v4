@@ -191,6 +191,21 @@ function sceneTilePalette(theme, name) {
   return (theme && theme.tiles && theme.tiles[name]) || {};
 }
 
+/**
+ * Resolves a door/gated-door palette across theme shapes. Tower themes author a
+ * root `door` block; scene themes author per-tile palettes under `tiles`
+ * (`GATED_DOOR` / `DOOR`). Each field falls back to the canonical literal, so a
+ * scene theme that omits `door` can never throw on the render path (LIV-65).
+ */
+function doorPalette(theme, name) {
+  const tower = (theme && theme.door) || {};
+  const scene = sceneTilePalette(theme, name);
+  return {
+    fill: scene.fill || tower.fill || '#4a2f1b',
+    border: scene.border || tower.border || '#2d1c10',
+  };
+}
+
 const TILE_RENDERERS = {
   [TILE_TYPES.WALL]: (ctx, screenX, screenY, size, theme, opts = {}) => {    const u = size / 32;
 
@@ -254,15 +269,17 @@ const TILE_RENDERERS = {
   },
   [TILE_TYPES.DOOR]: (ctx, screenX, screenY, size, theme) => {
     const u = size / 32;
+    const p = doorPalette(theme, 'DOOR');
 
-    ctx.fillStyle = theme.door.fill;
+    ctx.fillStyle = p.fill;
     ctx.fillRect(screenX, screenY, size, size);
-    ctx.strokeStyle = theme.door.border;
+    ctx.strokeStyle = p.border;
     ctx.lineWidth = 2 * u;
     ctx.strokeRect(screenX + 2 * u, screenY + 2 * u, size - 4 * u, size - 4 * u);
   },
   [TILE_TYPES.GATED_DOOR]: (ctx, screenX, screenY, size, theme, opts = {}) => {
     const u = size / 32;
+    const p = doorPalette(theme, 'GATED_DOOR');
 
     // Tier art: blit the authored closed/open gated-door prop (data-driven by
     // `tier`). Falls back to the procedural lock affordance when absent.
@@ -270,9 +287,9 @@ const TILE_RENDERERS = {
     const propDef = tierMap ? PROP_CATALOG[tierMap.door] : null;
     if (drawPropFrame(ctx, propDef, opts.open ? 'open' : 'closed', screenX, screenY, size)) return;
 
-    ctx.fillStyle = theme.door.fill;
+    ctx.fillStyle = p.fill;
     ctx.fillRect(screenX, screenY, size, size);
-    ctx.strokeStyle = theme.door.border;
+    ctx.strokeStyle = p.border;
     ctx.lineWidth = 2 * u;
     ctx.strokeRect(screenX + 2 * u, screenY + 2 * u, size - 4 * u, size - 4 * u);
 
