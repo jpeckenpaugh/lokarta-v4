@@ -22,6 +22,7 @@ import {
   activeMemberIndex,
 } from '../engine/party.js';
 import { PartyAI } from '../engine/party-ai.js';
+import { evaluateParty } from '../engine/revive-system.js';
 import { KEYBINDINGS_CATALOG } from '../data/index.js';
 import { PARTY_CYCLE_BINDINGS } from '../engine/config.js';
 
@@ -134,4 +135,18 @@ test('LIV-27 AI default: non-controlled members stay on auto-AI', () => {
 
   // The active-member mirror index tracks the swap.
   assert.equal(player.party[activeMemberIndex(player)].vocation, 'fighter');
+});
+
+test('LIV-44 handoff: a downed active member never leaves control on a corpse', () => {
+  const player = partyOf('magician', ['fighter', 'archer']);
+  player.party[1].hp = 0; // fighter is down
+  player.party[1].lifeState = 'downed';
+  player.hp = 0; // the active magician falls
+
+  const res = evaluateParty(player, { elapsedSec: 1, floor: 1, monsters: [], combatIdleSec: 99 });
+
+  assert.ok(res.handoff, 'control auto-hands off with no modal');
+  assert.equal(player.activeMemberId, 'member_archer', 'the downed fighter is skipped');
+  assert.equal(res.wiped, false, 'one living ally keeps the run alive');
+  assert.equal(player.party[1].hp, 0, 'the downed member stays on the board');
 });

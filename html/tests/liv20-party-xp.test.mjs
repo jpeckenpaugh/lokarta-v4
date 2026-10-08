@@ -66,6 +66,7 @@ test('LIV-20 shared XP: the active mirror is not double-awarded', () => {
 test('LIV-20 shared XP: downed allies do not bank or spend XP', () => {
   const { player, ally } = playerWithAlly();
   ally.hp = 0;
+  ally.lifeState = 'downed';
   ally.xp = 90;
   ally.level = 1;
 
@@ -74,6 +75,9 @@ test('LIV-20 shared XP: downed allies do not bank or spend XP', () => {
   assert.equal(ally.level, 1, 'downed ally does not level (awardXP would revive it)');
   assert.equal(ally.xp, 90, 'downed ally XP is untouched');
   assert.equal(res.allies.length, 0);
+  // LIV-44 regression: level-up must never flip a downed member back to alive.
+  assert.equal(ally.hp, 0, 'the downed member is not revived by shared XP');
+  assert.equal(ally.lifeState, 'downed', 'the downed state survives the XP award');
 });
 
 test('LIV-20 allies level from shared XP and report one entry each', () => {
