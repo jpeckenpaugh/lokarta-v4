@@ -11,8 +11,8 @@ A high-level design canon for *Lokarta: Come Into The Light*.
 3. **Sequential Tower Campaign:** Climb one of four themed towers at a time, in unlock order, through its deterministic procedural levels on a $40 \times 40$ tile grid ($3 \times 3$ macro rooms). Only the Spire of Light is available at campaign start; each conquered tower unlocks the next (§8).
 4. **Gated Progression & Keys:** Defeat tier key holders to obtain Copper, Silver, and Gold keys to unlock gates leading to the ascent stairs.
 5. **Combat & Tactical Abilities:** 10 Hz real-time simulation tick (`TICK_INTERVAL_MS = 100`) using vocation-specific abilities, cooldowns, and range mechanics. Party members fight alongside the active hero in auto mode (§8.1).
-6. **Fate Grants (Drafting System):** At Level 1 and upon every level-up (up to Level 20 cap), players are offered a 5-card draft and **must select exactly 2 cards** granting vocation skills, stat upgrades, or gear rank upgrades (Ranks 1–5).
-7. **Recruit a Companion:** Clearing a tower's final floor is no longer a game-over. It shows the **Tower Complete** modal, then a **Recruit** choice that adds one not-yet-recruited vocation to the party (max 4, one per vocation). The new recruit becomes player-controlled for the next tower; prior members fight in auto mode.
+6. **Fate Grants (Drafting System):** At Level 1 and upon every level-up (up to Level 20 cap, `ProgressionSystem.MAX_LEVEL`), players are offered a 5-card draft and **must select exactly 2 cards** granting vocation skills, stat upgrades, or gear rank upgrades (Ranks 1–5 solo, scaling with the live party size to a Rank 20 cap at a full party — §9).
+7. **Recruit a Companion:** Clearing a tower's final floor is no longer a game-over. It shows the **Tower Complete** modal, then a **Recruit** choice that adds one not-yet-recruited vocation to the party (max 4, one per vocation). The new recruit becomes player-controlled for the next tower; prior members fight in auto mode. The recruit joins at **Level 1** (`RECRUIT_STARTING_LEVEL`) and is offered its Level-1 Fate Grant on entering the next tower (LIV-16), and the whole party is transported beside the active member on every tower/level transition (LIV-17, §8.6).
 8. **Ultimate Victory:** After all four towers are complete, "ULTIMATE VICTORY" fires once, as the campaign's terminal beat — not per-tower.
 
 ---
@@ -23,7 +23,7 @@ Class balance and distinct identity are enforced through **vocation-locked equip
 
 | Vocation | Role & Playstyle | Primary Weapons | Signature Mechanics & Item Sets |
 | :--- | :--- | :--- | :--- |
-| **Magician** | Radiant arcane spellcaster & vision control | Apprentice Wand & Astral Scepter | High mana pool, Light spell vision expand (+3/+2/+1 decay), ranged beam projectiles. |
+| **Magician** | Radiant arcane spellcaster & vision control | Spark Wand & Beam Staff | High mana pool, Light spell vision expand (+3/+2/+1 decay), ranged beam projectiles. |
 | **Archer** | High mobility ranged marksman | Wooden Bow & Composite Longbow | Arrow ammo management, *Grey Stalker* quiver regen (1 arrow / 5s), poison tips, piercing power shots. |
 | **Fighter** | Melee juggernaut & frontline control | Tempered Broadsword | *Vanguard* set: Shield bash push + stun, Berserker's Sigil whirlwind cleave, Battleplate fortify stance. |
 | **Paladin** | Holy warrior & radiant support | Consecrated Warhammer | *Sanctuary* set: Aegis Shield, Sanctuary Plate, Dawnlight Reliquary; holy strikes, healing prayer, damage-absorption bubble. |
@@ -46,11 +46,13 @@ other tower follows. Its layout and monster pools are catalog-driven via
 
 ## 4. Controls & Input Mapping
 
-* **Keyboard Movement:** `W`, `A`, `S`, `D` or Arrow Keys $\uparrow, \leftarrow, \downarrow, \rightarrow$.
+* **Keyboard Movement:** Arrow Keys $\uparrow, \leftarrow, \downarrow, \rightarrow$ only, driven by `keybindings.json.movement`. `W`/`A`/`S`/`D` are **not** movement keys.
+* **Party Control (LIV-27 / FIX-12):** `A` cycles to the previous living party member and `S` cycles to the next (`keybindings.json.party`; `PARTY_CYCLE_BINDINGS`). Cycling wraps in party order, skips downed members, preserves the outgoing member's live HP and tile through the handover, and leaves every non-controlled member on the `party_ai.json` auto-AI path (`aiMode: 'auto'`).
 * **Touch & Mobile Gestures:** Directional swipe for movement; tap for HUD buttons, loadout slots, and floor item pickup.
 * **Active Consumable Slots:** Keys `1`, `2`, `3`, `4` activate potions, torches, and active consumables.
-* **Equipment Hotkeys:** Keys `Q`, `W`, `E`, `R` map to `main_hand`, `off_hand`, `armor`, and `relic`.
+* **Equipment Hotkeys:** Keys `Q`, `W`, `E`, `R` map to `main_hand`, `off_hand`, `armor`, and `relic` (`keybindings.json.keySlots.equipment`).
 * **Stairs & Gate Traversal:** Step directly onto stairs or unlocked gates to traverse tower rooms and floors.
+* **Debug Options (LIV-18 / LIV-29):** The Options menu exposes off-by-default debug controls. **Walk Thru Walls** lets the active member step onto any in-bounds tile, including walls, shut gates, and springs (`GridMap.canStep(..., walkThruWalls)`). **Tester's Strength** scales incoming attack and damage-over-time damage by `ui.json.options.debug.testerStrengthDamageReductionPct` (90%). **Recruit Character** (live game only, hidden once the party is full) recruits the next missing catalog vocation at Level 1, assumes control, persists, and offers its Level-1 Fate Grant; repeatable to the 4-member cap.
 
 ---
 
@@ -229,8 +231,9 @@ you keep your feet moving?", Rime Aerie asks "can you kill the enabler first?".
 * **Emberforge sits just under the Spire's hp ceiling** because its artillery +
   burn already tax positioning; the threat budget is spent on arena control, not
   raw stats. *Lenses: MDA (tension from the wind-up), enemy role taxonomy.*
-* Key holders carry `keyHolderModifier` (×1.5 hp, ×1.15 atk) in every tower, so
-  a key fight is always a step above its floor even when the pools are light.
+* Key holders carry `keyHolderModifier` in every tower — ×1.5 hp / ×1.15 atk,
+  except the Rime Aerie at ×1.45 hp / ×1.15 atk to match its compressed spike —
+  so a key fight is always a step above its floor even when the pools are light.
 
 ### 7.3 Bosses
 
@@ -271,7 +274,8 @@ replayability (add-wave / reposition management).*
 * **Starter caches are tuned to tower pressure, not a single global table.**
   Emberforge hands extra arrows early (F1) because its fire casters punish
   melee closes; Rime hands two potions on its final floor to fund the compressed
-  spike; Catacombs stays potion-forward across all four floors.
+  spike; Catacombs is potion-heavy on F1/F3/F4 (F2 seeds arrows) and closes with
+  two potions.
 * **Bosses award a guaranteed greater-potion pair** (xFrostbound,
   xForgemaster, xTidebound, xSpire) so a failed boss attempt is never a net
   resource loss; `economy.json` `monsterGold` carries per-boss gold in the same
@@ -294,7 +298,8 @@ engagement mechanics are introduced.
   (catalog-only load, soft-lock-free levels, deterministic floor + boss).
 * Two content-count assertions were made expansion-aware alongside the new
   palettes/tiers (`data-catalogs.test.mjs` biomes, `sprite-assets.test.mjs`
-  tile-theme levels) — see the Tech Lead handoff for review. **T0: 557/557 green.**
+  tile-theme levels) — see the Tech Lead handoff for review. **T0: 716/716 green**
+  on the current `main` (`node --test html/tests/*.test.mjs`).
 
 ---
 
@@ -385,7 +390,7 @@ v2 tuning:
 | **Magician** | 0.22 / 0.12 / 0.07 | 40% / 2 / 3.5s | no | 50/50/8s | `picks 2` |
 | **Archer** | 0.15 / 0.08 / 0.06 | 35% / 2 / 3.0s | no | 50/50/8s | `picks 2` |
 | **Fighter** | 0.16 / 0.00 / 0.05 | 15% / 1 / 4.0s | no | 50/50/8s | `picks 2` |
-| **Paladin** | 0.20 / 0.04 / 0.06 | 15% / 1 / 4.0s | **yes**, 65/55, 20% | 50/50/8s | `picks 2` |
+| **Paladin** | 0.20 / 0.04 / 0.06 | 15% / 1 / 4.0s | **yes**, 65/90, 15% (cd 2.0s) | 50/50/8s | `picks 2` |
 | **default** | 0.20 / 0.00 / 0.06 | 20% / 2 / 4.0s | no | 50/50/8s | — |
 
 `autoFateGrant` (party-wide): `picks: 2`, `priority: upgrade → main_hand → off_hand → affinity → rarity → offer_order`.
@@ -404,10 +409,10 @@ v2 tuning:
   Spark. *Lenses: economy & reward pacing, MDA.*
 * **Paladin is the only support.** With `support.enabled: true` and
   `paladin_heal.healRadius: 6` / `targetsAllies: true`, it heals the most-injured
-  ally at ≤65%, then bulwarks the lowest ally with the Aegis shield at ≤55% while
-  mana stays above 20%, else fights with Holy Strike. This makes recruitment
-  order matter: an early Paladin is a sustain delighter. *Lenses: Kano model,
-  replayability.*
+  ally at ≤65%, then bulwarks the most-injured un-warded ally with the Aegis shield
+  at ≤90% while mana stays above 15% (FIX-15 raised shield frequency), else fights
+  with Holy Strike. This makes recruitment order matter: an early Paladin is a
+  sustain delighter. *Lenses: Kano model, replayability.*
 * **`preferredAbilities` only lists combat-castable abilities.** The Magician's
   `magician_light` vision buff is intentionally excluded: auto-casting a long
   buff needs buff-cast handling in WS4 and is not worth a one-off code path.
@@ -450,10 +455,11 @@ Support is a **separate budgeted cast**, evaluated before combat casts:
    ally.
 4. Otherwise fall through to the normal `preferredAbilities` combat cast.
 
-Anti-spam is two-layer: the `support.cooldownSec` (4s) global gate plus each
-ability's own cooldown (`paladin_heal` 6s). `minManaFrac` keeps the Paladin from
-healing itself out of offensive mana. Only the Paladin profile is enabled, which
-keeps the party's single point of support legible. *Lenses: balance levers
+Anti-spam is two-layer: the `support.cooldownSec` shared gate (2.0s on the
+Paladin after FIX-15; 4.0s on the non-support profiles) plus each ability's own
+cooldown (`paladin_heal` 6s, `holy_shield` 6s). `minManaFrac` keeps the Paladin
+from healing itself out of offensive mana. Only the Paladin profile is enabled,
+which keeps the party's single point of support legible. *Lenses: balance levers
 (cooldowns, not lower healing), game feel (readable support beats), Kano
 (recruit-order value).*
 
@@ -552,7 +558,11 @@ Acceptance (T0, content-shaped):
 #### 8.1.7 v3 looting & protector aggression (LIV-33)
 
 Two small v3 blocks make the party feel like a party: allies help vacuum the
-floor, and front-liners step in when a companion is hit.
+floor, and front-liners step in when a companion is hit. They are **additive
+optional blocks** — the catalog keeps `_schemaVersion: 2` and the engine
+(`party-ai.js` `resolveItemSearch` / `resolveProtect`) merges each block
+field-wise over `default` and the code-owned baseline, so a profile without them
+still runs unchanged.
 
 **v3 ally ground-item search (`itemSearch`)**
 
@@ -620,10 +630,10 @@ party size on top of the tower's own `monsterGroups.statScale`:
    sizes fall back to the largest authored entry).
 2. Multiply the resolved per-floor `statScale.hp` / `statScale.atk` by the
    party-size factor before `buildMonster`, the boss push, and the guard push
-   (existing lines around `floor-generator.js:929`, `:1000`, `:1021`, `:1031`).
+   in `floor-generator.js` (`buildMonster` is the single stat constructor).
 3. Thread the live party size in: extend `generateFloor(floorNumber, seed,
-   towerId, partySize = 1)`; update the `game-worker` call sites
-   (`:146`, `:256`, `:307`, `:530`, `:598`, `:632`) to pass the active party size.
+   towerId, partySize = 1)`; update the `game-worker.js` `generateFloor` call
+   sites to pass the active party size.
 4. Include party size in any floor cache identity so a freshly recruited member
    does not reuse a pre-recruit floor.
 5. Acceptance: same seed + tower + floor + party size is byte-identical; party
@@ -693,6 +703,42 @@ Linear campaign chain, keyed by `order` and gated by `unlockRequires`:
 * **No new monsters, abilities, towers, or bespoke code paths** are introduced by
   this section. It is content plus one catalog field (`partyScale`) with an
   existing-handler integration.
+
+### 8.6 Party quality-of-life & campaign plumbing (LIV-16–LIV-33)
+
+The §8.1 profiles govern ally *decisions*; these systems govern the shared party
+*state* they act on. All are catalog-driven and locked by the LIV-* suites named
+beside each.
+
+* **Recruits join at Level 1 (`campaign.js`, `RECRUIT_STARTING_LEVEL = 1`, LIV-16).**
+  A recruit is never aligned up to the party level: it arrives at full HP/mana on
+  its vocation's Level-1 catalog base stats, becomes the active member, and — being
+  level 1 with an empty action bar — is offered its Level-1 Fate Grant on tower
+  entry (guaranteed to include a `main_hand` primary weapon). The Recruit Character
+  debug action in §4 uses the same path.
+* **Party transport on transitions (`applyDungeonData`, LIV-17 / FIX-2).** On any
+  tower or level change every non-active member is force-placed on a free, walkable
+  tile beside the active member's arrival tile instead of trusting stale coordinates
+  from the old map; a fallen ally is revived at full HP/mana and transported. A
+  same-floor re-apply does not shuffle an already-valid formation.
+* **Fountains heal the whole party (`economy.json` `springs.healsParty`, LIV-19).**
+  While the active member stands adjacent to a healing spring, *every living party
+  member* regenerates `springs.hpPerSec`/`mpPerSec` (5/5) per second, capped at max.
+* **The primary swaps tiles with allies (`party-swap.js`, LIV-21 / FIX-7).** Walking
+  the active member onto a living ally's tile trades places — the ally steps onto
+  the vacated tile — so an allied body can never pin the primary. Downed members
+  and the active member's own party mirror are not swap targets.
+* **Shared party XP and backpack (LIV-20 / LIV-22).** Allies bank the party's shared
+  XP and level up silently; walk-over drops picked up by *any* member (including an
+  auto ally mid-`itemSearch`) land in one shared backpack. Auto-potions, support
+  casts, and ground loot all resolve against that same backpack (§8.1.3, §8.1.7).
+* **Ally support, potions, movement, looting and protection.** Authored per
+  vocation in `party_ai.json` and detailed in §8.1.1–§8.1.7: heals/shields from the
+  shared mana budget, auto-drinks at ≤50%, cadence/stagger/jitter/wander movement,
+  out-of-combat `itemSearch` looting, and Fighter/Paladin `protect` retaliation.
+* **Controls.** Shared arrow-key movement plus `A`/`S` to cycle the controlled
+  member (§4). The controlled member is the only manual actor; everyone else
+  resolves through `party_ai.json`.
 
 ## 9. Equipment Rank Curve, ranks 6–20 (FIX-13 / FIX-15)
 
@@ -792,8 +838,10 @@ The upgrade cost formula is unchanged and simply extends past Rank 5:
 The **gold cost curve** for Ranks 1–5 is byte-identical to the shipped curve (the
 Golden-set tests pin `40 + 35×3 = 145` at Rank 4), so the existing early game's
 economy is untouched. Beyond Rank 5 the linear curve is already a rising sink — a
-single item taken from Rank 1 to Rank 20 costs **7,410 gold**, and a four-item set
-costs ≈30k — which tracks the campaign's monster/chest/boss gold without a new
+single item taken from Rank 1 to Rank 20 costs **6,745 gold** (the 19 steps
+`40, 75, …, 670`; `EconomySystem.upgradeCost` is `40 + 35 × (itemLevel − 1)`, so
+Rank 20 → 21 is 705), and a four-item set costs ≈27k — which tracks the campaign's
+monster/chest/boss gold without a new
 curve type. If playtesting later shows upgrades too cheap or too expensive, the
 one lever to turn is `shop.upgradeCostPerRank`; do not add a per-rank table.
 *Lenses: economy & reward pacing, scope discipline.*
