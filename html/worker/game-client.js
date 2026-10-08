@@ -152,6 +152,15 @@ export class GameClient {
   }
 
   /**
+   * Composes an overworld scene descriptor (island/town) from the catalogs.
+   * @param {{ sceneId?: string, towerId?: string }} selection
+   * @returns {Promise<object>} scene descriptor
+   */
+  async getScene(selection = {}) {
+    return this.request('getScene', selection);
+  }
+
+  /**
    * Persists chest opened-state for the player's current floor.
    * @param {object} player
    * @param {object[]} chests - minimal chest-state records

@@ -20,6 +20,16 @@ import {
   KEYBINDINGS_CATALOG,
   UI_CATALOG,
   ECONOMY_CATALOG,
+  ISLANDS_CATALOG,
+  TOWNS_CATALOG,
+  NPCS_CATALOG,
+  QUESTS_CATALOG,
+  DIALOGUES_CATALOG,
+  DEFAULT_ISLAND_ID,
+  DEFAULT_TOWN_ID,
+  getIslandDefinition,
+  getTownDefinition,
+  getSceneDefinition,
 } from '../data/index.js';
 
 test('JSON Data Catalogs', async (t) => {
@@ -539,6 +549,20 @@ test('JSON Data Catalogs', async (t) => {
     assert.ok(UI_CATALOG.knockout.swap.destinationFlash.durationMs >= 900);
     assert.ok(UI_CATALOG.knockout.swap.sfx.koHandoff);
     assert.ok(UI_CATALOG.knockout.swap.sfx.controlSwap);
+  });
+
+  await t.test('loads and validates the LIV-59 overworld scene catalogs', () => {
+    // Registered in the data barrel and resolved through pure registry helpers
+    // (no per-scene branches). Deep referential checks live in liv59-scene-catalog.
+    assert.ok(Array.isArray(ISLANDS_CATALOG.islands) && ISLANDS_CATALOG.islands.length >= 1);
+    assert.ok(Array.isArray(TOWNS_CATALOG.towns) && TOWNS_CATALOG.towns.length >= 1);
+    assert.ok(Array.isArray(NPCS_CATALOG.npcs) && NPCS_CATALOG.npcs.length >= 7);
+    assert.ok(Array.isArray(QUESTS_CATALOG.quests) && QUESTS_CATALOG.quests.length === 3);
+    assert.ok(DIALOGUES_CATALOG.dialogues && typeof DIALOGUES_CATALOG.dialogues === 'object');
+    assert.ok(getIslandDefinition(DEFAULT_ISLAND_ID), 'default island resolves');
+    assert.ok(getTownDefinition(DEFAULT_TOWN_ID), 'default town resolves');
+    assert.equal(getSceneDefinition(DEFAULT_ISLAND_ID).kind, 'island');
+    assert.equal(getSceneDefinition(DEFAULT_TOWN_ID).kind, 'town');
   });
 
   await t.test('every item declares a D1 slotRole', () => {

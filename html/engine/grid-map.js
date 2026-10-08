@@ -2,7 +2,7 @@
  * Lokarta: Come Into The Light - Dungeon Grid Map Subsystem
  */
 
-import { CONFIG, TILE_TYPES } from './config.js';
+import { CONFIG, TILE_TYPES, IMPASSABLE_TILE_TYPES } from './config.js';
 
 const CODE_TO_TILE_TYPE = {
   1: TILE_TYPES.WALL,
@@ -11,6 +11,16 @@ const CODE_TO_TILE_TYPE = {
   4: TILE_TYPES.GATED_DOOR,
   5: TILE_TYPES.SPRING,
   6: TILE_TYPES.TOWN_GATE,
+  // LIV-59 scene tiles (append-only; island/town tilemaps).
+  7: TILE_TYPES.WATER,
+  8: TILE_TYPES.GRASS,
+  9: TILE_TYPES.SAND,
+  10: TILE_TYPES.PATH,
+  11: TILE_TYPES.TREE,
+  12: TILE_TYPES.BRIDGE,
+  13: TILE_TYPES.BUILDING_WALL,
+  14: TILE_TYPES.DOORWAY,
+  15: TILE_TYPES.TOWER_ENTRANCE,
 };
 
 export class GridMap {
@@ -85,7 +95,9 @@ export class GridMap {
   isWalkable(x, y) {
     if (!this.isInBounds(x, y)) return false;
     const tile = this.tiles[y][x];
-    if (tile.type === TILE_TYPES.WALL) return false;
+    // Walls plus the scene solids (water border, trees, building bodies)
+    // always block; see IMPASSABLE_TILE_TYPES (LIV-55 D6).
+    if (IMPASSABLE_TILE_TYPES.has(tile.type)) return false;
     // E3: a locked gated door blocks movement until its key unlocks the tile.
     if (tile.type === TILE_TYPES.GATED_DOOR && !tile.gateOpen) return false;
     // Healing springs are fountains and cannot be stepped on.
@@ -94,6 +106,24 @@ export class GridMap {
     // and chests stay walkable (they are not marked blocked).
     if (tile.blocked === true) return false;
     return true;
+  }
+
+  /** True when the tile is an impassable water tile (overworld border). */
+  isWater(x, y) {
+    if (!this.isInBounds(x, y)) return false;
+    return this.tiles[y][x].type === TILE_TYPES.WATER;
+  }
+
+  /** True when the tile is a building doorway (scene interaction trigger). */
+  isDoorway(x, y) {
+    if (!this.isInBounds(x, y)) return false;
+    return this.tiles[y][x].type === TILE_TYPES.DOORWAY;
+  }
+
+  /** True when the tile is a tower entrance (scene portal trigger). */
+  isTowerEntrance(x, y) {
+    if (!this.isInBounds(x, y)) return false;
+    return this.tiles[y][x].type === TILE_TYPES.TOWER_ENTRANCE;
   }
 
   /**

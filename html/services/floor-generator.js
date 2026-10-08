@@ -26,16 +26,11 @@ import {
 } from '../data/index.js';
 import { PROP_MANIFEST } from '../assets/sprites/index.js';
 import { MONSTER_FACTION } from '../engine/faction.js';
+import { TILE_TYPES } from '../engine/config.js';
 
-export const TILE_TYPES = {
-  FLOOR: 0,
-  WALL: 1,
-  STAIRS: 2,
-  DOOR: 3,
-  GATED_DOOR: 4,
-  SPRING: 5,
-  TOWN_GATE: 6,
-};
+// Single source of truth for tile codes lives in `engine/config.js` (LIV-59 P0
+// dedupe). Re-exported here so existing importers of this module keep working.
+export { TILE_TYPES };
 
 /**
  * Level count of the default tower. Kept as a convenience export for the many

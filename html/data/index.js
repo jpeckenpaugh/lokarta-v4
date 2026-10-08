@@ -19,6 +19,11 @@ import keybindingsData from './keybindings.json' with { type: 'json' };
 import uiData from './ui.json' with { type: 'json' };
 import economyData from './economy.json' with { type: 'json' };
 import partyAiData from './party_ai.json' with { type: 'json' };
+import islandsData from './islands.json' with { type: 'json' };
+import townsData from './towns.json' with { type: 'json' };
+import npcsData from './npcs.json' with { type: 'json' };
+import questsData from './quests.json' with { type: 'json' };
+import dialoguesData from './dialogues.json' with { type: 'json' };
 
 /**
  * Tower registry: `tower_levels.json` holds a set of full tower definitions.
@@ -154,4 +159,110 @@ export const KEYBINDINGS_CATALOG = keybindingsData;
 export const UI_CATALOG = uiData;
 export const ECONOMY_CATALOG = economyData;
 export const PARTY_AI_CATALOG = partyAiData;
+
+/**
+ * Scene registries (LIV-59 P0). Islands and towns are catalog-authored compact
+ * tilemaps (character rows + legend) that `services/scene-composer.js` composes
+ * into the numeric tile matrix the engine consumes. Selection always goes
+ * through these pure helpers — no per-island/per-town branches in JS.
+ */
+const ISLANDS = Array.isArray(islandsData.islands) ? islandsData.islands : [];
+const ISLAND_BY_ID = new Map(ISLANDS.map((island) => [island.id, island]));
+export const DEFAULT_ISLAND_ID =
+  islandsData.defaultIslandId || (ISLANDS[0] && ISLANDS[0].id) || null;
+
+/** Resolves an island definition by id, or null. */
+export function getIslandDefinition(islandId) {
+  return ISLAND_BY_ID.get(islandId) || null;
+}
+
+/** All authored island definitions in catalog order. */
+export function listIslandDefinitions() {
+  return ISLANDS.slice();
+}
+
+const TOWNS = Array.isArray(townsData.towns) ? townsData.towns : [];
+const TOWN_BY_ID = new Map(TOWNS.map((town) => [town.id, town]));
+export const DEFAULT_TOWN_ID =
+  townsData.defaultTownId || (TOWNS[0] && TOWNS[0].id) || null;
+
+/** Resolves a town definition by id, or null. */
+export function getTownDefinition(townId) {
+  return TOWN_BY_ID.get(townId) || null;
+}
+
+/** All authored town definitions in catalog order. */
+export function listTownDefinitions() {
+  return TOWNS.slice();
+}
+
+/** Unified scene registry entry: `{ id, kind: 'island'|'town', def }`, or null. */
+export function getSceneDefinition(sceneId) {
+  if (ISLAND_BY_ID.has(sceneId)) return { id: sceneId, kind: 'island', def: ISLAND_BY_ID.get(sceneId) };
+  if (TOWN_BY_ID.has(sceneId)) return { id: sceneId, kind: 'town', def: TOWN_BY_ID.get(sceneId) };
+  return null;
+}
+
+/** All authored scene entries (islands then towns) in catalog order. */
+export function listSceneDefinitions() {
+  return [
+    ...ISLANDS.map((def) => ({ id: def.id, kind: 'island', def })),
+    ...TOWNS.map((def) => ({ id: def.id, kind: 'town', def })),
+  ];
+}
+
+/** The island whose `towerId` matches, or null (tower -> overworld lookup). */
+export function islandForTower(towerId) {
+  return ISLANDS.find((island) => island.towerId === towerId) || null;
+}
+
+/** The island a town belongs to (by `islandId`), or null. */
+export function islandForTown(townId) {
+  const town = TOWN_BY_ID.get(townId);
+  return town && town.islandId ? ISLAND_BY_ID.get(town.islandId) || null : null;
+}
+
+const NPCS = Array.isArray(npcsData.npcs) ? npcsData.npcs : [];
+const NPC_BY_ID = new Map(NPCS.map((npc) => [npc.id, npc]));
+
+/** Resolves an NPC definition by id, or null. */
+export function getNpcDefinition(npcId) {
+  return NPC_BY_ID.get(npcId) || null;
+}
+
+/** NPC definitions, optionally filtered to one scene. */
+export function listNpcDefinitions(sceneId = null) {
+  return sceneId ? NPCS.filter((npc) => npc.sceneId === sceneId) : NPCS.slice();
+}
+
+const QUESTS = Array.isArray(questsData.quests) ? questsData.quests : [];
+const QUEST_BY_ID = new Map(QUESTS.map((quest) => [quest.id, quest]));
+
+/** Resolves a quest definition by id, or null. */
+export function getQuestDefinition(questId) {
+  return QUEST_BY_ID.get(questId) || null;
+}
+
+/** All authored quest definitions in catalog order. */
+export function listQuestDefinitions() {
+  return QUESTS.slice();
+}
+
+const DIALOGUES = dialoguesData.dialogues || {};
+
+/** Resolves a dialogue tree by id, or null. */
+export function getDialogueDefinition(dialogueId) {
+  return DIALOGUES[dialogueId] || null;
+}
+
+/** All authored dialogue trees keyed by id. */
+export function listDialogueDefinitions() {
+  return DIALOGUES;
+}
+
+export const ISLANDS_CATALOG = islandsData;
+export const TOWNS_CATALOG = townsData;
+export const NPCS_CATALOG = npcsData;
+export const QUESTS_CATALOG = questsData;
+export const DIALOGUES_CATALOG = dialoguesData;
 

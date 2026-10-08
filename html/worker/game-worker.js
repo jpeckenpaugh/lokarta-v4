@@ -38,6 +38,7 @@ import {
   SAVE_SLOT_COUNT,
 } from '../services/save-slots.js';
 import { generateFloor, resolveArrivalCoords, FLOOR_TEMPLATE_VERSION, resolvePartySize } from '../services/floor-generator.js';
+import { composeSceneById } from '../services/scene-composer.js';
 import {
   createPlayer,
   migratePlayerParty,
@@ -49,7 +50,7 @@ import {
   isTowerUnlocked,
   partySize as partySizeOf,
 } from '../engine/index.js';
-import { DEFAULT_TOWER_ID, getTowerDefinition } from '../data/index.js';
+import { DEFAULT_TOWER_ID, getTowerDefinition, islandForTower, DEFAULT_TOWN_ID } from '../data/index.js';
 
 const OPTIONS_KEY = 'options';
 const LAST_PLAYED_KEY = 'last_played_slot';
@@ -860,6 +861,14 @@ async function handleResetProgress() {
  * @param {{ player?: object, chests?: object[] }} payload
  * @returns {Promise<{ success: boolean }>}
  */
+/**
+ * Persists chest opened-state for the player's current floor back into the
+ * slot floor cache, so re-entering a level keeps opened chests empty. Accepts
+ * the minimal chest-state records (see ChestSystem.serializeChestState) and
+ * merges them onto the cached floor without touching tiles/entities.
+ * @param {{ player?: object, chests?: object[] }} payload
+ * @returns {Promise<{ success: boolean }>}
+ */
 async function handleSaveFloorState(payload = {}) {
   const { player, chests } = payload;
   if (!player) {
@@ -879,6 +888,27 @@ async function handleSaveFloorState(payload = {}) {
   return { success: true };
 }
 
+/**
+ * Composes an overworld scene descriptor (island/town) from the catalogs
+ * (LIV-59 P0 / LIV-57 §2.1). Accepts `{ sceneId }` directly, or `{ towerId }`
+ * to resolve the island that hosts a tower. Pure catalog composition — no save
+ * state is read or written; new saves simply call this for the town scene.
+ *
+ * @param {{ sceneId?: string, towerId?: string }} payload
+ * @returns {Promise<object>} scene descriptor
+ */
+async function handleGetScene(payload = {}) {
+  let sceneId = payload.sceneId || null;
+  if (!sceneId && payload.towerId) {
+    const island = islandForTower(resolveTowerId(payload.towerId));
+    sceneId = island ? island.id : null;
+  }
+  if (!sceneId) sceneId = DEFAULT_TOWN_ID;
+  const scene = composeSceneById(sceneId);
+  if (!scene) throw new Error(`Unknown scene id: '${sceneId}'`);
+  return scene;
+}
+
 // Exported for the native test runner (the worker-safe module still guards its
 // `self.onmessage` hook below, so importing this in Node is inert).
 export const COMMAND_HANDLERS = {
@@ -896,6 +926,7 @@ export const COMMAND_HANDLERS = {
   saveCharacter: handleSaveCharacter,
   getFloor: handleGetFloor,
   saveFloorState: handleSaveFloorState,
+  getScene: handleGetScene,
   advanceFloor: handleAdvanceFloor,
   getOptions: handleGetOptions,
   setOptions: handleSetOptions,

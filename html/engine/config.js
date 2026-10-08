@@ -5,6 +5,11 @@
 import { VOCATIONS_CATALOG, MONSTERS_CATALOG, ABILITIES_CATALOG, UI_CATALOG, ECONOMY_CATALOG, KEYBINDINGS_CATALOG, DEFAULT_TOWER_ID } from '../data/index.js';
 import { PARTY_FACTION } from './faction.js';
 
+/**
+ * Numeric tile codes. `0..6` are the original tower tiles; `7..15` are the
+ * scene tiles appended for the island/town overworld (LIV-59 P0). Appending
+ * (never renumbering) keeps every persisted floor matrix valid.
+ */
 export const TILE_TYPES = {
   FLOOR: 0,
   WALL: 1,
@@ -13,7 +18,29 @@ export const TILE_TYPES = {
   GATED_DOOR: 4,
   SPRING: 5,
   TOWN_GATE: 6,
+  WATER: 7,
+  GRASS: 8,
+  SAND: 9,
+  PATH: 10,
+  TREE: 11,
+  BRIDGE: 12,
+  BUILDING_WALL: 13,
+  DOORWAY: 14,
+  TOWER_ENTRANCE: 15,
 };
+
+/**
+ * Tile codes that always block movement regardless of any per-tile state.
+ * Water is the overworld's impassable border; trees and building bodies are
+ * solid scenery (LIV-55 D6). Doors/gates/springs resolve their own rules in
+ * `GridMap.isWalkable`.
+ */
+export const IMPASSABLE_TILE_TYPES = new Set([
+  TILE_TYPES.WALL,
+  TILE_TYPES.WATER,
+  TILE_TYPES.TREE,
+  TILE_TYPES.BUILDING_WALL,
+]);
 
 const LOADOUT_KEYS = UI_CATALOG?.hud?.loadout || {};
 const BACKPACK_LAYOUT = UI_CATALOG?.inventory?.backpack || {};
