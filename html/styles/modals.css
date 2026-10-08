@@ -1321,6 +1321,15 @@
   line-height: 1;
 }
 
+/* LIV-81 authored bust: crisp nearest-neighbour scale, fixed square footprint
+   so swapping emoji -> portrait does not shift the speaker row. */
+.dialogue-modal .dialogue-portrait-img {
+  display: block;
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+}
+
 .dialogue-modal .dialogue-lines {
   margin: 12px 0;
 }

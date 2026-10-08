@@ -6,6 +6,7 @@ import { FateGrantSystem, listDiscoveredCodexEntries, codexProgress, listColorBl
 import { towerUnlockInfo } from '../engine/campaign.js';
 import { soundFX } from '../audio/index.js';
 import { HUDManager } from './hud-manager.js';
+import { portraitDataUrl } from './portrait-renderer.js';
 import {
   resolveDialogueAdvanceKeys,
   isDialogueAdvanceKey,
@@ -498,6 +499,8 @@ export class ModalManager {
    *
    * @param {object} opts
    * @param {string} [opts.speaker]
+   * @param {string} [opts.portraitId] - resolved 48x48 bust asset id (LIV-81);
+   *   falls back to `portraitEmoji` when absent
    * @param {string} [opts.portraitEmoji]
    * @param {string[]} [opts.lines] - one line per beat
    * @param {Array<{label:string,type:string}>} [opts.actions]
@@ -521,11 +524,12 @@ export class ModalManager {
     const actionHtml = actions
       .map((action, i) => `<button class="action-btn dialogue-action" data-action-index="${i}">${action.label}</button>`)
       .join('');
+    const hasPortrait = !!(opts.portraitId || opts.portraitEmoji);
     modalOverlayEl.innerHTML = `
       <div class="result-modal dialogue-modal" role="dialog" aria-modal="true">
         <div class="dialogue-arrow" aria-hidden="true"></div>
         <div class="dialogue-speaker">
-          ${opts.portraitEmoji ? `<span class="dialogue-portrait">${opts.portraitEmoji}</span>` : ''}
+          ${hasPortrait ? `<span class="dialogue-portrait" id="dialogue-portrait">${opts.portraitEmoji || ''}</span>` : ''}
           <h2>${opts.speaker || ''}</h2>
         </div>
         <div class="dialogue-lines" id="dialogue-lines" aria-live="polite"></div>
@@ -547,6 +551,14 @@ export class ModalManager {
     const beatCountEl = modalOverlayEl.querySelector('#dialogue-beat-count');
     const arrowEl = modalOverlayEl.querySelector('.dialogue-arrow');
     const anchor = opts.anchor;
+
+    // LIV-81: upgrade the emoji fallback to the authored bust when the portrait
+    // asset resolves. If it is absent (or no canvas host exists) the emoji stays.
+    if (opts.portraitId) {
+      const holder = modalOverlayEl.querySelector('#dialogue-portrait');
+      const url = portraitDataUrl(opts.portraitId, 2);
+      if (holder && url) holder.innerHTML = `<img class="dialogue-portrait-img" src="${url}" alt="" />`;
+    }
 
     // Anchoring turns the panel into a viewport-fixed speech bubble and clears
     // the dimming backdrop so the scene around the speaker stays readable.

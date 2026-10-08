@@ -998,7 +998,11 @@ function tintCacheKey(tint) {
 
 export function resolveSpriteId(actor) {
   if (!actor) return null;
-  const candidates = [actor.spriteId, actor.vocation, actor.type, actor.id];
+  // LIV-81: an NPC's own `npcSpriteId` wins over the shared vocation fallback.
+  // An unknown/missing `npcSpriteId` simply falls through to `spriteId`, so the
+  // migration is safe before every bespoke NPC asset has landed. Data-driven:
+  // no per-NPC branch, just a precedence list.
+  const candidates = [actor.npcSpriteId, actor.spriteId, actor.vocation, actor.type, actor.id];
   for (const c of candidates) if (c && SPRITE_CATALOG[c]) return c;
   return null;
 }
@@ -1266,8 +1270,11 @@ export class SpriteRenderer {
     // Hit feedback: a static tint under reduced motion, otherwise the same tint
     // baked into the frame (no per-frame shake, no alpha edge fades). An explicit
     // caller tint (the LIV-45/49 downed grey-out) wins and is baked the same way.
+    // LIV-81: a bespoke NPC sprite already carries its own palette, so the
+    // migration `renderTheme` tint is skipped once the NPC's own asset resolves.
+    const bespoke = !!(actor.npcSpriteId && actor.npcSpriteId === id);
     const hitTint = (!reduced && state === 'hit') ? { hex: HIT_TINT, amount: 0.35 } : null;
-    const tint = opts.tint || hitTint;
+    const tint = bespoke ? null : (opts.tint || hitTint);
 
     // LIV-49 on-back pose: rotate the baked frame about the tile centre. One
     // translate/rotate pair plus a pivot-relative blit keeps the per-frame path

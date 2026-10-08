@@ -41,6 +41,11 @@ export function makeNpcRuntime(def) {
     homeY: y,
     facing: def.facing || 'down',
     spriteId: def.spriteId || def.vocation || null,
+    // LIV-81: forward the NPC's own sprite id + portrait expression map so the
+    // renderer and dialogue UI read them off the runtime entity. Generic
+    // passthrough only — no per-NPC branch or lookup.
+    npcSpriteId: def.npcSpriteId || null,
+    portraits: def.portraits ? { ...def.portraits } : null,
     vocation: def.vocation || null,
     renderTheme: def.renderTheme ? { ...def.renderTheme } : null,
     aiType: def.aiType || 'stationary',

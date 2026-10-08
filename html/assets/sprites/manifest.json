@@ -10,7 +10,15 @@
     "crypt_skeleton": { "kind": "monster", "file": "./monsters/crypt_skeleton.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
     "shadow_cultist": { "kind": "monster", "file": "./monsters/shadow_cultist.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
     "elite_cultist": { "kind": "monster", "file": "./monsters/elite_cultist.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
-    "abyssal_overlord": { "kind": "monster", "file": "./monsters/abyssal_overlord.json", "native": { "w": 48, "h": 48 }, "anchor": { "x": 24, "y": 46 } }
+    "abyssal_overlord": { "kind": "monster", "file": "./monsters/abyssal_overlord.json", "native": { "w": 48, "h": 48 }, "anchor": { "x": 24, "y": 46 } },
+    "npc_elder_rowan_vane": { "kind": "npc", "file": "./npc/npc_elder_rowan_vane.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
+    "npc_captain_halden": { "kind": "npc", "file": "./npc/npc_captain_halden.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
+    "npc_wick": { "kind": "npc", "file": "./npc/npc_wick.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
+    "npc_high_dawnkeeper_aurel": { "kind": "npc", "file": "./npc/npc_high_dawnkeeper_aurel.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
+    "npc_mara": { "kind": "npc", "file": "./npc/npc_mara.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
+    "npc_innkeep_bessa": { "kind": "npc", "file": "./npc/npc_innkeep_bessa.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
+    "npc_old_sailor_doran": { "kind": "npc", "file": "./npc/npc_old_sailor_doran.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
+    "npc_pilgrims_apprentice_tam": { "kind": "npc", "file": "./npc/npc_pilgrims_apprentice_tam.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } }
   },
   "props": {
     "key_copper": { "kind": "item", "tier": "copper", "file": "./items/key_copper.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 26 }, "frames": ["icon"] },

@@ -182,6 +182,19 @@ export function exportPreviews(outDir = DEFAULT_OUT) {
       written.push(dest);
     }
   }
+
+  // Portrait sheet (LIV-81): one bust per NPC per expression, in catalog order.
+  const portraitFile = path.join(ROOT, 'html', 'assets', 'portraits', 'portraits.json');
+  if (fs.existsSync(portraitFile)) {
+    const portraits = JSON.parse(fs.readFileSync(portraitFile, 'utf8'));
+    const tiles = Object.values(portraits.portraits || {}).map(def => frameTile(def, 'bust', SCALE));
+    if (tiles.length) {
+      const sheet = compose(tiles, 6);
+      const dest = path.join(outDir, 'portraits.png');
+      fs.writeFileSync(dest, encodePNG(sheet.W, sheet.H, sheet.buf));
+      written.push(dest);
+    }
+  }
   return written;
 }
 

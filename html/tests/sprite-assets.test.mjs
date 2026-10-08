@@ -6,7 +6,8 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 import { SPRITE_CATALOG, SPRITE_MANIFEST, PROP_CATALOG, PROP_MANIFEST, PROP_IDS_BY_TIER } from '../assets/sprites/index.js';
-import { VOCATIONS_CATALOG, MONSTERS_CATALOG, TILE_THEMES_CATALOG } from '../data/index.js';
+import { PORTRAIT_CATALOG } from '../assets/portraits/index.js';
+import { VOCATIONS_CATALOG, MONSTERS_CATALOG, TILE_THEMES_CATALOG, NPCS_CATALOG } from '../data/index.js';
 import { CONFIG, TILE_TYPES } from '../engine/index.js';
 import {
   SpriteRenderer,
@@ -22,6 +23,12 @@ import {
   resolvePropId,
   wallShadeFor,
 } from '../app/sprite-renderer.js';
+import {
+  resolvePortraitId,
+  getPortraitDef,
+  drawPortrait,
+  PORTRAIT_NATIVE,
+} from '../app/portrait-renderer.js';
 import { exportPreviews } from '../../tools/render-sprite-preview.mjs';
 import { validatePropAssets } from '../../tools/validate-prop-assets.mjs';
 
@@ -480,4 +487,155 @@ test('Wall shade variation', () => {
   // Falls back to the flat fill when no palette is authored.
   assert.equal(wallShadeFor({ wall: { fill: '#123456' } }, 1, 2), '#123456');
   assert.equal(wallShadeFor(null, 0, 0), undefined);
+});
+
+test('NPC identity atlas (LIV-81)', async t => {
+  const npcs = NPCS_CATALOG.npcs;
+
+  await t.test('24. every NPC owns a registered actor sprite (manifest + catalog + file)', () => {
+    for (const npc of npcs) {
+      const id = npc.npcSpriteId;
+      assert.ok(id, `${npc.id} must declare npcSpriteId`);
+      assert.ok(SPRITE_CATALOG[id], `catalog missing NPC actor ${id}`);
+      const meta = SPRITE_MANIFEST.actors[id];
+      assert.ok(meta, `manifest missing NPC actor ${id}`);
+      assert.equal(meta.kind, 'npc', `${id} manifest kind`);
+      const file = path.join(SPRITES_DIR, meta.file);
+      assert.ok(fs.existsSync(file), `npc sprite file missing for ${id}: ${file}`);
+      // The renderer's precedence resolves the bespoke id over the vocation fallback.
+      assert.equal(resolveSpriteId(npc), id, `${npc.id} must resolve to its own sprite`);
+    }
+  });
+
+  await t.test('25. NPC frame geometry, palette and per-actor rim contrast hold', () => {
+    for (const npc of npcs) {
+      const def = SPRITE_CATALOG[npc.npcSpriteId];
+      const { w, h } = def.native;
+      assert.equal(w, SPRITE_NATIVE, `${def.id} native width`);
+      assert.equal(h, SPRITE_NATIVE, `${def.id} native height`);
+      for (const [frameId, rows] of Object.entries(def.frames)) {
+        assert.equal(rows.length, h, `${def.id}/${frameId} row count`);
+        for (const row of rows) assert.equal(row.length, w, `${def.id}/${frameId} row width`);
+      }
+      const entries = Object.entries(def.palette);
+      assert.ok(entries.length <= 16, `${def.id} palette has ${entries.length} entries`);
+      assert.equal(def.palette['0'], OUTLINE_COLOR, `${def.id} must use the shared outline`);
+      for (const [k, v] of entries) {
+        assert.equal(k.length, 1, `${def.id} palette key ${k}`);
+        if (v === null) { assert.equal(k, '.'); continue; }
+        assert.match(v, /^#[0-9a-f]{6}$/i, `${def.id} palette ${k} = ${v}`);
+      }
+      for (const rows of Object.values(def.frames)) {
+        for (const row of rows) {
+          for (const ch of row) assert.ok(ch === '.' || def.palette[ch], `${def.id} uses undeclared palette char "${ch}"`);
+        }
+      }
+      const best = Math.max(0, ...Object.values(def.palette).filter(Boolean).map(v => contrast(v, FLOOR)));
+      assert.ok(best >= 3.0, `${def.id} best contrast ${best.toFixed(2)} < 3.0`);
+      // Full 5-state x 3-dir contract.
+      for (const state of ['idle', 'walk', 'attack', 'hit', 'death']) {
+        for (const dir of ['down', 'up', 'side']) {
+          assert.ok(Array.isArray(def.animations[state][dir]) && def.animations[state][dir].length > 0, `${def.id}.${state}.${dir}`);
+          for (const fid of def.animations[state][dir]) assert.ok(def.frames[fid], `${def.id} missing frame ${fid}`);
+        }
+      }
+      assert.equal(def.animations.idle.down.length, 1, `${def.id} idle down`);
+      assert.equal(def.animations.walk.down.length, 2, `${def.id} walk down`);
+      assert.equal(def.animations.attack.down.length, 3, `${def.id} attack down`);
+      assert.equal(def.animations.death.down.length, 4, `${def.id} death down`);
+      assert.equal(def.animations.walk.advanceOn, 'step', `${def.id} walk advance`);
+    }
+  });
+
+  await t.test('26. no two NPCs share an idle_down silhouette (the point of I1)', () => {
+    const masks = new Map();
+    for (const npc of npcs) {
+      const def = SPRITE_CATALOG[npc.npcSpriteId];
+      const mask = alphaMask(def.frames.idle_down, def.palette);
+      const clash = masks.get(mask);
+      assert.ok(!clash, `${npc.npcSpriteId} silhouette matches ${clash}`);
+      masks.set(mask, npc.npcSpriteId);
+    }
+    assert.equal(masks.size, npcs.length, 'every NPC silhouette must be distinct');
+  });
+
+  await t.test('27. NPC previews are committed and match a fresh export (no drift)', () => {
+    assert.ok(fs.existsSync(PREVIEW_DIR), 'docs/art/preview must exist');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'lokarta-npc-preview-'));
+    exportPreviews(tmp);
+    const expected = ['portraits.png', ...npcs.map(n => `${n.npcSpriteId}.png`)];
+    for (const f of expected) {
+      assert.ok(fs.existsSync(path.join(PREVIEW_DIR, f)), `committed preview missing: ${f}`);
+      assert.ok(fs.existsSync(path.join(tmp, f)), `fresh export missing: ${f}`);
+      assert.ok(
+        fs.readFileSync(path.join(PREVIEW_DIR, f)).equals(fs.readFileSync(path.join(tmp, f))),
+        `preview drift: ${f}`
+      );
+    }
+    fs.rmSync(tmp, { recursive: true, force: true });
+  });
+
+  await t.test('28. portrait catalog covers every portraits map value with a 48x48 bust', () => {
+    const seen = new Set();
+    for (const npc of npcs) {
+      for (const expression of ['neutral', 'warm', 'urgent']) {
+        const assetId = npc.portraits[expression];
+        assert.ok(assetId, `${npc.id}.portraits.${expression}`);
+        assert.ok(!seen.has(assetId), `${assetId} must be unique`);
+        seen.add(assetId);
+        const def = getPortraitDef(assetId);
+        assert.ok(def, `portrait catalog missing ${assetId}`);
+        assert.equal(def.native.w, PORTRAIT_NATIVE, `${assetId} native width`);
+        assert.equal(def.native.h, PORTRAIT_NATIVE, `${assetId} native height`);
+        assert.equal(def.expression, expression, `${assetId} expression`);
+        const rows = def.frames.bust;
+        assert.equal(rows.length, PORTRAIT_NATIVE, `${assetId} row count`);
+        for (const row of rows) assert.equal(row.length, PORTRAIT_NATIVE, `${assetId} row width`);
+        assert.ok(Object.keys(def.palette).length <= 16, `${assetId} palette > 16`);
+        for (const row of rows) {
+          for (const ch of row) assert.ok(ch === '.' || def.palette[ch], `${assetId} uses undeclared char "${ch}"`);
+        }
+        const best = Math.max(0, ...Object.values(def.palette).filter(Boolean).map(v => contrast(v, FLOOR)));
+        assert.ok(best >= 3.0, `${assetId} best contrast ${best.toFixed(2)} < 3.0`);
+      }
+    }
+    assert.equal(seen.size, npcs.length * 3, 'portrait count');
+  });
+
+  await t.test('29. expression changes the bust silhouette (warm != urgent)', () => {
+    for (const npc of npcs) {
+      const masks = ['neutral', 'warm', 'urgent'].map((expr) => {
+        const def = getPortraitDef(npc.portraits[expr]);
+        return alphaMask(def.frames.bust, def.palette);
+      });
+      assert.notEqual(masks[0], masks[2], `${npc.id} neutral and urgent busts must differ by shape`);
+      assert.notEqual(masks[1], masks[2], `${npc.id} warm and urgent busts must differ by shape`);
+    }
+  });
+
+  await t.test('30. resolvePortraitId is data-only with safe fallbacks', () => {
+    const halden = npcs.find(n => n.id === 'captain_halden');
+    assert.equal(resolvePortraitId(halden.portraits, 'warm'), 'portrait_captain_halden_warm');
+    assert.equal(resolvePortraitId(halden.portraits, 'urgent'), 'portrait_captain_halden_urgent');
+    assert.equal(resolvePortraitId(halden.portraits, undefined), 'portrait_captain_halden_neutral', 'defaults to neutral');
+    assert.equal(resolvePortraitId(halden.portraits, 'nope'), 'portrait_captain_halden_neutral', 'unknown expression falls back');
+    assert.equal(resolvePortraitId(null, 'warm'), null, 'no map -> no asset');
+    assert.equal(getPortraitDef('portrait_does_not_exist'), null, 'unknown asset -> fallback');
+  });
+
+  await t.test('31. drawPortrait blits a known bust and returns null for unknowns', () => {
+    const ctx = makeFakeCtx();
+    const geo = drawPortrait(ctx, 'portrait_captain_halden_warm', 0, 0, 96);
+    assert.ok(geo && geo.w === PORTRAIT_NATIVE * geo.scale, 'portrait geometry');
+    assert.ok(ctx.calls.filter(c => c.name === 'fillRect').length > 50, 'portrait blitted pixels');
+    const ctx2 = makeFakeCtx();
+    assert.equal(drawPortrait(ctx2, 'portrait_does_not_exist', 0, 0, 96), null, 'unknown asset draws nothing');
+  });
+
+  await t.test('32. resolveSpriteId prefers npcSpriteId and falls through when unknown', () => {
+    assert.equal(resolveSpriteId({ npcSpriteId: 'npc_wick', spriteId: 'archer' }), 'npc_wick');
+    // Migration safety: an unknown bespoke id falls back to the shared sprite.
+    assert.equal(resolveSpriteId({ npcSpriteId: 'npc_not_authored', spriteId: 'fighter' }), 'fighter');
+    assert.equal(resolveSpriteId({ npcSpriteId: 'npc_not_authored', vocation: 'paladin' }), 'paladin');
+  });
 });

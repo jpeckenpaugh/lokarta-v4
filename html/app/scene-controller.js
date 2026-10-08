@@ -45,6 +45,7 @@ import { planSceneMonsters, makeSceneMonster } from '../services/scene-spawner.j
 import { soundFX, ambientDirector } from '../audio/index.js';
 import { ModalManager } from './modal-manager.js';
 import { createAnimState } from './animation-state.js';
+import { resolvePortraitId } from './portrait-renderer.js';
 
 /** Quest-elite respawn cadence (seconds) and roamer aggro reach, catalog copy. */
 const SCENE_RESPAWN_SEC = Math.max(1, Number(UI_CATALOG?.island?.sceneRespawnSec) || 20);
@@ -617,7 +618,12 @@ export const sceneControllerMethods = {
     const dialogueId = npc.defaultDialogueId || npc.interact?.dialogueId;
     this.fireQuestEvent({ type: 'talk', npcId: npc.npcId });
     if (!dialogueId) return false;
-    return this.openDialogue(dialogueId, { targetId: npc.npcId, name: npc.name, portraitEmoji: npc.portraitEmoji });
+    return this.openDialogue(dialogueId, {
+      targetId: npc.npcId,
+      name: npc.name,
+      portraits: npc.portraits || null,
+      portraitEmoji: npc.portraitEmoji,
+    });
   },
 
   /**
@@ -725,6 +731,10 @@ export const sceneControllerMethods = {
     const stage = selectDialogueStage(def, this.getQuestSnapshot());
     if (!stage) return false;
     const ctx = { ...context, dialogueId };
+    // LIV-81: pick the bust for the stage's expression from the NPC's portrait
+    // map. Data-only resolution; an absent asset leaves `portraitId` null so the
+    // modal keeps the emoji fallback.
+    const portraitId = resolvePortraitId(ctx.portraits, stage.expression);
     const lines = (stage.lines || []).map((line) => fmt(line, ctx));
     const actions = (stage.actions || []).map((action) => ({
       ...action,
@@ -734,6 +744,7 @@ export const sceneControllerMethods = {
     this.isPaused = true;
     ModalManager.showDialogueModal(this.modalOverlayEl, {
       speaker: def.speaker || ctx.name || '',
+      portraitId,
       portraitEmoji: ctx.portraitEmoji || null,
       lines,
       actions,
