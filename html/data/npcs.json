@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "LIV-58 Island 1 NPC roster. Pure data: every return string is a dialogue id resolved by dialogues.json; no per-NPC JS. `spriteId` resolves through the existing actor pipeline (asset sprites index); `renderTheme` is a LIV-49 tint spec the NPC render pass forwards as opts.tint (civilian recolor, no bespoke art required to ship). `aiType` is the neutral-entity dispatch key (stationary|wander).",
+  "description": "LIV-58 Island 1 NPC roster. Pure data: every return string is a dialogue id resolved by dialogues.json; no per-NPC JS. `npcSpriteId` (LIV-81) names the NPC's own 32x32 actor sprite in the sprite catalog; the renderer resolve order is `npcSpriteId > spriteId > type`, so an unknown/missing `npcSpriteId` falls back to the shared `spriteId`. `spriteId` resolves through the existing actor pipeline (asset sprites index); `renderTheme` is a LIV-49 tint spec the NPC render pass forwards as opts.tint and remains the fallback until every NPC sprite lands. `portraits` (LIV-81) maps each dialogue expression ({neutral,warm,urgent}) to a 48x48 bust asset id, selected by the playing dialogue stage's `expression`; `svgCode`/`portraitEmoji` stay as the migration fallback. `aiType` is the neutral-entity dispatch key (stationary|wander).",
   "npcs": [
     {
       "id": "elder_rowan_vane",
@@ -10,12 +10,18 @@
       "x": 19,
       "y": 8,
       "facing": "down",
+      "npcSpriteId": "npc_elder_rowan_vane",
       "spriteId": "magician",
       "renderTheme": { "hex": "#3b4a6b", "amount": 0.4 },
       "aiType": "stationary",
       "blocks": true,
       "svgCode": "1F4D6",
       "portraitEmoji": "📖",
+      "portraits": {
+        "neutral": "portrait_elder_rowan_vane_neutral",
+        "warm": "portrait_elder_rowan_vane_warm",
+        "urgent": "portrait_elder_rowan_vane_urgent"
+      },
       "interact": { "type": "dialogue", "dialogueId": "elder_rowan_vane", "questIds": ["rite_of_the_beacon"] },
       "defaultDialogueId": "elder_rowan_vane"
     },
@@ -27,12 +33,18 @@
       "x": 6,
       "y": 11,
       "facing": "right",
+      "npcSpriteId": "npc_captain_halden",
       "spriteId": "fighter",
       "renderTheme": { "hex": "#5b6470", "amount": 0.35 },
       "aiType": "stationary",
       "blocks": true,
       "svgCode": "1F6E1",
       "portraitEmoji": "🛡️",
+      "portraits": {
+        "neutral": "portrait_captain_halden_neutral",
+        "warm": "portrait_captain_halden_warm",
+        "urgent": "portrait_captain_halden_urgent"
+      },
       "interact": { "type": "dialogue", "dialogueId": "captain_halden", "questIds": ["rats_in_the_gutter"] },
       "defaultDialogueId": "captain_halden"
     },
@@ -44,12 +56,18 @@
       "x": 17,
       "y": 11,
       "facing": "right",
+      "npcSpriteId": "npc_wick",
       "spriteId": "archer",
       "renderTheme": { "hex": "#b45309", "amount": 0.35 },
       "aiType": "stationary",
       "blocks": true,
       "svgCode": "1F4A1",
       "portraitEmoji": "💡",
+      "portraits": {
+        "neutral": "portrait_wick_neutral",
+        "warm": "portrait_wick_warm",
+        "urgent": "portrait_wick_urgent"
+      },
       "interact": { "type": "dialogue", "dialogueId": "wick", "questIds": ["the_lantern_wreck"] },
       "defaultDialogueId": "wick"
     },
@@ -61,12 +79,18 @@
       "x": 12,
       "y": 8,
       "facing": "down",
+      "npcSpriteId": "npc_high_dawnkeeper_aurel",
       "spriteId": "paladin",
       "renderTheme": { "hex": "#d4af37", "amount": 0.3 },
       "aiType": "stationary",
       "blocks": true,
       "svgCode": "1F56F",
       "portraitEmoji": "🕯️",
+      "portraits": {
+        "neutral": "portrait_high_dawnkeeper_aurel_neutral",
+        "warm": "portrait_high_dawnkeeper_aurel_warm",
+        "urgent": "portrait_high_dawnkeeper_aurel_urgent"
+      },
       "interact": { "type": "temple", "templeId": "temple_of_the_dawn", "dialogueId": "high_dawnkeeper_aurel" },
       "defaultDialogueId": "high_dawnkeeper_aurel"
     },
@@ -78,12 +102,18 @@
       "x": 5,
       "y": 8,
       "facing": "down",
+      "npcSpriteId": "npc_mara",
       "spriteId": "fighter",
       "renderTheme": { "hex": "#7c4a21", "amount": 0.3 },
       "aiType": "stationary",
       "blocks": true,
       "svgCode": "1FA84",
       "portraitEmoji": "🪄",
+      "portraits": {
+        "neutral": "portrait_mara_neutral",
+        "warm": "portrait_mara_warm",
+        "urgent": "portrait_mara_urgent"
+      },
       "interact": { "type": "shop", "shopId": "merchant_stall", "dialogueId": "mara" },
       "defaultDialogueId": "mara"
     },
@@ -95,12 +125,18 @@
       "x": 19,
       "y": 14,
       "facing": "down",
+      "npcSpriteId": "npc_innkeep_bessa",
       "spriteId": "paladin",
       "renderTheme": { "hex": "#9a5b2a", "amount": 0.3 },
       "aiType": "stationary",
       "blocks": true,
       "svgCode": "1F9E5",
       "portraitEmoji": "🧥",
+      "portraits": {
+        "neutral": "portrait_innkeep_bessa_neutral",
+        "warm": "portrait_innkeep_bessa_warm",
+        "urgent": "portrait_innkeep_bessa_urgent"
+      },
       "interact": { "type": "dialogue", "dialogueId": "innkeep_bessa", "services": ["rest"] },
       "defaultDialogueId": "innkeep_bessa"
     },
@@ -112,6 +148,7 @@
       "x": 11,
       "y": 12,
       "facing": "left",
+      "npcSpriteId": "npc_old_sailor_doran",
       "spriteId": "fighter",
       "renderTheme": { "hex": "#6b7280", "amount": 0.4 },
       "aiType": "wander",
@@ -119,6 +156,11 @@
       "blocks": true,
       "svgCode": "1F9E2",
       "portraitEmoji": "🧢",
+      "portraits": {
+        "neutral": "portrait_old_sailor_doran_neutral",
+        "warm": "portrait_old_sailor_doran_warm",
+        "urgent": "portrait_old_sailor_doran_urgent"
+      },
       "interact": { "type": "dialogue", "dialogueId": "old_sailor_doran" },
       "defaultDialogueId": "old_sailor_doran"
     },
@@ -130,6 +172,7 @@
       "x": 13,
       "y": 12,
       "facing": "left",
+      "npcSpriteId": "npc_pilgrims_apprentice_tam",
       "spriteId": "archer",
       "renderTheme": { "hex": "#3f6a33", "amount": 0.4 },
       "aiType": "wander",
@@ -137,6 +180,11 @@
       "blocks": true,
       "svgCode": "1F3AF",
       "portraitEmoji": "🎯",
+      "portraits": {
+        "neutral": "portrait_pilgrims_apprentice_tam_neutral",
+        "warm": "portrait_pilgrims_apprentice_tam_warm",
+        "urgent": "portrait_pilgrims_apprentice_tam_urgent"
+      },
       "interact": { "type": "dialogue", "dialogueId": "pilgrims_apprentice_tam" },
       "defaultDialogueId": "pilgrims_apprentice_tam"
     }

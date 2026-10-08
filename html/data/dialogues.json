@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "LIV-58 Island 1 dialogue trees. Pure data; the dialogue UI evaluates each dialogue's `stages` in order and plays the first whose `when` matches, else the stage flagged `fallback`. Conditions: questId + status (inactive|active|complete|turned_in), optional flag, optional levelMin. Actions are a dispatch table (accept_quest|turn_in_quest|open_shop|open_temple|rest) — no per-NPC JS. {name}, {quest}, {item} placeholders substitute display names, never catalog ids. Turn-in actions are only offered when the quest's objectives are satisfied (quest-system.canTurnIn).",
+  "description": "LIV-58 Island 1 dialogue trees. Pure data; the dialogue UI evaluates each dialogue's `stages` in order and plays the first whose `when` matches, else the stage flagged `fallback`. Conditions: questId + status (inactive|active|complete|turned_in), optional flag, optional levelMin. Actions are a dispatch table (accept_quest|turn_in_quest|open_shop|open_temple|rest) — no per-NPC JS. {name}, {quest}, {item} placeholders substitute display names, never catalog ids. Turn-in actions are only offered when the quest's objectives are satisfied (quest-system.canTurnIn). LIV-81 adds an optional `expression` (neutral|warm|urgent) per stage, selected against the NPC's `portraits` map by the dialogue UI; a stage without one reads as `neutral`. The top-level `ambience` block (LIV-81) carries per-NPC idle quips and schedule-varied lines; it is consumed by the schedule/bustle system (LIV-85), not by stage selection.",
   "ui": {
     "defaultSpeakerLabel": "—",
     "acceptLabel": "Accept",
@@ -74,6 +74,7 @@
         {
           "id": "turned_in",
           "when": { "questId": "rats_in_the_gutter", "status": "turned_in" },
+          "expression": "warm",
           "lines": [
             "Clean work, Pilgrim. The watch can breathe again.",
             "The Wreck? Ask Wick at the workshop — the lamplighter has been fretting over that lens all season."
@@ -83,6 +84,7 @@
         {
           "id": "complete",
           "when": { "questId": "rats_in_the_gutter", "status": "complete" },
+          "expression": "warm",
           "lines": [
             "The Gutter King, down in the mud where it belongs. Well fought.",
             "Take your pay. And that arm of yours — you'll want it before you climb."
@@ -94,6 +96,7 @@
         {
           "id": "active",
           "when": { "questId": "rats_in_the_gutter", "status": "active" },
+          "expression": "urgent",
           "lines": [
             "Rats in the gutter, Pilgrim. Six of the tide-crawlers, at least, and their crowned leader besides.",
             "Prove your arm before you climb. Nobody reaches the Spire on good intentions."
@@ -103,6 +106,7 @@
         {
           "id": "offer",
           "when": {},
+          "expression": "neutral",
           "lines": [
             "You'll be the one they rowed ashore. The Elder will have words with you — but first, prove you can hold a line.",
             "Rats in the gutter, Pilgrim. Kill six drowned crawlers at the town apron and the west field, and bring down the Gutter King that leads them."
@@ -122,6 +126,7 @@
         {
           "id": "not_yet",
           "when": { "questId": "rats_in_the_gutter", "status": "inactive" },
+          "expression": "neutral",
           "lines": [
             "The lens? Aye — it's out on the Wreck, west along the shore. But the Elder won't hear of pilgrims wandering off before Captain Halden vouches for them.",
             "Go see the Captain in the barracks first."
@@ -131,6 +136,7 @@
         {
           "id": "turned_in",
           "when": { "questId": "the_lantern_wreck", "status": "turned_in" },
+          "expression": "warm",
           "lines": [
             "The lens sits true again. I can hear the glass hum.",
             "Now the Elder's rite. Take the lantern to the Drowned Shrine and kindle the old fire — that's what will move the Tide Gate."
@@ -140,6 +146,7 @@
         {
           "id": "complete",
           "when": { "questId": "the_lantern_wreck", "status": "complete" },
+          "expression": "warm",
           "lines": [
             "You found it — the beacon's own lens, and not a crack worse than it went in with.",
             "Here — the Dawn Lantern. Light it from anything that still burns, and it will hold for as long as you do."
@@ -151,6 +158,7 @@
         {
           "id": "active",
           "when": { "questId": "the_lantern_wreck", "status": "active" },
+          "expression": "urgent",
           "lines": [
             "The lens is out on the Wreck of the Lantern, west along the beach past the islet bridge.",
             "Tide Thralls have made a nest of it — they hold their ring and slow you where you stand. Break their line or close the gap, then bring the lens home."
@@ -160,6 +168,7 @@
         {
           "id": "offer",
           "when": {},
+          "expression": "neutral",
           "lines": [
             "You're the pilgrim, then. Good. The beacon's focusing lens is out on the Wreck west of here, and I can't light the road without it.",
             "Bring it home and I'll set my last coal in it. Mind the Thralls — they don't much like warm blood."
@@ -179,6 +188,7 @@
         {
           "id": "epilogue",
           "when": { "questId": "rite_of_the_beacon", "status": "turned_in" },
+          "expression": "warm",
           "lines": [
             "Keeper of the Tide. The gate is open, and the Spire waits.",
             "Climb, Pilgrim. At the crown, raise your lantern to the beacon cup — and bring the light home."
@@ -188,6 +198,7 @@
         {
           "id": "ready_to_turn_in",
           "when": { "questId": "rite_of_the_beacon", "status": "complete" },
+          "expression": "warm",
           "lines": [
             "You carry the fire. I can feel it from here — the Drowned Dark pulls back a step.",
             "Kneel, Pilgrim. By the old rite of the reach, I name you Keeper of the Tide, and the gate will know you."
@@ -199,6 +210,7 @@
         {
           "id": "rite_active",
           "when": { "questId": "rite_of_the_beacon", "status": "active" },
+          "expression": "urgent",
           "lines": [
             "Take the Dawn Lantern to the Drowned Shrine on the east tidepools. Kindle the old fire there.",
             "Something drowned guards it. Read the water's swell and step out of its reach — then climb the Spire."
@@ -208,6 +220,7 @@
         {
           "id": "ready_for_rite",
           "when": { "questId": "the_lantern_wreck", "status": "turned_in" },
+          "expression": "urgent",
           "lines": [
             "The lens is home and the lantern burns. Now the rite.",
             "There is a shrine on the east tidepools, drowned three nights before the beacon went dark. Kindle its fire and the gate warding will answer. Something else answers too — be ready for it, and be at least Level 3 before you go."
@@ -219,6 +232,7 @@
         {
           "id": "arrival",
           "when": {},
+          "expression": "neutral",
           "lines": [
             "So the sea gave you back. Good.",
             "The Tide Gate was not built to keep you out. It was built to wait for someone who could carry the light. Come back when you have it."
@@ -236,6 +250,7 @@
         {
           "id": "beacon_lit",
           "when": { "flag": "beaconLit" },
+          "expression": "warm",
           "lines": [
             "The beacon is kindled — I can feel it warm the stone, even from here.",
             "Rest. The Dawn will mend you, and the Spire will take everything else."
@@ -245,9 +260,10 @@
         {
           "id": "lore",
           "when": {},
+          "expression": "urgent",
           "lines": [
             "Three nights the beacon has been dark, and three nights the boats have not come back. The Drowned Dark is patient.",
-            "The Dawn returns you when you fall — free of charge, always. A body should not be a toll. Rest here and be whole."
+            "Elder Vane keeps the rite; I keep the fire. Between us the reach holds — but only if the light comes home. A body should not be a toll. Rest here and be whole."
           ],
           "actions": [ { "type": "open_temple", "templeId": "temple_of_the_dawn" } ]
         }
@@ -262,6 +278,7 @@
         {
           "id": "veteran",
           "when": { "levelMin": 4 },
+          "expression": "warm",
           "lines": [
             "Look at you — growing heavy with gear. Bring me your coin and I'll keep pace with you.",
             "Upgrade ranks scale with your company, mind. More companions, richer steel."
@@ -271,8 +288,10 @@
         {
           "id": "greet",
           "when": {},
+          "expression": "neutral",
           "lines": [
             "Wares! Potions, arrows, and honest steel for whatever the sea left you as.",
+            "Wick's lamp oil, Bessa's ale, and my steel — Havenreach runs on three trades, and I hold the best of them.",
             "A weapon for every hand — you'll not be caught empty on my account."
           ],
           "actions": [ { "type": "open_shop", "shopId": "merchant_stall" } ]
@@ -288,9 +307,11 @@
         {
           "id": "greet",
           "when": {},
+          "expression": "warm",
           "lines": [
             "Wayfarer's Rest — the only warm hearth left on the reach. Sit, and let the road fall off you.",
-            "Tap, or the arrows or whatever that is — Square and Space are your interact keys, and the pause menu will hold the world still."
+            "Doran holds his corner most nights, if you want the sea told straight. For now — tap, or the arrows or whatever that is.",
+            "Square and Space are your interact keys, and the pause menu will hold the world still."
           ],
           "actions": [ { "type": "rest", "healPct": 1.0 } ]
         }
@@ -305,6 +326,7 @@
         {
           "id": "flag",
           "when": { "flag": "beaconLit" },
+          "expression": "warm",
           "lines": [
             "The beacon's lit, and the horizon's changed. I saw a shore out past the fog — one I'd no name for.",
             "There's three more lights out there, Pilgrim. You relit one. That leaves three."
@@ -314,9 +336,10 @@
         {
           "id": "flavor",
           "when": {},
+          "expression": "neutral",
           "lines": [
             "I've sailed this reach forty year. Forty year, and the water was never so hungry as it is now.",
-            "Get that beacon lit, and I'll die a happy liar. Fail, and I'll die a truthful one."
+            "Halden's watch can't be everywhere, and I'm too old to go where it isn't. Get that beacon lit, and I'll die a happy liar. Fail, and I'll die a truthful one."
           ],
           "actions": []
         }
@@ -331,6 +354,7 @@
         {
           "id": "q1",
           "when": { "questId": "rats_in_the_gutter", "status": "active" },
+          "expression": "urgent",
           "lines": [
             "You're the pilgrim! Captain Halden wants the crawlers gone. Six, and the big one with the crown — the Gutter King.",
             "They say when it charges, it leaves a trail you can step out of. I'd step out of it."
@@ -340,6 +364,7 @@
         {
           "id": "q2",
           "when": { "questId": "the_lantern_wreck", "status": "active" },
+          "expression": "neutral",
           "lines": [
             "Wick's lens is out on the Wreck, west past the islet bridge.",
             "The Thralls slow you with cold water — if they make you slow, you have to break their line. That's what the Captain always says."
@@ -349,6 +374,7 @@
         {
           "id": "q3",
           "when": { "questId": "rite_of_the_beacon", "status": "active" },
+          "expression": "urgent",
           "lines": [
             "The rite! East tidepools, the Drowned Shrine. Kindling the fire wakes the Warden.",
             "It slams the water around itself — read the ripple, then punish it while it's heavy."
@@ -358,6 +384,7 @@
         {
           "id": "done",
           "when": { "questId": "rite_of_the_beacon", "status": "turned_in" },
+          "expression": "warm",
           "lines": [
             "Keeper of the Tide! I knew it. I told everyone.",
             "When you meet the Warden at the crown — the old songs say it only leans one way. Watch the lean, and you'll win."
@@ -367,6 +394,7 @@
         {
           "id": "journal",
           "when": {},
+          "expression": "neutral",
           "lines": [
             "New here? Start with Captain Halden in the barracks, or the Elder in the Hall. Everybody starts with one of those two.",
             "Then there's three more lights out there. Doran says so, and Doran's never wrong twice."
@@ -374,6 +402,84 @@
           "actions": []
         }
       ]
+    }
+  },
+
+  "ambience": {
+    "description": "LIV-81 personality surfaces, consumed by the LIV-85 schedule/bustle system. `quips` are 1-2 short flavour lines fired on approach (no action, never opens a dialogue tree); `scheduleLines` is a hook for a schedule-varied line keyed by time phase — `night` is authored for every NPC, and unlisted phases fall back to the normal dialogue stage. Pure data: never a per-NPC JS branch.",
+    "npcs": {
+      "captain_halden": {
+        "quips": [
+          "Steady, Pilgrim. The watch has you.",
+          "Dry your steel and keep your wits about you."
+        ],
+        "scheduleLines": {
+          "night": "Gate's shut and the tide's up. Whatever it is, it can wait for dawn."
+        }
+      },
+      "wick": {
+        "quips": [
+          "Mind the soot — everything here's half-lit and half-oiled.",
+          "Glass sings when it's true. Listen for it."
+        ],
+        "scheduleLines": {
+          "night": "I keep this lamp burning till the beacon does. Someone has to."
+        }
+      },
+      "elder_rowan_vane": {
+        "quips": [
+          "The reach has a long memory, Pilgrim.",
+          "Sit with the light a while. It steadies the hand."
+        ],
+        "scheduleLines": {
+          "night": "Even elders keep the dark hours. Rest while you can."
+        }
+      },
+      "high_dawnkeeper_aurel": {
+        "quips": [
+          "The Dawn asks nothing you cannot give.",
+          "Breathe. The fire will still be here."
+        ],
+        "scheduleLines": {
+          "night": "Night is only the Dawn waiting its turn."
+        }
+      },
+      "mara": {
+        "quips": [
+          "Coin first, questions second — but only just.",
+          "Everything's for sale. Some things only once."
+        ],
+        "scheduleLines": {
+          "night": "Stall's shuttered. Even tinkers need dark to sleep in."
+        }
+      },
+      "innkeep_bessa": {
+        "quips": [
+          "Wipe your boots and warm your hands.",
+          "There's always stew on, whatever the sky's doing."
+        ],
+        "scheduleLines": {
+          "night": "Last call's long past, but the hearth's yours."
+        }
+      },
+      "old_sailor_doran": {
+        "quips": [
+          "Sea's a liar with a lovely voice.",
+          "I've outlived three captains. Mind you don't make it four."
+        ],
+        "scheduleLines": {
+          "night": "Aye, I'm still up. The tide talks louder after dark."
+        }
+      },
+      "pilgrims_apprentice_tam": {
+        "quips": [
+          "I've read every ballad twice. Ask me anything!",
+          "When I'm Keeper, I'll remember who taught me the ropes."
+        ],
+        "scheduleLines": {
+          "night": "The lanterns are lovely at night. I write them down so I don't forget."
+        }
+      }
     }
   }
 }

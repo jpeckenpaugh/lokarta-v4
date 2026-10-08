@@ -1194,6 +1194,27 @@ combat arenas or the played town.
 *Lenses cited: core loop & fantasy, flow (tension/release pacing), readability,
 theme coherence, balance levers (grid extent, not stat walls), no soft-locks.*
 
+### 10.12 NPC identity: distinct sprites, portraits & personality (LIV-81, report §3)
+
+Retires the §10.7 "NPC = tinted player vocation" fallback. Full per-NPC spec
+(named silhouettes, signature props, skin-tone/garment palettes, portrait
+expressions) lives in [npc-identity-spec.md](npc-identity-spec.md); this section
+records the canon and the shipped data contract.
+
+| Item | Resolution |
+| :--- | :--- |
+| Distinct silhouettes | Each of the 8 NPCs gets its own 32×32 sprite id (`npc_<id>`) with **one outline-changing signature prop** (e.g. Vane's staff+lantern, Halden's tricorn+sword, Aurel's censer, Tam's oversized pack), authored to `art-direction.md` §2. |
+| Resolve order | Renderer precedence becomes `npcSpriteId > spriteId > type`; an unknown `npcSpriteId` falls through to the shared `spriteId`, so migration never breaks. `renderTheme`/`svgCode`/`portraitEmoji` stay as fallbacks. |
+| Portraits | `npcs.json` gains `portraits: {neutral, warm, urgent}` (48×48 busts); the dialogue stage's optional `expression` selects one, defaulting to `neutral`. The bubble falls back to `portraitEmoji` when a bust is absent. |
+| Personality | `dialogues.json` gains per-stage `expression` plus a top-level `ambience.npcs[id]` hook: 1–2 idle quips + a `scheduleLines.night` line (consumed by I2/[LIV-85](/LIV/issues/LIV-85)), and widened cross-references between NPCs. |
+| Tests | `data-catalogs` asserts unique `npcSpriteId`s, a complete 3-expression `portraits` map, valid stage expressions, a resolvable fallback expression per NPC dialogue, and per-NPC ambience. |
+| Scope posture | First art batch may cover the 4 quest-critical NPCs (Halden, Wick, Aurel, Vane); the rest stay fallback-safe. Atlas + renderer are the Tech Lead child issue. |
+
+*Lenses cited: readability & legibility (silhouette-first identity), theme
+coherence (town as the human face of the isle), Kano (delighter that also fixes
+a readability defect), MDA (authored data → inhabited world), balance levers
+(one prop per silhouette, no new systems). No dark patterns.*
+
 *Lenses cited (§10): core loop & fantasy, theme coherence, readability & legibility,
 difficulty curve & flow, enemy role taxonomy, balance levers (non-droppable flags +
 deterministic respawn, not stat walls), economy & reward pacing, Kano, MDA,
