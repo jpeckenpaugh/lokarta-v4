@@ -11,7 +11,7 @@
  */
 
 import { CONFIG, TILE_TYPES } from '../engine/index.js';
-import { TILE_THEMES_CATALOG, VOCATIONS_CATALOG, CHESTS_CATALOG, DEFAULT_TOWER_ID, getTowerDefinition } from '../data/index.js';
+import { TILE_THEMES_CATALOG, VOCATIONS_CATALOG, CHESTS_CATALOG, MONSTERS_CATALOG, DEFAULT_TOWER_ID, getTowerDefinition } from '../data/index.js';
 import { SPRITE_CATALOG, PROP_CATALOG, PROP_IDS_BY_TIER } from '../assets/sprites/index.js';
 import { dirFromFacing, resolveFrameIndex } from './animation-state.js';
 
@@ -71,6 +71,55 @@ export function sceneTheme(themeId) {
  */
 function tileHash(x, y) {
   return (((x * 73856093) ^ (y * 19349663)) >>> 0);
+}
+
+/** Integer-lattice hash with full 32-bit avalanche (value-noise corner). */
+function latticeHash(x, y) {
+  let h = Math.imul(x, 374761393) + Math.imul(y, 668265263);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
+/** Tiles per lattice cell for the grass colour field (low-frequency). */
+const GRASS_LATTICE = 8;
+
+/**
+ * Deterministic, allocation-free low-frequency value noise in [0, 1) sampled at
+ * tile coordinates (LIV-71). Smoothstep-interpolated lattice corners give broad
+ * rolling features (~8 tiles) with no per-pixel work, no transient allocation,
+ * and no parity/checkerboard term. Same tile always yields the same value.
+ * @param {number} x @param {number} y
+ * @returns {number}
+ */
+export function grassNoiseAt(x, y) {
+  const gx = Math.floor(x / GRASS_LATTICE);
+  const gy = Math.floor(y / GRASS_LATTICE);
+  const fx = (x - gx * GRASS_LATTICE) / GRASS_LATTICE;
+  const fy = (y - gy * GRASS_LATTICE) / GRASS_LATTICE;
+  const sx = fx * fx * (3 - 2 * fx);
+  const sy = fy * fy * (3 - 2 * fy);
+  const n00 = latticeHash(gx, gy) / 4294967296;
+  const n10 = latticeHash(gx + 1, gy) / 4294967296;
+  const n01 = latticeHash(gx, gy + 1) / 4294967296;
+  const n11 = latticeHash(gx + 1, gy + 1) / 4294967296;
+  const a = n00 + (n10 - n00) * sx;
+  const b = n01 + (n11 - n01) * sx;
+  return a + (b - a) * sy;
+}
+
+/**
+ * Index into a data-driven grass `shades` ramp for a tile (LIV-71). Replaces the
+ * old `h % 2` fill/alt parity checkerboard with a smooth, deterministic blend of
+ * the palette greens. Pure integer math, allocation-free (returns an index only).
+ * @param {number} x @param {number} y
+ * @param {number} count - number of authored shades
+ * @returns {number}
+ */
+export function grassShadeIndex(x, y, count) {
+  const n = Number.isFinite(count) ? Math.floor(count) : 0;
+  if (n <= 1) return 0;
+  const v = grassNoiseAt(x, y);
+  return Math.min(n - 1, Math.max(0, Math.floor(v * n)));
 }
 
 /**
@@ -310,8 +359,19 @@ const TILE_RENDERERS = {
   [TILE_TYPES.GRASS]: (ctx, screenX, screenY, size, theme, opts = {}) => {
     const p = sceneTilePalette(theme, 'GRASS');
     const u = size / 32;
-    const h = tileHash(opts.x || 0, opts.y || 0);
-    ctx.fillStyle = (h % 2 === 0 && p.alt) ? p.alt : (p.fill || '#2b4a24');
+    const x = opts.x || 0;
+    const y = opts.y || 0;
+    const h = tileHash(x, y);
+    // Natural per-tile variation (LIV-71): a low-frequency value-noise field
+    // indexes the authored `shades` ramp so neighbouring tiles roll between the
+    // palette greens instead of alternating on a parity checkerboard. Falls back
+    // to the flat fill when a theme authors no ramp.
+    const shades = p.shades;
+    if (Array.isArray(shades) && shades.length > 1) {
+      ctx.fillStyle = shades[grassShadeIndex(x, y, shades.length)];
+    } else {
+      ctx.fillStyle = p.fill || '#2b4a24';
+    }
     ctx.fillRect(screenX, screenY, size, size);
     ctx.fillStyle = p.blade || '#4a7d3f';
     ctx.fillRect(screenX + (6 + (h % 3) * 8) * u, screenY + (9 + ((h >> 3) % 3) * 7) * u, 2 * u, 6 * u);
@@ -729,6 +789,52 @@ const MONSTER_RENDERERS = {
     ctx.fill();
   },
 };
+
+/**
+ * Resolves a monster's data-driven visual overrides (LIV-71): a per-monster fur
+ * tint and an optional crown overlay. Reads the live runtime monster first, then
+ * falls back to the `monsters.json` catalog entry keyed by `type`, so every
+ * spawn path (scene or tower) renders the same look with no per-type JS. Returns
+ * null when the monster declares no overrides (the shared sprite stays as-is).
+ * @param {object} monster
+ * @returns {{ furTint?: object, crown?: { color?: string, accent?: string } }|null}
+ */
+export function monsterVisualFor(monster) {
+  if (!monster) return null;
+  if (monster.visual && typeof monster.visual === 'object') return monster.visual;
+  const def = monster.type ? MONSTERS_CATALOG[monster.type] : null;
+  return (def && def.visual) || null;
+}
+
+/**
+ * Draws the gold crown overlay on top of a monster sprite (LIV-71). Pure
+ * integer geometry from the crown's authored colours; a monster without a
+ * `crown` visual never calls this, so shared sprites are unchanged.
+ */
+function drawMonsterCrown(ctx, cx, topY, u, crown) {
+  if (!crown) return;
+  const color = crown.color || '#ffd700';
+  const accent = crown.accent || '#b8860b';
+  const half = 7 * u;
+  // Band.
+  ctx.fillStyle = accent;
+  ctx.fillRect(cx - half, topY, half * 2, 2 * u);
+  // Three peaks.
+  ctx.fillStyle = color;
+  for (let i = -1; i <= 1; i++) {
+    const px = cx + i * half * 0.62;
+    ctx.beginPath();
+    ctx.moveTo(px - 2.5 * u, topY);
+    ctx.lineTo(px + 2.5 * u, topY);
+    ctx.lineTo(px, topY - 5 * u);
+    ctx.closePath();
+    ctx.fill();
+  }
+  // Gems on the band.
+  ctx.fillStyle = '#7a1010';
+  ctx.fillRect(cx - 4 * u, topY + 0.5 * u, 1.5 * u, 1.5 * u);
+  ctx.fillRect(cx + 2.5 * u, topY + 0.5 * u, 1.5 * u, 1.5 * u);
+}
 
 const FACING_EYE_OFFSETS = {
   up: { ox: 0, oy: -2 },
@@ -1259,14 +1365,24 @@ export class SpriteRenderer {
     const cy = screenY + size / 2;
 
     const isBoss = monster.isBoss || monster.type === 'abyssal_overlord';
+    // Per-monster visual overrides (LIV-71): a data-driven fur tint replaces the
+    // shared giant_rat look for named elites like The Gutter King; a crown
+    // overlay is drawn above the sprite. Absent overrides leave the sprite intact.
+    const visual = monsterVisualFor(monster);
+    const furTint = visual && visual.furTint ? visual.furTint : null;
     const geo = SpriteRenderer.drawActor(ctx, monster, screenX, screenY, {
       size,
       dim: monster._dim,
+      tint: furTint || undefined,
     });
 
     if (!geo) {
       const renderer = MONSTER_RENDERERS[monster.type] || (monster.isBoss ? MONSTER_RENDERERS.abyssal_overlord : MONSTER_RENDERERS.giant_rat);
       renderer(ctx, cx, cy, u, monster);
+    }
+
+    if (visual && visual.crown) {
+      drawMonsterCrown(ctx, cx, screenY + 7 * u, u, visual.crown);
     }
 
     // Health Bar — anchored above the sprite box when a sprite is present.

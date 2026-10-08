@@ -876,6 +876,9 @@ export const gameLoopMethods = {
       // `reach` objectives fire on every tile entry (LIV-60 P3).
       this.fireQuestEvent({ type: 'reach', sceneId: this.scene.sceneId, x: this.player.x, y: this.player.y });
       this.updateInteractPrompt();
+      // Walk-up/adjacency story beats (LIV-71), e.g. the Drowned Shrine auto-
+      // triggering its rite. Fires once per approach; a fire halts the step.
+      if (this.tryAutoTriggerSceneObjects()) return true;
       const portal = this.scenePortalAt(this.player.x, this.player.y);
       if (portal) return this.handleScenePortal(portal);
       const building = this.sceneBuildingAt(this.player.x, this.player.y);

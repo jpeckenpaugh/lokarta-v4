@@ -1053,6 +1053,10 @@
     "standoffMax": 5,
     "spriteId": "giant_rat",
     "baseXp": 90,
+    "visual": {
+      "furTint": { "hex": "#b8860b", "amount": 0.42 },
+      "crown": { "color": "#ffd700", "accent": "#8a6508" }
+    },
     "xpFloorScale": 0,
     "svgCode": "1F407",
     "lore": "A bloated rat-elite crowned in gutter filth. Q1's named target: it telegraphs a lunging charge, then leaves itself open.",

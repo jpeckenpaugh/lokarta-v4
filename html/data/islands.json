@@ -311,6 +311,7 @@
           "y": 44,
           "questId": "rite_of_the_beacon",
           "requiresItem": "dawn_lantern",
+          "autoTrigger": true,
           "promptKey": "drowned_shrine_rite"
         }
       ],

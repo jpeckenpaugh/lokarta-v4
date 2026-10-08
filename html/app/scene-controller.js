@@ -162,6 +162,7 @@ export const sceneControllerMethods = {
     // monsters (kill objectives) from the authored spawn zones/elites.
     this.npcs = typeof spawnNpcsForScene === 'function' ? spawnNpcsForScene(scene) : [];
     this.armContactTalk();
+    this.armAutoTriggerObjects();
     this.refreshQuestMarkers();
     this.spawnSceneGroundItems(scene);
     this.spawnSceneMonsters(scene);
@@ -576,6 +577,16 @@ export const sceneControllerMethods = {
   },
 
   /**
+   * Clears the auto-trigger latch for the freshly loaded scene (LIV-71) so the
+   * first approach to an `autoTrigger` world object (the Drowned Shrine) fires
+   * its beat. The latch is a reused Set keyed by object id — never rebuilt on
+   * the walk path, so the per-step check stays allocation-free.
+   */
+  armAutoTriggerObjects() {
+    this._autoTriggeredObjectIds = new Set();
+  },
+
+  /**
    * Bump-to-talk (LIV-66): opens `npc`'s default dialogue after the player
    * attempted to step onto its tile and was blocked by collision. The call site
    * is the blocked-step branch of `processMovementInput`; merely standing next
@@ -605,6 +616,41 @@ export const sceneControllerMethods = {
       name: entry.name,
       requiresItem: entry.requiresItem || null,
     });
+  },
+
+  /**
+   * Auto-triggers any `autoTrigger` world object the player walks onto or
+   * adjacent to (LIV-71) — the "approach" seam, mirroring bump-to-talk. Called
+   * once per successful step from `resolvePlayerTileEntry`. Fires once per
+   * approach: the object id is latched while the player remains in reach and is
+   * released the moment they step away, so lingering never reopens the beat and
+   * leaving/re-entering re-arms it. An object whose `requiresItem` is unmet does
+   * NOT latch — it stays a prompt (`updateInteractPrompt`) until the item is
+   * held, so gating reads as "Examine", never a locked beat.
+   * Data-driven: only catalog entries carrying `autoTrigger: true` participate;
+   * no per-object JS branch.
+   * @returns {boolean} true when an object beat opened on this step
+   */
+  tryAutoTriggerSceneObjects() {
+    if (!this.scene || !this.player) return false;
+    const interactables = this.scene.interactables;
+    if (!Array.isArray(interactables)) return false;
+    if (!(this._autoTriggeredObjectIds instanceof Set)) this._autoTriggeredObjectIds = new Set();
+    let fired = false;
+    for (const it of interactables) {
+      if (!it || it.kind !== 'object' || it.autoTrigger !== true) continue;
+      const d = Math.abs(it.x - this.player.x) + Math.abs(it.y - this.player.y);
+      const inReach = d <= NPC_INTERACT_RADIUS;
+      if (!inReach) {
+        this._autoTriggeredObjectIds.delete(it.id);
+        continue;
+      }
+      if (this._autoTriggeredObjectIds.has(it.id)) continue;
+      if (it.requiresItem && !this.partyHasItem(it.requiresItem)) continue;
+      this._autoTriggeredObjectIds.add(it.id);
+      if (this.interactWithSceneObject(it)) fired = true;
+    }
+    return fired;
   },
 
   /**
