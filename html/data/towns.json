@@ -1,0 +1,208 @@
+{
+  "version": 1,
+  "defaultTownId": "town_havenreach",
+  "towns": [
+    {
+      "id": "town_havenreach",
+      "name": "Havenreach",
+      "islandId": "island_dawnreach",
+      "theme": "town_havenreach",
+      "biome": "havenreach_town",
+      "lighting": "ambient",
+      "width": 24,
+      "height": 24,
+      "legend": {
+        ".": "GRASS",
+        "=": "PATH",
+        "W": "BUILDING_WALL",
+        "D": "DOORWAY"
+      },
+      "map": [
+        "........................",
+        "........................",
+        ".........WWWWWWW........",
+        "...WWWWW.WWWWWWW.WWWWW..",
+        "...WWWWW.WWWWWWW.WWWWW..",
+        "...WWWWW.WWWWWWW.WWWWW..",
+        "...WWWWW.WWWWWWW.WWWWW..",
+        "...==D======D======D==..",
+        "............=...........",
+        ".WWWWW......=.....WWWWW.",
+        ".WWWWW......=.....WWWWW.",
+        ".WWWWD......=.....DWWWW.",
+        ".WWWWW......=.....WWWWW.",
+        ".======================.",
+        "............=...........",
+        "............=....WWDWW..",
+        "............========WW..",
+        "............=....WWWWW..",
+        "............=....WWWWW..",
+        "............=....WWWWW..",
+        "............=...........",
+        "............=...........",
+        "............=...........",
+        "............D..........."
+      ],
+      "spawn": {
+        "x": 12,
+        "y": 20
+      },
+      "portals": [
+        {
+          "id": "to_island",
+          "type": "scene",
+          "x": 12,
+          "y": 23,
+          "target": {
+            "sceneId": "island_dawnreach",
+            "spawn": {
+              "x": 24,
+              "y": 28
+            }
+          }
+        }
+      ],
+      "buildings": [
+        {
+          "id": "merchant_stall",
+          "name": "Merchant's Stall",
+          "footprint": [
+            3,
+            3,
+            7,
+            6
+          ],
+          "door": {
+            "x": 5,
+            "y": 7
+          },
+          "interaction": {
+            "type": "shop"
+          },
+          "npcId": "mara"
+        },
+        {
+          "id": "temple_of_the_dawn",
+          "name": "Temple of the Dawn",
+          "footprint": [
+            9,
+            2,
+            15,
+            6
+          ],
+          "door": {
+            "x": 12,
+            "y": 7
+          },
+          "interaction": {
+            "type": "temple"
+          },
+          "npcId": "high_dawnkeeper_aurel"
+        },
+        {
+          "id": "elders_hall",
+          "name": "Elder's Hall",
+          "footprint": [
+            17,
+            3,
+            21,
+            6
+          ],
+          "door": {
+            "x": 19,
+            "y": 7
+          },
+          "interaction": {
+            "type": "dialogue",
+            "dialogueId": "elder_rowan_vane"
+          },
+          "npcId": "elder_rowan_vane"
+        },
+        {
+          "id": "beaconwrights_workshop",
+          "name": "Beacon-wright's Workshop",
+          "footprint": [
+            18,
+            9,
+            22,
+            12
+          ],
+          "door": {
+            "x": 18,
+            "y": 11
+          },
+          "interaction": {
+            "type": "dialogue",
+            "dialogueId": "wick"
+          },
+          "npcId": "wick"
+        },
+        {
+          "id": "tidewatch_barracks",
+          "name": "Tidewatch Barracks",
+          "footprint": [
+            1,
+            9,
+            5,
+            12
+          ],
+          "door": {
+            "x": 5,
+            "y": 11
+          },
+          "interaction": {
+            "type": "dialogue",
+            "dialogueId": "captain_halden"
+          },
+          "npcId": "captain_halden"
+        },
+        {
+          "id": "wayfarers_rest",
+          "name": "Wayfarer's Rest",
+          "footprint": [
+            17,
+            15,
+            21,
+            19
+          ],
+          "door": {
+            "x": 19,
+            "y": 15
+          },
+          "interaction": {
+            "type": "dialogue",
+            "dialogueId": "innkeep_bessa"
+          },
+          "npcId": "innkeep_bessa"
+        }
+      ],
+      "props": [
+        {
+          "propId": "prop_brazier",
+          "x": 11,
+          "y": 11
+        },
+        {
+          "propId": "prop_brazier",
+          "x": 13,
+          "y": 11
+        },
+        {
+          "propId": "prop_barrel",
+          "x": 3,
+          "y": 8
+        },
+        {
+          "propId": "prop_crate",
+          "x": 7,
+          "y": 8
+        },
+        {
+          "propId": "prop_table",
+          "x": 18,
+          "y": 17
+        }
+      ]
+    }
+  ]
+}

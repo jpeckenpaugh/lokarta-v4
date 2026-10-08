@@ -623,5 +623,133 @@
         "wallBias": 0.5
       }
     }
+  },
+  "island_dawnreach": {
+    "name": "Dawnreach Isle",
+    "biome": "dawnreach_isle",
+    "lighting": "ambient",
+    "description": "LIV-58 outdoor overworld palette. Daylight, high-contrast, 16-bit SNES bar. Scene themes live at the tile_themes root (NOT under `levels`) so the tower contrast test (sprite-assets.test.mjs) and the legacy floor scan are unchanged.",
+    "outside": {
+      "grass": [
+        "#2b4a24",
+        "#33552b",
+        "#274220",
+        "#2f5027"
+      ],
+      "grassBlade": "#3f6a33",
+      "bush": "#356330",
+      "bushLight": "#4a7d3f",
+      "treeTrunk": "#4a3520",
+      "treeCanopy": "#23431f",
+      "treeCanopyLight": "#356330"
+    },
+    "tiles": {
+      "GRASS": {
+        "fill": "#2b4a24",
+        "alt": "#33552b",
+        "blade": "#4a7d3f",
+        "edge": "#1d3418"
+      },
+      "WATER": {
+        "deep": "#0d2233",
+        "fill": "#14324a",
+        "crest": "#2f6f9e",
+        "foam": "#8fd3ff",
+        "anim": "drift"
+      },
+      "SAND": {
+        "fill": "#c9b177",
+        "dark": "#a88f57",
+        "shell": "#e6d6a8",
+        "edge": "#8a7444"
+      },
+      "PATH": {
+        "fill": "#8a7250",
+        "dark": "#6d5a3e",
+        "edge": "#54452f"
+      },
+      "TREE": {
+        "trunk": "#4a3520",
+        "canopy": "#23431f",
+        "canopyLight": "#356330",
+        "outline": "#0b0d12"
+      },
+      "BRIDGE": {
+        "plank": "#6b4a2a",
+        "plankDark": "#523720",
+        "rail": "#3f2a18"
+      },
+      "BUILDING_WALL": {
+        "fill": "#7a6a55",
+        "shade": "#5f5242",
+        "roof": "#a8452e",
+        "roofPeak": "#7d2f1f",
+        "trim": "#d9b45a",
+        "window": "#ffcf7a"
+      },
+      "DOORWAY": {
+        "fill": "#5a3a1e",
+        "frame": "#2f1e10",
+        "glow": "#ffd48a"
+      },
+      "TOWER_ENTRANCE": {
+        "fill": "#6b6f7a",
+        "shade": "#4d515c",
+        "glow": "#ffd48a",
+        "orb": "#ffe9a8"
+      }
+    }
+  },
+  "town_havenreach": {
+    "name": "Havenreach",
+    "biome": "havenreach_town",
+    "lighting": "ambient",
+    "description": "LIV-58 town palette. Buildings read from silhouette (stone body + red roof + gold trim); doors glow so they read as interactable. Root-level scene theme, outside the tower `levels` scan.",
+    "outside": {
+      "grass": [
+        "#33552b",
+        "#3a5f31",
+        "#2f5027",
+        "#376035"
+      ],
+      "grassBlade": "#4a7d3f",
+      "bush": "#3d6f36",
+      "bushLight": "#4f8a43",
+      "treeTrunk": "#4a3520",
+      "treeCanopy": "#284a24",
+      "treeCanopyLight": "#3a6a33"
+    },
+    "tiles": {
+      "GRASS": {
+        "fill": "#33552b",
+        "alt": "#3a5f31",
+        "blade": "#4a7d3f",
+        "edge": "#24401f"
+      },
+      "PATH": {
+        "fill": "#9a8058",
+        "dark": "#7d6844",
+        "edge": "#5f4f33"
+      },
+      "TREE": {
+        "trunk": "#4a3520",
+        "canopy": "#284a24",
+        "canopyLight": "#3a6a33",
+        "outline": "#0b0d12"
+      },
+      "BUILDING_WALL": {
+        "fill": "#7a6a55",
+        "shade": "#5f5242",
+        "roof": "#a8452e",
+        "roofPeak": "#7d2f1f",
+        "trim": "#d9b45a",
+        "window": "#ffcf7a"
+      },
+      "DOORWAY": {
+        "fill": "#5a3a1e",
+        "frame": "#2f1e10",
+        "glow": "#ffd48a"
+      }
+    }
   }
 }

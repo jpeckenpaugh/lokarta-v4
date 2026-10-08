@@ -1,0 +1,154 @@
+{
+  "version": 1,
+  "description": "LIV-58 Island 1 quest chain. Pure data for the engine/quest-system.js dispatch tables: objective `type` values are talk|kill|fetch|reach|interact; reward `type` values are xp|gold|item|unlock_tower|set_flag. `vocationItems` is a data-only selector on an `item` reward: the reward handler grants the map entry for the active member's vocation (fallback `itemId`), so one quest hands each vocation its starter weapon without a per-quest branch. Quests chain by `prerequisites`; turn-ins are idempotent (a turned_in quest replays flavor only).",
+  "quests": [
+    {
+      "id": "rats_in_the_gutter",
+      "name": "Rats in the Gutter",
+      "summary": "Captain Halden wants the town apron cleared of drowned crawlers, and their crowned leader put down.",
+      "giverNpcId": "captain_halden",
+      "turnInNpcId": "captain_halden",
+      "prerequisites": [],
+      "repeatable": false,
+      "objectives": [
+        {
+          "id": "clear_crawlers",
+          "type": "kill",
+          "targetMonsterType": "drowned_crawler",
+          "count": 6,
+          "logKey": "quest.rats.obj.crawlers",
+          "hintKey": "quest.rats.hint.crawlers"
+        },
+        {
+          "id": "slay_gutter_king",
+          "type": "kill",
+          "targetMonsterType": "gutter_king",
+          "count": 1,
+          "logKey": "quest.rats.obj.king",
+          "hintKey": "quest.rats.hint.king"
+        }
+      ],
+      "rewards": [
+        { "type": "xp", "amount": 100 },
+        { "type": "item", "itemId": "health_potion", "quantity": 1 },
+        { "type": "gold", "amount": 30 },
+        {
+          "type": "item",
+          "itemId": "apprentice_wand",
+          "quantity": 1,
+          "vocationItems": {
+            "magician": "apprentice_wand",
+            "archer": "wooden_bow",
+            "fighter": "tempered_broadsword",
+            "paladin": "consecrated_warhammer"
+          }
+        }
+      ],
+      "teaching": "Movement, basic attack, ability use, potion sustain, and the knockout/auto-revive rule. The Gutter King is the first telegraphed charge: dodge the wind-up, punish the recovery."
+    },
+    {
+      "id": "the_lantern_wreck",
+      "name": "The Lantern Wreck",
+      "summary": "Wick the Lamplighter needs the beacon's cracked lens recovered from the Wreck of the Lantern on the west shore.",
+      "giverNpcId": "wick",
+      "turnInNpcId": "wick",
+      "prerequisites": ["rats_in_the_gutter"],
+      "repeatable": false,
+      "objectives": [
+        {
+          "id": "reach_wreck",
+          "type": "reach",
+          "sceneId": "island_dawnreach",
+          "x": 9,
+          "y": 20,
+          "radius": 1,
+          "count": 1,
+          "logKey": "quest.wreck.obj.reach",
+          "hintKey": "quest.wreck.hint.reach"
+        },
+        {
+          "id": "clear_thralls",
+          "type": "kill",
+          "targetMonsterType": "tide_thrall",
+          "count": 2,
+          "logKey": "quest.wreck.obj.thralls",
+          "hintKey": "quest.wreck.hint.thralls"
+        },
+        {
+          "id": "clear_wreck_crawlers",
+          "type": "kill",
+          "targetMonsterType": "drowned_crawler",
+          "count": 2,
+          "logKey": "quest.wreck.obj.crawlers",
+          "hintKey": "quest.wreck.hint.crawlers"
+        },
+        {
+          "id": "fetch_beacon_lens",
+          "type": "fetch",
+          "itemId": "beacon_lens",
+          "count": 1,
+          "logKey": "quest.wreck.obj.lens",
+          "hintKey": "quest.wreck.hint.lens"
+        }
+      ],
+      "rewards": [
+        { "type": "xp", "amount": 200 },
+        { "type": "item", "itemId": "dawn_lantern", "quantity": 1 },
+        { "type": "gold", "amount": 60 },
+        { "type": "item", "itemId": "health_potion", "quantity": 2 },
+        { "type": "item", "itemId": "mana_potion", "quantity": 1 }
+      ],
+      "teaching": "Overworld exploration and the fetch loop; ranged/zoner threat reads (Tide Thralls hold a ring and slow), and the shop/temple sustain loop."
+    },
+    {
+      "id": "rite_of_the_beacon",
+      "name": "Rite of the Beacon",
+      "summary": "Elder Rowan Vane will name the Pilgrim Keeper of the Tide, but only after the beacon is kindled at the Drowned Shrine.",
+      "giverNpcId": "elder_rowan_vane",
+      "turnInNpcId": "elder_rowan_vane",
+      "prerequisites": ["the_lantern_wreck"],
+      "repeatable": false,
+      "objectives": [
+        {
+          "id": "reach_shrine",
+          "type": "reach",
+          "sceneId": "island_dawnreach",
+          "x": 39,
+          "y": 22,
+          "radius": 1,
+          "count": 1,
+          "logKey": "quest.rite.obj.reach",
+          "hintKey": "quest.rite.hint.reach"
+        },
+        {
+          "id": "kindle_shrine",
+          "type": "interact",
+          "targetId": "drowned_shrine_rite",
+          "count": 1,
+          "logKey": "quest.rite.obj.kindle",
+          "hintKey": "quest.rite.hint.kindle"
+        },
+        {
+          "id": "slay_shrine_warden",
+          "type": "kill",
+          "targetMonsterType": "shrine_warden",
+          "count": 1,
+          "logKey": "quest.rite.obj.warden",
+          "hintKey": "quest.rite.hint.warden"
+        }
+      ],
+      "rewards": [
+        { "type": "xp", "amount": 300 },
+        { "type": "item", "itemId": "tidegate_signet", "quantity": 1 },
+        { "type": "gold", "amount": 100 },
+        { "type": "set_flag", "flag": "beaconLit", "value": true },
+        { "type": "unlock_tower", "towerId": "spire_of_light" }
+      ],
+      "levelGuard": {
+        "minLevel": 3,
+        "note": "Teaching guard only: Q1/Q2 already grant Levels 2/3, so reaching L3 is a consequence of the chain, never a separate grind. The real gate is the tower accessGate."
+      },
+      "teaching": "Elite prioritization and telegraph/AoE reading, plus objective chaining (reach, interact, kill) alongside the diegetic Tide Gate."
+    }
+  ]
+}

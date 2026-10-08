@@ -59,7 +59,11 @@
     "brine_witch": { "min": 10, "max": 21 },
     "tidebound_king": { "min": 140, "max": 230 },
     "forgemaster_kol": { "min": 145, "max": 240 },
-    "frostbound_choirmaster": { "min": 130, "max": 215 }
+    "frostbound_choirmaster": { "min": 130, "max": 215 },
+    "drowned_crawler": { "min": 2, "max": 6 },
+    "tide_thrall": { "min": 5, "max": 12 },
+    "gutter_king": { "min": 25, "max": 40 },
+    "shrine_warden": { "min": 35, "max": 55 }
   },
   "chestGold": {
     "copper": { "min": 5, "max": 12 },

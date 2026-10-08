@@ -1,0 +1,377 @@
+{
+  "version": 1,
+  "description": "LIV-58 Island 1 dialogue trees. Pure data; the dialogue UI evaluates each dialogue's `stages` in order and plays the first whose `when` matches, else the stage flagged `fallback`. Conditions: questId + status (inactive|active|complete|turned_in), optional flag, optional levelMin. Actions are a dispatch table (accept_quest|turn_in_quest|open_shop|open_temple|rest) — no per-NPC JS. {name}, {quest}, {item} placeholders substitute display names, never catalog ids. Turn-in actions are only offered when the quest's objectives are satisfied (quest-system.canTurnIn).",
+  "ui": {
+    "defaultSpeakerLabel": "—",
+    "acceptLabel": "Accept",
+    "turnInLabel": "Turn in",
+    "continueLabel": "Continue",
+    "redeemLabel": "Take reward",
+    "closeLabel": "Farewell"
+  },
+  "dialogues": {
+    "tide_gate_locked": {
+      "npcId": null,
+      "speaker": "The Tide Gate",
+      "kind": "world_prompt",
+      "fallback": "locked",
+      "stages": [
+        {
+          "id": "locked",
+          "when": {},
+          "lines": [
+            "The Tide Gate stands warded — old stone, older salt. Whatever rite sealed it has not been spoken in a lifetime.",
+            "The warding answers the beacon. The beacon is dark."
+          ],
+          "actions": []
+        }
+      ]
+    },
+    "tide_gate_open": {
+      "npcId": null,
+      "speaker": "The Tide Gate",
+      "kind": "world_prompt",
+      "fallback": "open",
+      "stages": [
+        {
+          "id": "open",
+          "when": {},
+          "lines": [
+            "The warding parts at your approach. Beyond, the causeway climbs to the Spire of Light.",
+            "The gate remembers the Keeper of the Tide."
+          ],
+          "actions": []
+        }
+      ]
+    },
+    "drowned_shrine_rite": {
+      "npcId": null,
+      "speaker": "Drowned Shrine",
+      "kind": "world_prompt",
+      "fallback": "prompt",
+      "stages": [
+        {
+          "id": "prompt",
+          "when": {},
+          "lines": [
+            "An altar of black coral, ringed by tidewrack. A hollow cup waits where a flame should sit.",
+            "Lift the Dawn Lantern to the cup to kindle the old fire."
+          ],
+          "actions": [
+            { "type": "interact", "interaction": "kindle_shrine", "requiresItem": "dawn_lantern" }
+          ]
+        }
+      ]
+    },
+
+    "captain_halden": {
+      "npcId": "captain_halden",
+      "speaker": "Captain Halden",
+      "fallback": "offer",
+      "stages": [
+        {
+          "id": "turned_in",
+          "when": { "questId": "rats_in_the_gutter", "status": "turned_in" },
+          "lines": [
+            "Clean work, Pilgrim. The watch can breathe again.",
+            "The Wreck? Ask Wick at the workshop — the lamplighter has been fretting over that lens all season."
+          ],
+          "actions": []
+        },
+        {
+          "id": "complete",
+          "when": { "questId": "rats_in_the_gutter", "status": "complete" },
+          "lines": [
+            "The Gutter King, down in the mud where it belongs. Well fought.",
+            "Take your pay. And that arm of yours — you'll want it before you climb."
+          ],
+          "actions": [
+            { "type": "turn_in_quest", "questId": "rats_in_the_gutter" }
+          ]
+        },
+        {
+          "id": "active",
+          "when": { "questId": "rats_in_the_gutter", "status": "active" },
+          "lines": [
+            "Rats in the gutter, Pilgrim. Six of the tide-crawlers, at least, and their crowned leader besides.",
+            "Prove your arm before you climb. Nobody reaches the Spire on good intentions."
+          ],
+          "actions": []
+        },
+        {
+          "id": "offer",
+          "when": {},
+          "lines": [
+            "You'll be the one they rowed ashore. The Elder will have words with you — but first, prove you can hold a line.",
+            "Rats in the gutter, Pilgrim. Kill six drowned crawlers at the town apron and the west field, and bring down the Gutter King that leads them."
+          ],
+          "actions": [
+            { "type": "accept_quest", "questId": "rats_in_the_gutter" }
+          ]
+        }
+      ]
+    },
+
+    "wick": {
+      "npcId": "wick",
+      "speaker": "Wick the Lamplighter",
+      "fallback": "offer",
+      "stages": [
+        {
+          "id": "not_yet",
+          "when": { "questId": "rats_in_the_gutter", "status": "inactive" },
+          "lines": [
+            "The lens? Aye — it's out on the Wreck, west along the shore. But the Elder won't hear of pilgrims wandering off before Captain Halden vouches for them.",
+            "Go see the Captain in the barracks first."
+          ],
+          "actions": []
+        },
+        {
+          "id": "turned_in",
+          "when": { "questId": "the_lantern_wreck", "status": "turned_in" },
+          "lines": [
+            "The lens sits true again. I can hear the glass hum.",
+            "Now the Elder's rite. Take the lantern to the Drowned Shrine and kindle the old fire — that's what will move the Tide Gate."
+          ],
+          "actions": []
+        },
+        {
+          "id": "complete",
+          "when": { "questId": "the_lantern_wreck", "status": "complete" },
+          "lines": [
+            "You found it — the beacon's own lens, and not a crack worse than it went in with.",
+            "Here — the Dawn Lantern. Light it from anything that still burns, and it will hold for as long as you do."
+          ],
+          "actions": [
+            { "type": "turn_in_quest", "questId": "the_lantern_wreck" }
+          ]
+        },
+        {
+          "id": "active",
+          "when": { "questId": "the_lantern_wreck", "status": "active" },
+          "lines": [
+            "The lens is out on the Wreck of the Lantern, west along the beach past the islet bridge.",
+            "Tide Thralls have made a nest of it — they hold their ring and slow you where you stand. Break their line or close the gap, then bring the lens home."
+          ],
+          "actions": []
+        },
+        {
+          "id": "offer",
+          "when": {},
+          "lines": [
+            "You're the pilgrim, then. Good. The beacon's focusing lens is out on the Wreck west of here, and I can't light the road without it.",
+            "Bring it home and I'll set my last coal in it. Mind the Thralls — they don't much like warm blood."
+          ],
+          "actions": [
+            { "type": "accept_quest", "questId": "the_lantern_wreck" }
+          ]
+        }
+      ]
+    },
+
+    "elder_rowan_vane": {
+      "npcId": "elder_rowan_vane",
+      "speaker": "Elder Rowan Vane",
+      "fallback": "arrival",
+      "stages": [
+        {
+          "id": "epilogue",
+          "when": { "questId": "rite_of_the_beacon", "status": "turned_in" },
+          "lines": [
+            "Keeper of the Tide. The gate is open, and the Spire waits.",
+            "Climb, Pilgrim. At the crown, raise your lantern to the beacon cup — and bring the light home."
+          ],
+          "actions": []
+        },
+        {
+          "id": "ready_to_turn_in",
+          "when": { "questId": "rite_of_the_beacon", "status": "complete" },
+          "lines": [
+            "You carry the fire. I can feel it from here — the Drowned Dark pulls back a step.",
+            "Kneel, Pilgrim. By the old rite of the reach, I name you Keeper of the Tide, and the gate will know you."
+          ],
+          "actions": [
+            { "type": "turn_in_quest", "questId": "rite_of_the_beacon" }
+          ]
+        },
+        {
+          "id": "rite_active",
+          "when": { "questId": "rite_of_the_beacon", "status": "active" },
+          "lines": [
+            "Take the Dawn Lantern to the Drowned Shrine on the east tidepools. Kindle the old fire there.",
+            "Something drowned guards it. Read the water's swell and step out of its reach — then climb the Spire."
+          ],
+          "actions": []
+        },
+        {
+          "id": "ready_for_rite",
+          "when": { "questId": "the_lantern_wreck", "status": "turned_in" },
+          "lines": [
+            "The lens is home and the lantern burns. Now the rite.",
+            "There is a shrine on the east tidepools, drowned three nights before the beacon went dark. Kindle its fire and the gate warding will answer. Something else answers too — be ready for it, and be at least Level 3 before you go."
+          ],
+          "actions": [
+            { "type": "accept_quest", "questId": "rite_of_the_beacon" }
+          ]
+        },
+        {
+          "id": "arrival",
+          "when": {},
+          "lines": [
+            "So the sea gave you back. Good.",
+            "The Tide Gate was not built to keep you out. It was built to wait for someone who could carry the light. Come back when you have it."
+          ],
+          "actions": []
+        }
+      ]
+    },
+
+    "high_dawnkeeper_aurel": {
+      "npcId": "high_dawnkeeper_aurel",
+      "speaker": "High Dawnkeeper Aurel",
+      "fallback": "lore",
+      "stages": [
+        {
+          "id": "beacon_lit",
+          "when": { "flag": "beaconLit" },
+          "lines": [
+            "The beacon is kindled — I can feel it warm the stone, even from here.",
+            "Rest. The Dawn will mend you, and the Spire will take everything else."
+          ],
+          "actions": [ { "type": "open_temple", "templeId": "temple_of_the_dawn" } ]
+        },
+        {
+          "id": "lore",
+          "when": {},
+          "lines": [
+            "Three nights the beacon has been dark, and three nights the boats have not come back. The Drowned Dark is patient.",
+            "The Dawn returns you when you fall — free of charge, always. A body should not be a toll. Rest here and be whole."
+          ],
+          "actions": [ { "type": "open_temple", "templeId": "temple_of_the_dawn" } ]
+        }
+      ]
+    },
+
+    "mara": {
+      "npcId": "mara",
+      "speaker": "Mara the Tinker",
+      "fallback": "greet",
+      "stages": [
+        {
+          "id": "veteran",
+          "when": { "levelMin": 4 },
+          "lines": [
+            "Look at you — growing heavy with gear. Bring me your coin and I'll keep pace with you.",
+            "Upgrade ranks scale with your company, mind. More companions, richer steel."
+          ],
+          "actions": [ { "type": "open_shop", "shopId": "merchant_stall" } ]
+        },
+        {
+          "id": "greet",
+          "when": {},
+          "lines": [
+            "Wares! Potions, arrows, and honest steel for whatever the sea left you as.",
+            "A weapon for every hand — you'll not be caught empty on my account."
+          ],
+          "actions": [ { "type": "open_shop", "shopId": "merchant_stall" } ]
+        }
+      ]
+    },
+
+    "innkeep_bessa": {
+      "npcId": "innkeep_bessa",
+      "speaker": "Innkeep Bessa",
+      "fallback": "greet",
+      "stages": [
+        {
+          "id": "greet",
+          "when": {},
+          "lines": [
+            "Wayfarer's Rest — the only warm hearth left on the reach. Sit, and let the road fall off you.",
+            "Tap, or the arrows or whatever that is — Square and Space are your interact keys, and the pause menu will hold the world still."
+          ],
+          "actions": [ { "type": "rest", "healPct": 1.0 } ]
+        }
+      ]
+    },
+
+    "old_sailor_doran": {
+      "npcId": "old_sailor_doran",
+      "speaker": "Old Sailor Doran",
+      "fallback": "flavor",
+      "stages": [
+        {
+          "id": "flag",
+          "when": { "flag": "beaconLit" },
+          "lines": [
+            "The beacon's lit, and the horizon's changed. I saw a shore out past the fog — one I'd no name for.",
+            "There's three more lights out there, Pilgrim. You relit one. That leaves three."
+          ],
+          "actions": []
+        },
+        {
+          "id": "flavor",
+          "when": {},
+          "lines": [
+            "I've sailed this reach forty year. Forty year, and the water was never so hungry as it is now.",
+            "Get that beacon lit, and I'll die a happy liar. Fail, and I'll die a truthful one."
+          ],
+          "actions": []
+        }
+      ]
+    },
+
+    "pilgrims_apprentice_tam": {
+      "npcId": "pilgrims_apprentice_tam",
+      "speaker": "Pilgrim's Apprentice Tam",
+      "fallback": "journal",
+      "stages": [
+        {
+          "id": "q1",
+          "when": { "questId": "rats_in_the_gutter", "status": "active" },
+          "lines": [
+            "You're the pilgrim! Captain Halden wants the crawlers gone. Six, and the big one with the crown — the Gutter King.",
+            "They say when it charges, it leaves a trail you can step out of. I'd step out of it."
+          ],
+          "actions": []
+        },
+        {
+          "id": "q2",
+          "when": { "questId": "the_lantern_wreck", "status": "active" },
+          "lines": [
+            "Wick's lens is out on the Wreck, west past the islet bridge.",
+            "The Thralls slow you with cold water — if they make you slow, you have to break their line. That's what the Captain always says."
+          ],
+          "actions": []
+        },
+        {
+          "id": "q3",
+          "when": { "questId": "rite_of_the_beacon", "status": "active" },
+          "lines": [
+            "The rite! East tidepools, the Drowned Shrine. Kindling the fire wakes the Warden.",
+            "It slams the water around itself — read the ripple, then punish it while it's heavy."
+          ],
+          "actions": []
+        },
+        {
+          "id": "done",
+          "when": { "questId": "rite_of_the_beacon", "status": "turned_in" },
+          "lines": [
+            "Keeper of the Tide! I knew it. I told everyone.",
+            "When you meet the Warden at the crown — the old songs say it only leans one way. Watch the lean, and you'll win."
+          ],
+          "actions": []
+        },
+        {
+          "id": "journal",
+          "when": {},
+          "lines": [
+            "New here? Start with Captain Halden in the barracks, or the Elder in the Hall. Everybody starts with one of those two.",
+            "Then there's three more lights out there. Doran says so, and Doran's never wrong twice."
+          ],
+          "actions": []
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,279 @@
+{
+  "version": 1,
+  "defaultIslandId": "island_dawnreach",
+  "islands": [
+    {
+      "id": "island_dawnreach",
+      "name": "Dawnreach Isle",
+      "order": 1,
+      "towerId": "spire_of_light",
+      "townId": "town_havenreach",
+      "theme": "island_dawnreach",
+      "biome": "dawnreach_isle",
+      "lighting": "ambient",
+      "width": 48,
+      "height": 48,
+      "legend": {
+        ".": "GRASS",
+        "~": "WATER",
+        ",": "SAND",
+        "=": "PATH",
+        "#": "TREE",
+        "B": "BRIDGE",
+        "T": "TOWER_ENTRANCE",
+        "G": "GATED_DOOR",
+        "W": "BUILDING_WALL",
+        "D": "DOORWAY"
+      },
+      "map": [
+        "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+        "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+        "~~,,,,,,,,,,,,,,,,,,,,WWWWW,,,,,,,,,,,,,,,,,,,~~",
+        "~~,....................WTW...................,~~",
+        "~~,.....................=....................,~~",
+        "~~,.....................=....................,~~",
+        "~~,.....................=....................,~~",
+        "~~,.....................=....................,~~",
+        "~~,.....................=....................,~~",
+        "~~,.....................=....................,~~",
+        "~~,....................GGG...................,~~",
+        "~~,.....................=....................,~~",
+        "~~,......#..#..#..#.....=....................,~~",
+        "~~,,,,..#..#..#.........=.#..#..#............,~~",
+        "~~~~~~,...#..#.....#....=...#..#..#........#.,~~",
+        "~~~~~~,.....#..#.....#..=..#..#..#..#..#..,,,,~~",
+        "~~~~~~,.#..#..#.....#...=.#..#..#..#..#..,~~~~~~",
+        "~~~~~~,#........#..#..#.=......#........#,~~~~~~",
+        "~~~~~~,.....#..#.....#..=..#..#..#..#..#.,~~~~~~",
+        "~~,,,~,.WWW.............=.#...........#..,~~~~~~",
+        "~~,.=B=..================................,~~~~~~",
+        "~~,,,~,.WWW.............=.............WWW,~~~~~~",
+        "~~~~~~,..........#..#...================.,~~~~~~",
+        "~~~~~~,#..#..#..#..#....=.............WWW,~~~~~~",
+        "~~~~~~,..#..#..#..#..#..=..#..#..#.......,~~~~~~",
+        "~~~~~~,.#..#..#.........=.#........#..#..,~~~~~~",
+        "~~~~~~,#..#..#..#..#..#.=...#.....#.....#,~~~~~~",
+        "~~~~~~,........#..#..#..=..#........#..#.,~~~~~~",
+        "~~~~~~,.#..#.....#......=....#.....#.....,~~~~~~",
+        "~~,,,,..................D................,~~~~~~",
+        "~~,..............WWWWWWWDWWWWWWWW........,~~~~~~",
+        "~~,..............W......=.......W.........,,,,~~",
+        "~~,..............W.WWW.WWW.WWW..W............,~~",
+        "~~,..............W.WWW.WWW.WWW..W............,~~",
+        "~~,..............W.WWW.WWW.WWW..W............,~~",
+        "~~,..............W......=.......W............,~~",
+        "~~,..............W.WWW.WWW......W............,~~",
+        "~~,..............W.WWW.WWW......W............,~~",
+        "~~,..............W.WWW.WWW......W............,~~",
+        "~~,..............W......=.......W............,~~",
+        "~~,..............W.WWW..=.......W............,~~",
+        "~~,..............W.WWW..=.......W............,~~",
+        "~~,..............W.WWW..=.......W............,~~",
+        "~~,..............W......=.......W............,~~",
+        "~~,..............WWWWWWWWWWWWWWWW............,~~",
+        "~~,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,~~",
+        "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+        "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      ],
+      "spawn": {
+        "x": 24,
+        "y": 28
+      },
+      "portals": [
+        {
+          "id": "to_town",
+          "type": "scene",
+          "x": 24,
+          "y": 29,
+          "target": {
+            "sceneId": "town_havenreach",
+            "spawn": {
+              "x": 12,
+              "y": 21
+            }
+          }
+        },
+        {
+          "id": "to_tower",
+          "type": "tower",
+          "x": 24,
+          "y": 3,
+          "towerId": "spire_of_light",
+          "gate": {
+            "requireQuestId": "rite_of_the_beacon",
+            "lockedPromptKey": "tide_gate_locked",
+            "openPromptKey": "tide_gate_open"
+          }
+        }
+      ],
+      "gates": [
+        {
+          "id": "tide_gate",
+          "name": "The Tide Gate",
+          "tiles": [
+            [
+              23,
+              10
+            ],
+            [
+              24,
+              10
+            ],
+            [
+              25,
+              10
+            ]
+          ],
+          "requireQuestId": "rite_of_the_beacon",
+          "lockedPromptKey": "tide_gate_locked",
+          "openPromptKey": "tide_gate_open"
+        }
+      ],
+      "landmarks": [
+        {
+          "id": "spire_of_light",
+          "name": "The Spire of Light",
+          "kind": "tower",
+          "x": 24,
+          "y": 3
+        },
+        {
+          "id": "tide_gate",
+          "name": "The Tide Gate",
+          "kind": "gate",
+          "x": 24,
+          "y": 10
+        },
+        {
+          "id": "wreck_of_the_lantern",
+          "name": "Wreck of the Lantern",
+          "kind": "quest_site",
+          "x": 9,
+          "y": 20,
+          "questId": "the_lantern_wreck"
+        },
+        {
+          "id": "drowned_shrine",
+          "name": "Drowned Shrine",
+          "kind": "quest_site",
+          "x": 39,
+          "y": 22,
+          "questId": "rite_of_the_beacon"
+        },
+        {
+          "id": "havenreach",
+          "name": "Havenreach",
+          "kind": "town",
+          "x": 24,
+          "y": 30
+        },
+        {
+          "id": "lantern_islet",
+          "name": "Lantern Islet",
+          "kind": "lookout",
+          "x": 3,
+          "y": 20
+        }
+      ],
+      "safeZones": [
+        {
+          "id": "havenreach_apron",
+          "x0": 14,
+          "y0": 27,
+          "x1": 35,
+          "y1": 47,
+          "reason": "town footprint + 3-tile apron (no spawns)"
+        },
+        {
+          "id": "pilgrims_road",
+          "x0": 22,
+          "y0": 3,
+          "x1": 26,
+          "y1": 29,
+          "reason": "teaching road + spire causeway (no spawns)"
+        }
+      ],
+      "spawnZones": [
+        {
+          "id": "west_wilds",
+          "x0": 4,
+          "y0": 12,
+          "x1": 15,
+          "y1": 28,
+          "pool": [
+            "drowned_crawler"
+          ],
+          "maxAlive": 5,
+          "respawn": "deterministic"
+        },
+        {
+          "id": "approach_meadow",
+          "x0": 16,
+          "y0": 12,
+          "x1": 32,
+          "y1": 28,
+          "pool": [
+            "drowned_crawler"
+          ],
+          "maxAlive": 4,
+          "respawn": "deterministic"
+        },
+        {
+          "id": "east_wilds",
+          "x0": 33,
+          "y0": 14,
+          "x1": 44,
+          "y1": 28,
+          "pool": [
+            "tide_thrall",
+            "drowned_crawler"
+          ],
+          "maxAlive": 4,
+          "respawn": "deterministic"
+        }
+      ],
+      "groundItems": [
+        {
+          "id": "wreck_beacon_lens",
+          "itemId": "beacon_lens",
+          "x": 9,
+          "y": 20,
+          "questId": "the_lantern_wreck",
+          "respawn": false
+        }
+      ],
+      "interactables": [
+        {
+          "id": "drowned_shrine_rite",
+          "name": "Drowned Shrine",
+          "interaction": "rite_of_the_beacon",
+          "x": 39,
+          "y": 22,
+          "questId": "rite_of_the_beacon",
+          "requiresItem": "dawn_lantern",
+          "promptKey": "drowned_shrine_rite"
+        }
+      ],
+      "questSpawns": [
+        {
+          "id": "q1_gutter_king",
+          "monsterType": "gutter_king",
+          "x": 11,
+          "y": 16,
+          "questId": "rats_in_the_gutter",
+          "respawnUntilTurnedIn": true,
+          "note": "Named Q1 elite in the west field; respawns until the quest is turned in."
+        },
+        {
+          "id": "q3_shrine_warden",
+          "monsterType": "shrine_warden",
+          "x": 39,
+          "y": 22,
+          "questId": "rite_of_the_beacon",
+          "respawnUntilTurnedIn": true,
+          "note": "Named Q3 elite guarding the Drowned Shrine; respawns until the quest is turned in."
+        }
+      ]
+    }
+  ]
+}

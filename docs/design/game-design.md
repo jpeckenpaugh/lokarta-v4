@@ -864,3 +864,187 @@ exposed, in the same integration as [LIV-28](/LIV/issues/LIV-28)'s
    Ranks 1–5 (utility caps per §9.4 plateau at their authored rank); the full T0
    suite stays green (**710 pass / 0 fail** at `21da209`).
 
+---
+
+## 10. Island 1 — Dawnreach Isle, Havenreach & the Rite (LIV-58)
+
+The four towers are no longer disconnected. Island 1 gives the launch tower a home:
+**Dawnreach Isle**, ringed by impassable water, with the town **Havenreach** in its
+south, the **Spire of Light** hard-gated in its north behind the **Tide Gate** and a
+three-quest NPC chain. This section is the content canon for the catalogs the engine
+consumes (`html/data/islands.json`, `towns.json`, `npcs.json`, `quests.json`,
+`dialogues.json` + extensions). **LIV-58 ships data only — no engine/save code.**
+
+*Lenses: core loop & fantasy, theme coherence, readability, no soft-locks.*
+
+### 10.1 Canon & fantasy
+
+* **Island:** **Dawnreach Isle**; **Town:** **Havenreach**; **Tower:** **The Spire of
+  Light** (unchanged, now the island's boss level); **The dark:** the **Drowned Dark**,
+  the unlit sea made literal as impassable `WATER`.
+* Player fantasy: *a Pilgrim who carries the last light back up the tower.* Prologue →
+  town arrival → three quests → **Rite of the Beacon** opens the Tide Gate → climb the
+  Spire → epilogue relights the beacon and sets up Islands 2–4 as **flavor only**
+  (LIV-55 D11). No Island 2–4 content is authored here.
+* **Encounter model:** visible roaming monsters in authored zones (Zelda-style), never
+  hidden random battles — the player can read and choose a fight (LIV-55 D3).
+
+### 10.2 Dawnreach Isle layout (48×48, `islands.json`)
+
+A compact, designer-authored character tilemap (`map` = 48 rows × 48 chars, `legend`
+maps char → tile type). Verified: spawn reaches the town gate, the Spire entrance, the
+Wreck and the Shrine with `WATER`/`TREE`/`BUILDING_WALL` as the only structural walls.
+
+| Landmark | Coordinates | Notes |
+| :--- | :--- | :--- |
+| Water border | rings `x/y ∈ {0,1}` and `{46,47}` | two full impassable rings |
+| West bay / east inlet | `x0–5,y14–28` / `x42–47,y16–30` | coastline break; `BRIDGE (5,20)` to **Lantern Islet (2–4,19–21)** |
+| **Havenreach** footprint | `x17–32, y30–44` | walled compound, one north gate `DOORWAY (24,29)` → town scene |
+| Player island spawn | `(24,28)` | on Pilgrim's Road at the town gate |
+| **Pilgrim's Road** (safe) | column `x24, y12–29`; forks `y20` west + `y22` east | teaching path, `spawn:false` |
+| **Tide Gate** | tiles `(23–25,10)` (`GATED_DOOR`) | gated cause: `rite_of_the_beacon` |
+| Spire causeway + base | column `x24, y3–9`; `TOWER_ENTRANCE (24,3)` | gated by the Tide Gate |
+| **Wreck of the Lantern** | `(9,20)` | Q2 site; ruin walls, walkable centre |
+| **Drowned Shrine** | `(39,22)` | Q3 site; ruin walls, shrine interactable |
+| Wild zones | west `x4–15,y12–28`; meadow `x16–32,y12–28`; east `x33–44,y14–28` | roaming pools + deterministic respawn |
+| Safe zones | town apron + Pilgrim's Road | no spawns (`safeZones`) |
+
+Tile palette uses exactly the nine appended types — `WATER, GRASS, SAND, PATH, TREE,
+BRIDGE, BUILDING_WALL, DOORWAY, TOWER_ENTRANCE` — plus the existing `GATED_DOOR` for the
+Tide Gate (reach for what exists first). Deeper rules live in `islands.json`:
+`portals` (scene + gated tower), `gates` (the Tide Gate predicate), `spawnZones`,
+`groundItems` (the Q2 `beacon_lens` pickup at the Wreck), and `interactables` (the
+shrine rite).
+
+### 10.3 Havenreach town (24×24, `towns.json`)
+
+A walkable scene entered from the island's north gate; buildings are `BUILDING_WALL`
+footprints with a `DOORWAY` tile that opens either an existing DOM panel (byte-identical
+Shop/Temple, LIV-55 D4/D5) or a dialogue panel. `interaction.type` is a dispatch key
+(`shop | temple | dialogue`), never a per-building branch.
+
+| Building | Footprint | Door | Opens | NPC |
+| :--- | :--- | :--- | :--- | :--- |
+| Merchant's Stall | `3–7, 3–6` | `(5,7)` | existing shop UI | Mara the Tinker |
+| Temple of the Dawn | `9–15, 2–6` | `(12,7)` | existing temple UI | High Dawnkeeper Aurel |
+| Elder's Hall | `17–21, 3–6` | `(19,7)` | dialogue | Elder Rowan Vane |
+| Beacon-wright's Workshop | `18–22, 9–12` | `(18,11)` | dialogue | Wick the Lamplighter |
+| Tidewatch Barracks | `1–5, 9–12` | `(5,11)` | dialogue (combat) | Captain Halden |
+| Wayfarer's Rest | `17–21, 15–19` | `(19,15)` | rest / dialogue | Innkeep Bessa |
+
+Town spawn `(12,20)`; south gate `(12,23)` returns to the island. A center square
+(decor props) sits at `y11–13`.
+
+**NPC roster (8 named, `npcs.json`).** Positions are town tiles; each carries
+`spriteId` (a vocation actor), a `renderTheme` tint, `aiType` (`stationary|wander`),
+`blocks`, `svgCode` (committed OpenMoji), and `interact` (`dialogue`/`shop`/`temple`).
+
+| NPC | Tile | Role |
+| :--- | :--- | :--- |
+| **Elder Rowan Vane** | `(19,8)` | Story hub; gives Q3, names the Spire unlock |
+| **Captain Halden** | `(6,11)` | Combat tutorial; gives/turns in Q1 |
+| **Wick the Lamplighter** | `(17,11)` | Gives/turns in Q2; the Dawn Lantern |
+| **High Dawnkeeper Aurel** | `(12,8)` | Temple heal/lore ("the Dawn returns you, free") |
+| **Mara the Tinker** | `(5,8)` | Vendor (existing shop) |
+| **Innkeep Bessa** | `(19,14)` | Optional free rest + control tips (cozy delighter) |
+| **Old Sailor Doran** | `(11,12)` | Flavor; foreshadows three more lights (Islands 2–4) |
+| **Pilgrim's Apprentice Tam** | `(13,12)` | Diegetic quest journal; restates the current objective |
+
+### 10.4 Quest chain (Q1→Q2→Q3, `quests.json` + `dialogues.json`)
+
+Objective `type` ∈ `talk|kill|fetch|reach|interact`; reward `type` ∈
+`xp|gold|item|unlock_tower|set_flag`; all resolved by dispatch tables. Every quest has
+`giverNpcId`/`turnInNpcId`, `prerequisites`, and idempotent turn-ins (a `turned_in`
+quest replays flavor only). XP rewards match the curve (`level × 100`: 100/200/300),
+so the chain is the level advancement.
+
+| Quest | Giver | Prereq | Objectives | Rewards | Teaches |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Q1 "Rats in the Gutter"** | Captain Halden | — | kill 6 `drowned_crawler`; kill 1 `gutter_king` | 100 XP → **L2**; starter weapon (per vocation via `vocationItems`); 30 gold; 1× potion | move, attack, ability, potions, KO/revive; first telegraph read |
+| **Q2 "The Lantern Wreck"** | Wick | Q1 | reach Wreck `(9,20)`; kill 2 `tide_thrall`; kill 2 `drowned_crawler`; fetch `beacon_lens` | 200 XP → **L3**; **Dawn Lantern**; 60 gold; 2× HP + 1× MP potion | exploration/loot, zoner read, shop/temple sustain |
+| **Q3 "Rite of the Beacon"** | Elder Rowan Vane | Q2 | reach Shrine `(39,22)`; interact `drowned_shrine_rite`; kill 1 `shrine_warden` | 300 XP → **L4**; `tidegate_signet`; 100 gold; set `beaconLit`; **unlock `spire_of_light`** | elite prioritization + AoE telegraph; objective chaining |
+
+**Starter weapon rewards** use a data-only `item` reward with `vocationItems`
+(`magician→apprentice_wand`, `archer→wooden_bow`, `fighter→tempered_broadsword`,
+`paladin→consecrated_warhammer`) — one catalog entry, no per-quest branch.
+
+**The Spire unlock** is expressed on the tower as data (`tower_levels.json →
+spire_of_light.accessGate`): `questId: rite_of_the_beacon`, `state: turned_in`,
+`minLevel: 3`, `requiredItem: tidegate_signet`, `flag: beaconLit`, `deniedHintKey:
+tideGateLocked`. It is consulted at both the island Tide Gate and the worker
+`handleSelectTower`; `unlock_tower` adds `spire_of_light` to
+`towerProgress.unlockedTowerIds`. The other three towers keep their completed-tower
+chain (no `accessGate`).
+
+### 10.5 No soft-locks, no dark patterns
+
+Every LIV-56 §5 guarantee is authored as data, not a stat wall:
+
+* Roamers **respawn deterministically** forever in the wild zones → XP is never
+  exhaustible; the Level-3 guard is reachable indefinitely.
+* Quest items (`beacon_lens`, `tidegate_signet`) and the `dawn_lantern` relic are
+  `droppable:false`, `slotRole:'bank'` (relic: `'equipment'`), and survive wipes.
+* The gate opens on **either** `tidegate_signet` **or** `flags.beaconLit` — losing the
+  receipt can never strand the player.
+* Q1/Q2 quest elites respawn **until turned in** (`questSpawns.respawnUntilTurnedIn`).
+* The Tide Gate is a **visible, diegetic** wall with a data-driven hint
+  (`tide_gate_locked`); the givers are all inside the town safe zone.
+* No streak/login/energy/loss-framed copy anywhere.
+
+### 10.6 New catalog content shipped (LIV-58)
+
+| File | Content |
+| :--- | :--- |
+| `islands.json` **(new)** | Dawnreach Isle 48×48 tilemap + legend, spawn, portals, Tide Gate, landmarks, safe/spawn zones, quest spawns, ground items, shrine interactable |
+| `towns.json` **(new)** | Havenreach 24×24 tilemap, 6 buildings + doors + interactions, south portal, decor props |
+| `npcs.json` **(new)** | 8 named NPCs (position, behavior, recolor, OpenMoji, dialogue/quest wiring) |
+| `quests.json` **(new)** | Q1–Q3 with prerequisites, typed objectives, typed rewards, teaching notes |
+| `dialogues.json` **(new)** | All NPC trees keyed by `(npcId, quest state/flag/level)`, plus the Tide Gate locked/open and shrine-rite world prompts |
+| `tile_themes.json` **extend** | root scene themes `island_dawnreach`, `town_havenreach` with palettes for all nine new tile types (kept out of `levels` so the tower contrast scan is unchanged) |
+| `biomes.json` **extend** | `dawnreach_isle`, `havenreach_town` (name + ambient `lightColor`; no `minLevel`/`maxLevel`, so the 1–5 tower scan is unchanged) |
+| `monsters.json` **extend** | `drowned_crawler` (chaser), `tide_thrall` (ranged/zoner, slow), `gutter_king` (Q1 elite, dash-stun), `shrine_warden` (Q3 elite, melee + telegraphed AoE slow) — all data-only, shared `spriteId` |
+| `items.json` **extend** | `beacon_lens` (quest), `tidegate_signet` (quest key), `dawn_lantern` (neutral relic, +20 HP/+15 MP — LIV-55 D9 zero-engine stat relic) |
+| `economy.json` **extend** | `monsterGold` for the four island foes |
+| `ui.json` **extend** | `island` scene copy (incl. Tide Gate hints) + `quests` log/copy block |
+| `tower_levels.json` **extend** | `spire_of_light.accessGate` (the Rite gate) |
+
+### 10.7 Art direction & fallbacks (LIV-55 D5/D9/D11)
+
+* **No bespoke island/town/NPC pixel art ships with LIV-58.** The island/town render
+  from authored tile palettes; NPCs reuse recolored vocation sprites via
+  `spriteId` + `renderTheme` (passed as the existing `opts.tint`), with committed
+  OpenMoji portraits (`1F4D6 1F6E1 1F4A1 1F56F 1FA84 1F9E5 1F9E2 1F3AF`). This is the
+  documented, non-blocking fallback: P1/P2 can ship with placeholders and art is an
+  enhancement, never a gate. *Lenses: readability (silhouette + color), scope
+  discipline, Kano (delighter gated behind a real budget).*
+* **Outdoors is ambient daylight** (`lighting: "ambient"`); cave floors are unchanged
+  (additive flag only). `biomes` carry warm `lightColor`s (`#ffd48a` / `#ffcf7a`).
+* **Dawn Lantern is the zero-engine stat relic** (D9); the vision-radius variant is
+  deferred. **Ambient island/town audio is deferred** (D10).
+
+### 10.8 P0 wiring handoff (Tech Lead)
+
+LIV-58 is content only. The Tech Lead's P0 (`scene-composer.js`, tile-type append,
+`data/index.js` barrel) consumes:
+
+1. **Register** `ISLANDS_CATALOG`, `TOWNS_CATALOG`, `NPCS_CATALOG`, `QUESTS_CATALOG`,
+   `DIALOGUES_CATALOG` in `html/data/index.js`.
+2. **Legend → tile codes**: map each `legend` value to `TILE_TYPES`; append the nine
+   new codes after `TOWN_GATE (6)` per the LIV-57 §5.1 order
+   (`WATER:7, GRASS:8, SAND:9, PATH:10, TREE:11, BRIDGE:12, BUILDING_WALL:13,
+   DOORWAY:14, TOWER_ENTRANCE:15`); `WATER/TREE/BUILDING_WALL` impassable,
+   `DOORWAY/TOWER_ENTRANCE/BRIDGE` walkable + trigger.
+3. **Scene theme**: resolve `theme` → `tile_themes[theme].tiles[tileType]`.
+4. **Quest dispatch**: register the `talk|kill|fetch|reach|interact` objective
+   handlers and `xp|gold|item|unlock_tower|set_flag` reward handlers (the `item`
+   handler reads `vocationItems`); read the `spire_of_light.accessGate` predicate at
+   the Tide Gate and `handleSelectTower`.
+5. **Validation**: `liv57-scene-composer.test.mjs` should assert `WATER` impassable and
+   spawn→town / spawn→tower-entrance reachability; the four new monsters must keep the
+   `data-catalogs`/`sprite-assets` gates green (shared `spriteId` verifies that).
+
+*Lenses cited (§10): core loop & fantasy, theme coherence, readability & legibility,
+difficulty curve & flow, enemy role taxonomy, balance levers (non-droppable flags +
+deterministic respawn, not stat walls), economy & reward pacing, Kano, MDA,
+replayability. No dark patterns or manipulative engagement mechanics are introduced.*
+

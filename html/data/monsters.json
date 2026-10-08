@@ -943,5 +943,223 @@
         "stat_bonus": 50
       }
     ]
+  },
+  "drowned_crawler": {
+    "type": "drowned_crawler",
+    "faction": "monsters",
+    "name": "Drowned Crawler",
+    "baseHp": 24,
+    "baseAttack": 5,
+    "baseDefense": 1,
+    "moveCadence": 0.7,
+    "attackCadence": 1.2,
+    "damageMin": 4,
+    "damageMax": 7,
+    "damageType": "physical",
+    "aiType": "chase",
+    "spriteId": "giant_rat",
+    "baseXp": 16,
+    "xpFloorScale": 3,
+    "svgCode": "1F407",
+    "lore": "A tide-bloated vermin that crawls up from the Drowned Dark. The island's teaching chaser: fast, fragile, always in packs.",
+    "lootTable": [
+      {
+        "minRoll": 0.0,
+        "maxRoll": 0.35,
+        "item_id": "health_potion",
+        "name": "Health Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 30
+      }
+    ]
+  },
+  "tide_thrall": {
+    "type": "tide_thrall",
+    "faction": "monsters",
+    "name": "Tide Thrall",
+    "baseHp": 32,
+    "baseAttack": 8,
+    "baseDefense": 2,
+    "moveCadence": 1.1,
+    "attackCadence": 2.4,
+    "damageMin": 6,
+    "damageMax": 10,
+    "damageType": "frost",
+    "aiType": "ranged",
+    "standoffMin": 3,
+    "standoffMax": 5,
+    "spriteId": "shadow_cultist",
+    "baseXp": 30,
+    "xpFloorScale": 6,
+    "svgCode": "1F52E",
+    "lore": "A drowned zoner that holds a ring and slows the unwary with brine-cold bolts. Break line of sight, or close the gap.",
+    "attacks": [
+      {
+        "key": "tide_bolt",
+        "kind": "projectile",
+        "label": "Tide Bolt",
+        "cooldownSec": 2.4,
+        "range": 6,
+        "minRange": 1,
+        "requiresLOS": true,
+        "damageMin": 6,
+        "damageMax": 10,
+        "damageType": "frost",
+        "projectile": {
+          "type": "tide_bolt",
+          "speedTilesPerSec": 7,
+          "color": "#38bdf8",
+          "visual": {
+            "trailType": "bubbling",
+            "headRadius": 6,
+            "glowColor": "#bae6fd"
+          }
+        },
+        "onHit": {
+          "status": "slow",
+          "durationSec": 2.5,
+          "factor": 0.5
+        }
+      }
+    ],
+    "lootTable": [
+      {
+        "minRoll": 0.0,
+        "maxRoll": 1.0,
+        "item_id": "mana_potion",
+        "name": "Mana Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 40
+      }
+    ]
+  },
+  "gutter_king": {
+    "type": "gutter_king",
+    "faction": "monsters",
+    "name": "The Gutter King",
+    "isElite": true,
+    "baseHp": 120,
+    "baseAttack": 14,
+    "baseDefense": 3,
+    "moveCadence": 0.7,
+    "attackCadence": 1.6,
+    "damageMin": 11,
+    "damageMax": 16,
+    "damageType": "physical",
+    "aiType": "charger",
+    "standoffMin": 1,
+    "standoffMax": 5,
+    "spriteId": "giant_rat",
+    "baseXp": 90,
+    "xpFloorScale": 0,
+    "svgCode": "1F407",
+    "lore": "A bloated rat-elite crowned in gutter filth. Q1's named target: it telegraphs a lunging charge, then leaves itself open.",
+    "attacks": [
+      {
+        "key": "gutter_charge",
+        "kind": "dash",
+        "label": "Filthy Charge",
+        "cooldownSec": 3.0,
+        "range": 5,
+        "minRange": 2,
+        "requiresLOS": true,
+        "telegraphSec": 0.35,
+        "dashTiles": 3,
+        "damageMin": 11,
+        "damageMax": 16,
+        "damageType": "physical",
+        "projectile": {
+          "type": "dash_trail",
+          "color": "#9ca3af"
+        },
+        "onHit": {
+          "status": "stun",
+          "durationSec": 1.2
+        }
+      }
+    ],
+    "lootTable": [
+      {
+        "always": true,
+        "item_id": "health_potion",
+        "name": "Health Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 30
+      }
+    ]
+  },
+  "shrine_warden": {
+    "type": "shrine_warden",
+    "faction": "monsters",
+    "name": "The Shrine Warden",
+    "isElite": true,
+    "baseHp": 160,
+    "baseAttack": 17,
+    "baseDefense": 5,
+    "moveCadence": 0.9,
+    "attackCadence": 1.8,
+    "damageMin": 13,
+    "damageMax": 19,
+    "damageType": "shadow",
+    "aiType": "charger",
+    "standoffMin": 2,
+    "standoffMax": 5,
+    "spriteId": "elite_cultist",
+    "baseXp": 130,
+    "xpFloorScale": 0,
+    "svgCode": "2694",
+    "lore": "The drowned guardian of the Drowned Shrine. Q3's elite: read the telegraphed tide-slam and punish the recovery.",
+    "attacks": [
+      {
+        "key": "warden_cleave",
+        "kind": "melee",
+        "label": "Brine Cleave",
+        "cooldownSec": 1.8,
+        "range": 1,
+        "minRange": 1,
+        "requiresLOS": true,
+        "damageMin": 13,
+        "damageMax": 19,
+        "damageType": "shadow"
+      },
+      {
+        "key": "tide_slam",
+        "kind": "aoe",
+        "label": "Tide Slam",
+        "cooldownSec": 4.5,
+        "range": 2,
+        "minRange": 1,
+        "requiresLOS": false,
+        "telegraphSec": 0.7,
+        "radius": 2,
+        "burstDurationMs": 320,
+        "telegraphColor": "#38bdf8",
+        "damageMin": 8,
+        "damageMax": 12,
+        "damageType": "frost",
+        "projectile": {
+          "type": "tide_slam",
+          "color": "#38bdf8"
+        },
+        "onHit": {
+          "status": "slow",
+          "durationSec": 2,
+          "factor": 0.5
+        }
+      }
+    ],
+    "lootTable": [
+      {
+        "always": true,
+        "item_id": "health_potion",
+        "name": "Health Potion",
+        "type": "consumable",
+        "quantity": 2,
+        "stat_bonus": 30
+      }
+    ]
   }
 }

@@ -701,5 +701,46 @@
     "maxStack": 1,
     "droppable": false,
     "slotRole": "bank"
+  },
+  "beacon_lens": {
+    "item_id": "beacon_lens",
+    "name": "Beacon Lens",
+    "type": "quest",
+    "pickupType": "quest",
+    "description": "The cracked focusing lens of the Spire beacon, recovered from the Wreck of the Lantern. Wick can re-seat it once the Dawn Lantern is kindled.",
+    "icon": "\ud83d\udd2e",
+    "svgCode": "1F52E",
+    "maxStack": 1,
+    "droppable": false,
+    "slotRole": "bank"
+  },
+  "tidegate_signet": {
+    "item_id": "tidegate_signet",
+    "name": "Tidegate Signet",
+    "type": "quest",
+    "pickupType": "quest",
+    "description": "Elder Rowan Vane's seal, marking its bearer Keeper of the Tide. The Tide Gate parts for the signet, or for one who has lit the beacon.",
+    "icon": "\ud83d\udd11",
+    "svgCode": "1F511",
+    "maxStack": 1,
+    "droppable": false,
+    "slotRole": "bank"
+  },
+  "dawn_lantern": {
+    "item_id": "dawn_lantern",
+    "name": "Dawn Lantern",
+    "type": "relic",
+    "slot": "relic",
+    "stat_bonus": 6,
+    "hpBonus": 20,
+    "manaBonus": 15,
+    "vocationAffinity": "neutral",
+    "description": "A pilgrim's lantern lit from the last coal of the beacon. Its steady light braces the bearer (+20 Max HP, +15 Max MP).",
+    "icon": "\ud83c\udfee",
+    "svgCode": "1F4A1",
+    "maxStack": 1,
+    "droppable": false,
+    "slotRole": "equipment",
+    "lore": "Zero-engine stat relic (LIV-55 D9): uses existing hpBonus/manaBonus fields so no vision-radius schema change ships."
   }
 }

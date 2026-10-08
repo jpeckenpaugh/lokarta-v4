@@ -13,6 +13,16 @@
       "name": "The Spire of Light",
       "order": 1,
       "unlockRequires": [],
+      "accessGate": {
+        "description": "LIV-58 story gate. Absent accessGate => tower is ungated (the other three towers keep their completed-tower chain). Consulted at both the island Tide Gate portal and worker handleSelectTower. `unlock_tower` reward from rite_of_the_beacon adds spire_of_light to towerProgress.unlockedTowerIds; the flag clause keeps the gate open even if the Signet is somehow lost (anti-soft-lock).",
+        "kind": "quest",
+        "questId": "rite_of_the_beacon",
+        "state": "turned_in",
+        "minLevel": 3,
+        "requiredItem": "tidegate_signet",
+        "flag": "beaconLit",
+        "deniedHintKey": "tideGateLocked"
+      },
       "icon": "1F5DD",
       "description": "The original five-tier ascent: gated halls climbing from the Gatehouse to the Crown Spire.",
       "theme": {

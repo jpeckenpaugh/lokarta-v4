@@ -37,5 +37,20 @@
 
   "frost_threshold": { "id": "frost_threshold", "name": "The Frost Threshold", "lightColor": "#7dd3fc" },
   "bell_aerie": { "id": "bell_aerie", "name": "The Bell Aerie", "lightColor": "#a5b4fc" },
-  "choir_loft": { "id": "choir_loft", "name": "The Choir Loft", "lightColor": "#c4b5fd" }
+  "choir_loft": { "id": "choir_loft", "name": "The Choir Loft", "lightColor": "#c4b5fd" },
+
+  "dawnreach_isle": {
+    "id": "dawnreach_isle",
+    "name": "Dawnreach Isle",
+    "lightColor": "#ffd48a",
+    "ambient": true,
+    "description": "LIV-58: open overworld biome. No minLevel/maxLevel, so the legacy 1..5 level scan (data-catalogs.test.mjs) still maps each floor to exactly one tower tier; island/town scenes resolve by scene `biome` id instead."
+  },
+  "havenreach_town": {
+    "id": "havenreach_town",
+    "name": "Havenreach",
+    "lightColor": "#ffcf7a",
+    "ambient": true,
+    "description": "LIV-58: the town scene's biome (ambient daylight, town palette)."
+  }
 }
