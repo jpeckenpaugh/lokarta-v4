@@ -269,7 +269,8 @@ test('LIV-14 integration: a legacy single-character save migrates to a one-membe
   assert.equal(migrated.party.length, 1, 'criterion 9: legacy save becomes a one-member party');
   assert.equal(migrated.party[0].vocation, 'fighter');
   assert.equal(migrated.party[0].level, 7, 'level survives migration');
-  assert.equal(migrated.party[0].gold, 999);
+  assert.equal(migrated.gold, 999, 'legacy gold folds into the shared party wallet');
+  assert.equal(migrated.party[0].gold, undefined, 'gold is party-shared, not per member');
   assert.deepEqual(migrated.levelKeys, { 1: { copper: true } }, 'keys live on the shared party store');
   assert.equal(migrated.party[0].levelKeys, undefined, 'keys are party-shared, not per member');
   assert.equal(migrated.activeMemberId, migrated.party[0].memberId);

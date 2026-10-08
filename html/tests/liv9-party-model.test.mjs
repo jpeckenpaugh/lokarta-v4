@@ -256,7 +256,10 @@ test('LIV-9 migration: legacy single-character save wraps without data loss', ()
   assert.equal(member.level, 4, 'level preserved');
   assert.equal(member.xp, 210, 'xp preserved');
   assert.equal(member.hp, 41, 'hp preserved');
-  assert.equal(member.gold, 512, 'gold preserved');
+  // LIV-72 changed the gold contract: the party shares one top-level wallet and
+  // members never carry their own gold.
+  assert.equal(migrated.gold, 512, 'gold preserved on the shared party wallet');
+  assert.equal(member.gold, undefined, 'a member carries no gold of its own');
   // LIV-33 changed the key contract: keys are a shared party store on the top
   // level and members never carry their own key ring.
   assert.deepEqual(migrated.levelKeys, LEGACY_PLAYER.levelKeys, 'level keys preserved on the shared party store');

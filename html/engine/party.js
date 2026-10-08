@@ -61,12 +61,12 @@ export const MAX_PARTY_SIZE = Math.max(1, Object.keys(VOCATIONS_CATALOG || {}).l
  * member. Every other top-level player field is active-member state that is
  * mirrored into the active `party` entry on capture.
  *
- * `backpack` is the single **shared party backpack** (LIV-22) and `levelKeys`
- * is the single **shared party key ring** (LIV-33): both stay on the top-level
- * player and are never swapped per member, so loot/keys picked up by the active
- * member or an auto ally always land in one stash. `action_bar` (the
- * per-character quick-use hotbar) and `paperdoll` (equipped gear) stay per
- * member.
+ * `backpack` is the single **shared party backpack** (LIV-22), `levelKeys` is
+ * the single **shared party key ring** (LIV-33), and `gold` is the single
+ * **shared party wallet** (LIV-72): all stay on the top-level player and are
+ * never swapped per member, so loot/keys/gold picked up by the active member or
+ * an auto ally always land in one pool. `action_bar` (the per-character
+ * quick-use hotbar) and `paperdoll` (equipped gear) stay per member.
  */
 const MEMBER_EXCLUDED_KEYS = new Set([
   // Envelope / persistence bookkeeping.
@@ -79,6 +79,9 @@ const MEMBER_EXCLUDED_KEYS = new Set([
   'backpack',
   // Shared party key ring: one earned-key store for the whole party (LIV-33).
   'levelKeys',
+  // Shared party wallet: one gold pool for the whole party (LIV-72). Never
+  // swapped or captured per member, so gold can never fork or reset.
+  'gold',
   // Member identity / meta (owned by the member entry, not copied from top level).
   'id', 'memberId', 'vocation', 'aiMode', 'faction', 'anim',
 ]);
@@ -195,6 +198,62 @@ function consolidatePartyKeys(player, members) {
   return changed;
 }
 
+/**
+ * Folds per-member `gold` from pre-LIV-72 saves into the single shared party
+ * wallet held on the top-level player, then strips the per-member copies. The
+ * board's product call is that the shared pool is the **sum of the members'
+ * gold, clamped to the catalog `gold.cap`** — never a fork. The active member's
+ * live value already *is* `player.gold`, so it is counted once from the top
+ * level (taking the larger of the two when an entry is stale); every non-active
+ * member contributes its own stored gold. A save with no per-member gold at all
+ * (a new-format save, or a legacy single-character save) adopts the top-level
+ * wallet as-is, so a fresh save and a migrated save behave identically.
+ *
+ * Idempotent: after the first pass no member carries gold, the top level is
+ * already clamped, and a rerun is a reference no-op. Returns true when anything
+ * changed.
+ */
+function consolidatePartyGold(player, members, activeId) {
+  let changed = false;
+  const cap = Number(INVENTORY_CONFIG.GOLD_CAP) || 999999;
+  const topGold = Math.max(0, Math.floor(Number(player.gold) || 0));
+
+  let hasMemberGold = false;
+  for (const member of members) {
+    if (member && typeof member === 'object' && 'gold' in member) {
+      hasMemberGold = true;
+      break;
+    }
+  }
+
+  if (!hasMemberGold) {
+    const next = Math.min(cap, topGold);
+    if (Number(player.gold) !== next) {
+      player.gold = next;
+      changed = true;
+    }
+    return changed;
+  }
+
+  let total = 0;
+  for (const member of members) {
+    if (!member || typeof member !== 'object') continue;
+    const memberGold = Math.max(0, Math.floor(Number(member.gold) || 0));
+    const isActive = Boolean(member.memberId) && member.memberId === activeId;
+    total += isActive ? Math.max(topGold, memberGold) : memberGold;
+    if ('gold' in member) {
+      delete member.gold;
+      changed = true;
+    }
+  }
+  const next = Math.min(cap, total);
+  if (Number(player.gold) !== next) {
+    player.gold = next;
+    changed = true;
+  }
+  return changed;
+}
+
 function normalizeVocation(vocation) {
   const key = String(vocation || '').toLowerCase();
   return VOCATIONS_CATALOG && VOCATIONS_CATALOG[key] ? key : null;
@@ -246,11 +305,12 @@ export function createPartyMember(vocation, overrides = {}) {
   member.downCount = 0;
   member.autoReviveTotalSec = 0;
   member.autoReviveRemainingSec = 0;
-  // The party shares one backpack (LIV-22) and one key ring (LIV-33) held on
-  // the top-level player; a member never carries its own copy. The hotbar and
-  // equipment stay per member.
+  // The party shares one backpack (LIV-22), one key ring (LIV-33), and one gold
+  // wallet (LIV-72) held on the top-level player; a member never carries its own
+  // copy. The hotbar and equipment stay per member.
   delete member.backpack;
   delete member.levelKeys;
+  delete member.gold;
   for (const [field, value] of Object.entries(overrides || {})) {
     if (field === 'memberId' || field === 'vocation' || field === 'faction') continue;
     member[field] = clone(value);
@@ -607,7 +667,9 @@ export function migratePlayerParty(player) {
     const inventoryChanged = consolidateSharedInventory(player, members, activeId);
     // Fold any per-member key ring into the shared top-level store (LIV-33).
     const keysChanged = consolidatePartyKeys(player, members);
-    if (!membersChanged && !progressChanged && !activeIdChanged && !inventoryChanged && !keysChanged && !questChanged && !flagsChanged) return player;
+    // Fold any per-member wallet into the shared top-level gold pool (LIV-72).
+    const goldChanged = consolidatePartyGold(player, members, activeId);
+    if (!membersChanged && !progressChanged && !activeIdChanged && !inventoryChanged && !keysChanged && !goldChanged && !questChanged && !flagsChanged) return player;
     return { ...player, party: members, activeMemberId: activeId, towerProgress: progress, questState, worldFlags };
   }
 
@@ -627,10 +689,11 @@ export function migratePlayerParty(player) {
     questState,
     worldFlags,
   };
-  // Normalize the shared containers (LIV-22 backpack, LIV-33 key ring) so a
-  // rerun is an idempotent no-op.
+  // Normalize the shared containers (LIV-22 backpack, LIV-33 key ring, LIV-72
+  // gold wallet) so a rerun is an idempotent no-op.
   consolidateSharedInventory(result, result.party, member.memberId);
   consolidatePartyKeys(result, result.party);
+  consolidatePartyGold(result, result.party, member.memberId);
   return result;
 }
 

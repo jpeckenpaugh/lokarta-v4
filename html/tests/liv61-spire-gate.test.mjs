@@ -186,9 +186,9 @@ test('LIV-61 quest markers: available/turn-in flags derive from quest data', () 
   assert.equal(app.npcs[2].questMarker, null);
 });
 
-test('LIV-61 persistence: DB v3, save format v4, slot_scenes store', () => {
+test('LIV-61 persistence: DB v3, save format v5, slot_scenes store', () => {
   assert.equal(DB_VERSION, 3);
-  assert.equal(SAVE_FORMAT_VERSION, 4, 'save format bumped v3 -> v4 (LIV-55 P4)');
+  assert.equal(SAVE_FORMAT_VERSION, 5, 'save format bumped v4 -> v5 (LIV-72 shared party gold)');
   assert.equal(STORES.SLOT_SCENES, 'slot_scenes');
   assert.equal(WORLD_MIGRATION_GUARD_KEY, 'migration_world_v5');
 });
@@ -245,7 +245,7 @@ test('LIV-61 migration: legacy saves stay Spire-unlocked, idempotently (D8)', as
     assert.ok(result.towersBackfilled >= 1, 'legacy character is backfilled');
 
     const character = await read(STORES.CHARACTERS, 'char_legacy');
-    assert.equal(character.saveVersion, 4, 'stamped at the current format');
+    assert.equal(character.saveVersion, SAVE_FORMAT_VERSION, 'stamped at the current format');
     assert.ok(character.towerProgress.unlockedTowerIds.includes(firstTowerId()), 'veteran keeps the Spire');
     assert.ok(character.questState, 'quest envelope added');
     assert.ok(character.worldFlags, 'world-flag envelope added');
