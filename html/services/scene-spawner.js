@@ -5,8 +5,12 @@
  * overworld scene (decision D3, Zelda-style). Zones/elites are catalog data
  * (`islands.json` `spawnZones` / `questSpawns`); this module only turns that
  * data into deterministic spawn descriptors. Placement is reproducible from the
- * scene id (Mulberry32), and the plan is recomputed to top a zone back up to
- * `maxAlive` — roamers respawn forever so XP can never be exhausted.
+ * scene id (Mulberry32).
+ *
+ * LIV-68: a fresh scene load (`existing: []`) plans the full deterministic pool.
+ * Mid-visit top-ups are opt-in per call — the scene controller plans only the
+ * `respawnUntilTurnedIn` quest elites on the catalog cadence, so killed spawn-
+ * zone roamers stay dead until the player leaves and re-enters the scene.
  */
 
 import { MONSTERS_CATALOG, getQuestDefinition } from '../data/index.js';
@@ -105,7 +109,9 @@ function nearestWalkableHash(scene, cx, cy, occupied, maxRing = 6) {
  *
  * @param {object} scene - composed scene descriptor
  * @param {object} questState
- * @param {{ existing?: object[], occupied?: Set<number>, idPrefix?: string, idSeq?: number }} [opts]
+ * @param {{ existing?: object[], occupied?: Set<number>, idPrefix?: string, idSeq?: number, includeSpawnZones?: boolean }} [opts]
+ *   `includeSpawnZones: false` (LIV-68) plans only quest elites — used for the
+ *   mid-visit quest respawn tick so spawn-zone roamers are never topped up.
  * @returns {{ id: string, type: string, x: number, y: number, spawnZoneId?: string, questSpawnId?: string, questId?: string }[]}
  */
 export function planSceneMonsters(scene, questState, opts = {}) {
@@ -115,6 +121,7 @@ export function planSceneMonsters(scene, questState, opts = {}) {
   const occupied = opts.occupied || new Set();
   const existing = Array.isArray(opts.existing) ? opts.existing : [];
   const idPrefix = opts.idPrefix || 'sm';
+  const includeSpawnZones = opts.includeSpawnZones !== false;
   let seq = Number(opts.idSeq) || 0;
 
   const aliveByZone = {};
@@ -153,7 +160,7 @@ export function planSceneMonsters(scene, questState, opts = {}) {
     });
   }
 
-  for (const zone of scene.spawnZones || []) {
+  for (const zone of includeSpawnZones ? scene.spawnZones || [] : []) {
     const maxAlive = Math.max(0, Number(zone.maxAlive) || 0);
     let need = maxAlive - (aliveByZone[zone.id] || 0);
     if (need <= 0) continue;

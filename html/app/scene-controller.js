@@ -45,7 +45,7 @@ import { soundFX } from '../audio/index.js';
 import { ModalManager } from './modal-manager.js';
 import { createAnimState } from './animation-state.js';
 
-/** Overworld roamer respawn cadence (seconds) and aggro reach, catalog copy. */
+/** Quest-elite respawn cadence (seconds) and roamer aggro reach, catalog copy. */
 const SCENE_RESPAWN_SEC = Math.max(1, Number(UI_CATALOG?.island?.sceneRespawnSec) || 20);
 const SCENE_AGGRO_RADIUS = Math.max(1, Number(UI_CATALOG?.island?.sceneAggroRadius) || 8);
 
@@ -286,11 +286,19 @@ export const sceneControllerMethods = {
   },
 
   /**
-   * Tops each spawn zone back up to `maxAlive` and re-places a quest elite while
-   * its quest is active. Run from the scene tick so roamers respawn forever.
+   * Re-places the catalog quest elites authored `respawnUntilTurnedIn` while
+   * their quest is active, on the catalog cadence. Spawn-zone roamers are placed
+   * once on scene load (`spawnSceneMonsters`) and are never topped up mid-visit
+   * (LIV-68): a killed roamer stays dead for the rest of the visit and only
+   * returns when the player leaves and re-enters, which reloads the
+   * deterministic pool. Tower floors are unaffected.
    */
   updateSceneMonsters(deltaSec) {
     if (!this.scene || !this.player) return;
+    // Only quest elites opt into mid-visit respawn; with none authored the tick
+    // is a pure no-op (roamers never auto-respawn).
+    const questSpawns = Array.isArray(this.scene.questSpawns) ? this.scene.questSpawns : [];
+    if (!questSpawns.some((qs) => qs.respawnUntilTurnedIn === true)) return;
     this._sceneRespawnSec = (this._sceneRespawnSec || 0) + deltaSec;
     if (this._sceneRespawnSec < SCENE_RESPAWN_SEC) return;
     this._sceneRespawnSec = 0;
@@ -299,6 +307,7 @@ export const sceneControllerMethods = {
     const plan = planSceneMonsters(this.scene, this.player.questState, {
       existing: this.monsters,
       occupied,
+      includeSpawnZones: false,
       idPrefix: `sm_${this.scene.sceneId}`,
       idSeq: this._sceneMonsterSeq || 0,
     });

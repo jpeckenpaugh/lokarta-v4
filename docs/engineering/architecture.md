@@ -112,3 +112,15 @@ Communication between the main thread and `game-worker.js` uses a structured Pro
 | `getOptions` / `setOptions` / `resetOptions` | Reads, writes, or resets game settings and audio preferences. |
 | `setSoundEnabled` | Toggles audio setting in persistent storage. |
 | `resetProgress` | Clears all stores across slots, characters, and floors. |
+
+---
+
+## 5. Overworld Scene Pipeline (Island / Town)
+
+Islands and towns are catalog-authored compact tilemaps (`islands.json` / `towns.json`: character rows + `legend`) composed by `services/scene-composer.js` into the numeric matrix `GridMap.loadFromMatrix` consumes. There is **no hard-coded scene size**:
+
+* `width` / `height` are catalog fields validated against the authored map (rectangular); the composer also derives them from the rows, so a **96×96** (or larger) island loads through the same path as the 48×48 Dawnreach Isle. `scene-spawner.js`, `GridMap`, and the camera all read those dimensions rather than a constant.
+* The camera follows the player without clamping to the map. Tiles outside the authored footprint are covered by the theme-driven `outside` backdrop: island themes author `outside.mode: "water"` so the area beyond the shore renders as open sea, while town/unthemed scenes keep the procedural grass nature (`SpriteRenderer.drawOutside` dispatch table, `sprite-renderer.js`).
+* Roamers (`spawnZones`) are planned deterministically **once per scene load** and are not topped up mid-visit (LIV-68). A killed roamer stays dead until the player leaves and re-enters the scene, which reloads the deterministic pool. Quest elites flagged `respawnUntilTurnedIn` keep their catalog respawn cadence via `scene-controller.updateSceneMonsters`.
+* Cost scales with the viewport, not the map area: the renderer scans only visible tiles. The one O(width × height) per-tick pass is `LightingSystem.applyAmbient` for outdoor scenes (fully-lit; scalar writes, no allocation) — at 96×96 that is ~9.2k tile writes at 10 Hz, well within budget. Practical limits are therefore content-authoring size and the number of simultaneously visible entities, not a code constant.
+

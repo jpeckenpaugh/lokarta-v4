@@ -290,9 +290,11 @@ export const gameLoopMethods = {
       LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
     }
 
-    // 3b. Overworld roamers (LIV-60 P3): top spawn zones back up to `maxAlive`
-    //     and wake any within aggro reach. Ambient scenes skip the tower FOV
-    //     pass, so aggro is handled here. Tower floors are unaffected.
+    // 3b. Overworld roamers (LIV-60 P3, revised LIV-68): roamers are placed once
+    //     on scene load and do NOT auto-respawn mid-visit — only quest elites
+    //     flagged `respawnUntilTurnedIn` are re-placed here. Wake any roamer
+    //     within aggro reach. Ambient scenes skip the tower FOV pass, so aggro
+    //     is handled here. Tower floors are unaffected.
     if (this.scene) {
       this.updateSceneMonsters(deltaSec);
       this.updateSceneAggro();

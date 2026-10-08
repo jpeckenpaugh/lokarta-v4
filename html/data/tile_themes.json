@@ -630,6 +630,13 @@
     "lighting": "ambient",
     "description": "LIV-58 outdoor overworld palette. Daylight, high-contrast, 16-bit SNES bar. Scene themes live at the tile_themes root (NOT under `levels`) so the tower contrast test (sprite-assets.test.mjs) and the legacy floor scan are unchanged.",
     "outside": {
+      "mode": "water",
+      "water": {
+        "deep": "#0d2233",
+        "fill": "#14324a",
+        "crest": "#2f6f9e",
+        "foam": "#8fd3ff"
+      },
       "grass": [
         "#2b4a24",
         "#33552b",

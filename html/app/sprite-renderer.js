@@ -456,6 +456,7 @@ const TILE_RENDERERS = {
 
 /** Fallback nature palette when a theme omits `outside` (data-driven default). */
 const DEFAULT_OUTSIDE = {
+  mode: 'grass',
   grass: ['#1b2e1c', '#1f3420', '#172817', '#1d311e'],
   grassBlade: '#243d24',
   bush: '#2c4a2c',
@@ -463,6 +464,83 @@ const DEFAULT_OUTSIDE = {
   treeTrunk: '#33261a',
   treeCanopy: '#1f3a22',
   treeCanopyLight: '#2c5230',
+  water: {
+    deep: '#0d2233',
+    fill: '#14324a',
+    crest: '#2f6f9e',
+    foam: '#8fd3ff',
+  },
+};
+
+/**
+ * Off-map grass backdrop (town / default). Resolved deterministically per tile:
+ * a grass base with sparse, hash-placed bush or tree. Colors come from the
+ * theme's `outside` block (`mode: 'grass'` or the default).
+ */
+function drawOutsideGrass(ctx, screenX, screenY, size, x, y, o) {
+  const u = size / 32;
+  const h = tileHash(x, y);
+  const grass = o.grass && o.grass.length ? o.grass[h % o.grass.length] : DEFAULT_OUTSIDE.grass[0];
+
+  ctx.fillStyle = grass;
+  ctx.fillRect(screenX, screenY, size, size);
+
+  // Sparse grass blades for texture.
+  ctx.fillStyle = o.grassBlade || DEFAULT_OUTSIDE.grassBlade;
+  ctx.fillRect(screenX + 8 * u, screenY + 18 * u, 2 * u, 6 * u);
+  ctx.fillRect(screenX + 22 * u, screenY + 10 * u, 2 * u, 7 * u);
+
+  const roll = h % 100;
+  if (roll < 5) {
+    // Tree: trunk + layered canopy.
+    ctx.fillStyle = o.treeTrunk || DEFAULT_OUTSIDE.treeTrunk;
+    ctx.fillRect(screenX + 14 * u, screenY + 18 * u, 4 * u, 10 * u);
+    ctx.fillStyle = o.treeCanopy || DEFAULT_OUTSIDE.treeCanopy;
+    ctx.fillRect(screenX + 7 * u, screenY + 6 * u, 18 * u, 14 * u);
+    ctx.fillStyle = o.treeCanopyLight || DEFAULT_OUTSIDE.treeCanopyLight;
+    ctx.fillRect(screenX + 10 * u, screenY + 8 * u, 8 * u, 7 * u);
+  } else if (roll < 16) {
+    // Bush: two rounded leafy blocks.
+    ctx.fillStyle = o.bush || DEFAULT_OUTSIDE.bush;
+    ctx.fillRect(screenX + 8 * u, screenY + 16 * u, 16 * u, 10 * u);
+    ctx.fillStyle = o.bushLight || DEFAULT_OUTSIDE.bushLight;
+    ctx.fillRect(screenX + 11 * u, screenY + 18 * u, 7 * u, 6 * u);
+  }
+}
+
+/**
+ * Off-map water backdrop for island scenes (LIV-68): the visible area beyond the
+ * authored tilemap reads as open sea, never grass. Deterministic per tile from
+ * the coordinate hash; colors come from the theme's `outside.water` palette.
+ */
+function drawOutsideWater(ctx, screenX, screenY, size, x, y, o) {
+  const u = size / 32;
+  const h = tileHash(x, y);
+  const w = o.water || DEFAULT_OUTSIDE.water;
+
+  ctx.fillStyle = w.deep || DEFAULT_OUTSIDE.water.deep;
+  ctx.fillRect(screenX, screenY, size, size);
+
+  // A lighter swell band, offset per tile so the sea reads as moving water.
+  ctx.fillStyle = w.fill || DEFAULT_OUTSIDE.water.fill;
+  ctx.fillRect(screenX, screenY + ((h >> 3) % 6) * u, size, 12 * u);
+
+  ctx.fillStyle = w.crest || DEFAULT_OUTSIDE.water.crest;
+  ctx.fillRect(screenX + ((h >> 2) % 10) * 2 * u, screenY + (7 + ((h >> 5) % 4) * 5) * u, 9 * u, 2 * u);
+  ctx.fillRect(screenX + ((h >> 6) % 12) * 2 * u, screenY + (22 + ((h >> 4) % 2) * 4) * u, 6 * u, u);
+
+  ctx.fillStyle = w.foam || DEFAULT_OUTSIDE.water.foam;
+  ctx.fillRect(screenX + (5 + ((h >> 7) % 9) * 3) * u, screenY + (11 + ((h >> 9) % 9) * 2) * u, 2 * u, u);
+}
+
+/**
+ * Off-map backdrop dispatch keyed by `outside.mode`. Adding a backdrop is a
+ * catalog `mode` value plus (when visually unique) one entry here; an unknown
+ * mode falls back to grass rather than throwing.
+ */
+const OUTSIDE_RENDERERS = {
+  grass: drawOutsideGrass,
+  water: drawOutsideWater,
 };
 
 const WEAPON_RENDERERS = {
@@ -900,41 +978,18 @@ export class SpriteRenderer {
   }
 
   /**
-   * Draws the nature backdrop that sits outside the tower footprint. Tiles are
-   * resolved deterministically from their coordinates: a grass base with a
-   * sparse, hash-placed bush or tree. Data-driven via `theme.outside`.
+   * Draws the backdrop that sits outside the authored tilemap. The fill is
+   * theme/scene-driven via `theme.outside.mode`: islands render open **water**
+   * so the visible area beyond the shore never reads as grass, while towns and
+   * unthemed scenes keep the procedural grass nature (LIV-68). Tiles are
+   * resolved deterministically from their coordinates. Falls back to grass on an
+   * unknown/missing mode so a partial theme can never black the screen.
    * @param {number} x @param {number} y - world tile coordinates (may be negative)
    */
   static drawOutside(ctx, screenX, screenY, size = CONFIG.GRID_SIZE, x = 0, y = 0, theme = {}) {
     const o = (theme && theme.outside) || DEFAULT_OUTSIDE;
-    const u = size / 32;
-    const h = tileHash(x, y);
-    const grass = o.grass && o.grass.length ? o.grass[h % o.grass.length] : DEFAULT_OUTSIDE.grass[0];
-
-    ctx.fillStyle = grass;
-    ctx.fillRect(screenX, screenY, size, size);
-
-    // Sparse grass blades for texture.
-    ctx.fillStyle = o.grassBlade || DEFAULT_OUTSIDE.grassBlade;
-    ctx.fillRect(screenX + 8 * u, screenY + 18 * u, 2 * u, 6 * u);
-    ctx.fillRect(screenX + 22 * u, screenY + 10 * u, 2 * u, 7 * u);
-
-    const roll = h % 100;
-    if (roll < 5) {
-      // Tree: trunk + layered canopy.
-      ctx.fillStyle = o.treeTrunk || DEFAULT_OUTSIDE.treeTrunk;
-      ctx.fillRect(screenX + 14 * u, screenY + 18 * u, 4 * u, 10 * u);
-      ctx.fillStyle = o.treeCanopy || DEFAULT_OUTSIDE.treeCanopy;
-      ctx.fillRect(screenX + 7 * u, screenY + 6 * u, 18 * u, 14 * u);
-      ctx.fillStyle = o.treeCanopyLight || DEFAULT_OUTSIDE.treeCanopyLight;
-      ctx.fillRect(screenX + 10 * u, screenY + 8 * u, 8 * u, 7 * u);
-    } else if (roll < 16) {
-      // Bush: two rounded leafy blocks.
-      ctx.fillStyle = o.bush || DEFAULT_OUTSIDE.bush;
-      ctx.fillRect(screenX + 8 * u, screenY + 16 * u, 16 * u, 10 * u);
-      ctx.fillStyle = o.bushLight || DEFAULT_OUTSIDE.bushLight;
-      ctx.fillRect(screenX + 11 * u, screenY + 18 * u, 7 * u, 6 * u);
-    }
+    const renderer = OUTSIDE_RENDERERS[o.mode] || OUTSIDE_RENDERERS[DEFAULT_OUTSIDE.mode];
+    renderer(ctx, screenX, screenY, size, x, y, o);
   }
 
   static drawItem(ctx, item, screenX, screenY, size = CONFIG.GRID_SIZE, opts = {}) {
