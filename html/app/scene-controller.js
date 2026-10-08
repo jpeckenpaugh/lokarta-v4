@@ -18,7 +18,6 @@ import {
   evaluateSceneGate,
   sceneGateAt,
   findInteractableNpc,
-  findTouchingNpc,
   spawnNpcsForScene,
   NPC_INTERACT_RADIUS,
   recordEvent,
@@ -558,34 +557,32 @@ export const sceneControllerMethods = {
   },
 
   /**
-   * Arms collision-talk (LIV-63) for the freshly loaded scene: records the NPC
-   * already in contact at spawn so arriving next to one does not auto-open a
-   * dialogue. The player must separate and re-touch. Data-driven via the runtime
-   * `blocks` flag; no per-NPC branches.
+   * Clears the bump-talk latch for the freshly loaded scene (LIV-66) so the
+   * first deliberate bump of an NPC opens its dialogue. Arriving adjacent to an
+   * NPC never triggers talk on its own — only a blocked step does — so no
+   * spawn-contact suppression is required (that was the retired LIV-63 model).
    */
   armContactTalk() {
-    const npc = findTouchingNpc(this.npcs, this.player);
-    this._contactTalkNpcId = npc ? npc.npcId : null;
+    this._bumpTalkNpcId = null;
   },
 
   /**
-   * Touch-to-talk (LIV-63): when the player's movement brings them into contact
-   * with a blocking NPC — or a wandering NPC steps into contact — open its
-   * default dialogue, exactly like click/interact. Fires once per contact: the
-   * same NPC cannot re-open until the player separates, and it never auto-opens
-   * while a dialogue is already open. Allocation-free (single nearest-NPC scan).
-   * @returns {boolean} true when a dialogue opened on this call
+   * Bump-to-talk (LIV-66): opens `npc`'s default dialogue after the player
+   * attempted to step onto its tile and was blocked by collision. The call site
+   * is the blocked-step branch of `processMovementInput`; merely standing next
+   * to, or walking past, an NPC never triggers it. Fires once per bump: while
+   * the player keeps pressing into the same NPC it will not reopen, and the
+   * latch is cleared by the next successful step or on scene load
+   * (`armContactTalk`). Data-driven — the caller only ever passes a blocking NPC
+   * (`findBumpedNpc`), so there are no per-NPC branches.
+   * @param {object} npc
+   * @returns {boolean} true when a dialogue opened on this bump
    */
-  maybeContactTalk() {
-    if (!Array.isArray(this.npcs) || this.npcs.length === 0 || !this.player) return false;
+  bumpTalk(npc) {
+    if (!npc) return false;
     if (!this.isInGameplay || this.isPaused || this.isGameOver || this.isFloorCleared) return false;
-    const npc = findTouchingNpc(this.npcs, this.player);
-    if (!npc) {
-      this._contactTalkNpcId = null;
-      return false;
-    }
-    if (npc.npcId === this._contactTalkNpcId) return false;
-    this._contactTalkNpcId = npc.npcId;
+    if (npc.npcId === this._bumpTalkNpcId) return false;
+    this._bumpTalkNpcId = npc.npcId;
     return this.openNpcDialogue(npc) !== false;
   },
 

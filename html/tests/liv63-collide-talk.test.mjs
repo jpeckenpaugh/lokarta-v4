@@ -2,12 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { sceneControllerMethods } from '../app/scene-controller.js';
-import { makeNpcRuntime, findTouchingNpc, spawnNpcsForScene } from '../engine/npc-system.js';
+import { gameLoopMethods } from '../app/game-loop.js';
+import { makeNpcRuntime, findBumpedNpc, spawnNpcsForScene } from '../engine/npc-system.js';
 import { composeSceneById } from '../services/scene-composer.js';
 import { createPartyPlayer } from '../engine/party.js';
+import { GridMap } from '../engine/grid-map.js';
 
-// LIV-63: walking into / touching an NPC opens its default dialogue once per
-// contact (Zelda-style touch-to-talk), without breaking the click/interact path.
+// LIV-63 shipped touch-to-talk (any adjacent square opened dialogue). LIV-66
+// refines it to bump-to-talk: the player must attempt to walk ONTO a blocking
+// NPC's tile and be blocked by collision. Merely standing next to, or walking
+// past, an NPC never opens dialogue. Click/interact is unchanged.
 
 /** Minimal no-DOM app: real sceneController methods + stubs for the seams. */
 function fakeApp({ player, npcs, scene = { sceneId: 'town_havenreach' } }) {
@@ -30,92 +34,124 @@ function fakeApp({ player, npcs, scene = { sceneId: 'town_havenreach' } }) {
   return app;
 }
 
+/**
+ * Minimal no-DOM app that also owns the game-loop methods, an all-floor grid,
+ * and movement input — enough to drive the real `processMovementInput` blocked-
+ * step path that arms bump-talk.
+ */
+function moveApp({ player, npcs, width = 12, height = 12 }) {
+  const calls = { events: [], opened: [], logs: [] };
+  const grid = new GridMap(width, height);
+  grid.loadFromMatrix(Array.from({ length: height }, () => Array(width).fill(0)));
+  const app = Object.assign({}, sceneControllerMethods, gameLoopMethods, {
+    calls,
+    player,
+    npcs,
+    scene: null,
+    gridMap: grid,
+    monsters: [],
+    chests: [],
+    props: [],
+    keysDown: new Set(),
+    isInGameplay: true,
+    isPaused: false,
+    isGameOver: false,
+    isFloorCleared: false,
+    fireQuestEvent: (ev) => { calls.events.push(ev); return []; },
+    openDialogue: (id, ctx) => { calls.opened.push({ id, ctx }); app.isPaused = true; return true; },
+    logCombat: (m) => calls.logs.push(m),
+    updateHUD: () => {},
+    persistSave: () => {},
+  });
+  return app;
+}
+
 function npc(id, x, y, extra = {}) {
   return makeNpcRuntime({ id, name: id, x, y, defaultDialogueId: `dlg_${id}`, ...extra });
 }
 
-test('LIV-63 collision talk', async (t) => {
-  await t.test('findTouchingNpc: contact is the player tile or an orthogonal neighbour', () => {
+test('LIV-63/LIV-66 bump talk', async (t) => {
+  await t.test('findBumpedNpc: a bump is a blocked step onto the NPC tile', () => {
     const npcs = [npc('near', 5, 5), npc('far', 10, 10)];
-    assert.equal(findTouchingNpc(npcs, { x: 5, y: 6 }).npcId, 'near', 'below');
-    assert.equal(findTouchingNpc(npcs, { x: 4, y: 5 }).npcId, 'near', 'left');
-    assert.equal(findTouchingNpc(npcs, { x: 5, y: 5 }).npcId, 'near', 'overlap');
-    assert.equal(findTouchingNpc(npcs, { x: 6, y: 6 }), null, 'diagonal is not contact');
-    assert.equal(findTouchingNpc(npcs, { x: 20, y: 20 }), null, 'out of reach');
+    assert.equal(findBumpedNpc(npcs, 5, 6, 5, 5).npcId, 'near', 'step up');
+    assert.equal(findBumpedNpc(npcs, 4, 5, 5, 5).npcId, 'near', 'step right');
+    assert.equal(findBumpedNpc(npcs, 6, 5, 5, 5).npcId, 'near', 'step left');
+    assert.equal(findBumpedNpc(npcs, 5, 4, 5, 5).npcId, 'near', 'step down');
+    assert.equal(findBumpedNpc(npcs, 6, 6, 6, 5), null, 'no NPC on the destination');
+    assert.equal(findBumpedNpc(npcs, 20, 20, 21, 20), null, 'out of reach');
   });
 
-  await t.test('findTouchingNpc ignores non-blocking NPCs', () => {
+  await t.test('findBumpedNpc rejects non-single-step moves', () => {
+    const npcs = [npc('near', 5, 5)];
+    assert.equal(findBumpedNpc(npcs, 5, 5, 5, 5), null, 'no step');
+    assert.equal(findBumpedNpc(npcs, 4, 4, 5, 5), null, 'diagonal is not a bump');
+    assert.equal(findBumpedNpc(npcs, 5, 8, 5, 5), null, 'two tiles is not a bump');
+  });
+
+  await t.test('findBumpedNpc ignores non-blocking NPCs', () => {
     const passthrough = [npc('ghost', 5, 5, { blocks: false })];
-    assert.equal(findTouchingNpc(passthrough, { x: 5, y: 6 }), null);
+    assert.equal(findBumpedNpc(passthrough, 5, 6, 5, 5), null);
   });
 
-  await t.test('opens once per contact, re-arms only after separating', () => {
+  await t.test('bumpTalk opens once per bump and never reopens while pressed', () => {
     const player = createPartyPlayer('magician');
     const npcs = [npc('captain_halden', 5, 5)];
     const app = fakeApp({ player, npcs });
+    const target = npcs[0];
 
-    player.x = 5; player.y = 8;
+    player.x = 5; player.y = 6;
     app.armContactTalk();
-    assert.equal(app.maybeContactTalk(), false, 'no contact yet');
-    assert.equal(app.calls.opened.length, 0);
-
-    player.y = 6; // step into contact
-    assert.equal(app.maybeContactTalk(), true, 'contact opens the dialogue');
+    assert.equal(app.bumpTalk(target), true, 'the bump opens the dialogue');
     assert.equal(app.calls.opened.length, 1);
     assert.deepEqual(app.calls.events.at(-1), { type: 'talk', npcId: 'captain_halden' });
     assert.equal(app.calls.opened.at(-1).id, 'dlg_captain_halden');
 
-    // Dialogue closed but still overlapping: must not reopen.
+    // Still pressed against the same NPC: must not stack a second dialogue.
     app.isPaused = false;
-    assert.equal(app.maybeContactTalk(), false, 'never reopens while in contact');
+    assert.equal(app.bumpTalk(target), false, 'never reopens while pressed');
     assert.equal(app.calls.opened.length, 1);
+  });
 
-    player.y = 8; // separate
-    assert.equal(app.maybeContactTalk(), false, 'separating re-arms');
-    player.y = 6; // re-touch
-    assert.equal(app.maybeContactTalk(), true, 're-arm allows a fresh contact');
+  await t.test('bumpTalk is re-armed by a scene load', () => {
+    const player = createPartyPlayer('magician');
+    const npcs = [npc('captain_halden', 5, 5)];
+    const app = fakeApp({ player, npcs });
+    const target = npcs[0];
+    player.x = 5; player.y = 6;
+
+    assert.equal(app.bumpTalk(target), true);
+    app.isPaused = false;
+    assert.equal(app.bumpTalk(target), false, 'latched');
+    app.armContactTalk();
+    assert.equal(app.bumpTalk(target), true, 'fresh scene re-arms the bump');
     assert.equal(app.calls.opened.length, 2);
   });
 
-  await t.test('never auto-opens while a dialogue is already open', () => {
+  await t.test('bumpTalk never opens while a dialogue is already open', () => {
     const player = createPartyPlayer('magician');
     const npcs = [npc('wick', 5, 5)];
     const app = fakeApp({ player, npcs });
     player.x = 5; player.y = 6;
     app.isPaused = true;
-    assert.equal(app.maybeContactTalk(), false, 'paused guard holds');
+    assert.equal(app.bumpTalk(npcs[0]), false, 'paused guard holds');
     assert.equal(app.calls.opened.length, 0);
     assert.equal(app.calls.events.length, 0);
     app.isPaused = false;
-    assert.equal(app.maybeContactTalk(), true, 'resumes once the panel closes');
+    assert.equal(app.bumpTalk(npcs[0]), true, 'resumes once the panel closes');
   });
 
-  await t.test('spawning in contact does not auto-open until the player re-touches', () => {
+  await t.test('spawning adjacent to an NPC does not open until the player bumps', () => {
     const player = createPartyPlayer('archer');
     const npcs = [npc('mara', 5, 5)];
     const app = fakeApp({ player, npcs });
     player.x = 5; player.y = 6;
     app.armContactTalk(); // simulates scene load adjacent to an NPC
-    assert.equal(app.maybeContactTalk(), false, 'spawn contact is armed, not fired');
-    player.y = 8;
-    app.maybeContactTalk();
-    player.y = 6;
-    assert.equal(app.maybeContactTalk(), true, 're-touch after separating fires');
+    // Adjacency alone never calls bumpTalk; the player must attempt the step.
+    assert.equal(app.calls.opened.length, 0, 'spawn adjacency is silent');
+    assert.equal(app.bumpTalk(npcs[0]), true, 'the deliberate bump fires');
   });
 
-  await t.test('a wandering NPC that steps into the player triggers', () => {
-    const player = createPartyPlayer('paladin');
-    const wanderer = npc('old_sailor_doran', 11, 9, { aiType: 'wander', wanderRadius: 2 });
-    const app = fakeApp({ player, npcs: [wanderer] });
-    player.x = 11; player.y = 11;
-    app.armContactTalk();
-    assert.equal(app.maybeContactTalk(), false, 'not touching yet');
-    wanderer.x = 11; wanderer.y = 10; // the wanderer steps into contact
-    assert.equal(app.maybeContactTalk(), true);
-    assert.equal(app.calls.opened.at(-1).id, 'dlg_old_sailor_doran');
-  });
-
-  await t.test('every Havenreach NPC opens on contact', () => {
+  await t.test('every Havenreach NPC opens when its tile is bumped', () => {
     const scene = composeSceneById('town_havenreach');
     const npcs = spawnNpcsForScene(scene);
     assert.ok(npcs.length >= 7, 'town exposes >= 7 NPCs');
@@ -124,17 +160,14 @@ test('LIV-63 collision talk', async (t) => {
       const app = fakeApp({ player, npcs });
       player.x = target.x;
       player.y = target.y + 1;
-      app.armContactTalk();
-      // Arm from the same spot, then simulate the approach from one tile away.
-      player.y = target.y + 2;
-      app.armContactTalk();
-      player.y = target.y + 1;
-      assert.equal(app.maybeContactTalk(), true, `${target.npcId} opens on contact`);
+      const bumped = findBumpedNpc(npcs, player.x, player.y, target.x, target.y);
+      assert.equal(bumped.npcId, target.npcId, `${target.npcId} is the bumped NPC`);
+      assert.equal(app.bumpTalk(bumped), true, `${target.npcId} opens on bump`);
       assert.deepEqual(app.calls.events.at(-1), { type: 'talk', npcId: target.npcId });
     }
   });
 
-  await t.test('contact path matches the click/interact path for the same NPC', () => {
+  await t.test('bump path matches the click/interact path for the same NPC', () => {
     const scene = composeSceneById('town_havenreach');
     const npcs = spawnNpcsForScene(scene);
     const target = npcs.find((n) => n.npcId === 'captain_halden');
@@ -146,17 +179,66 @@ test('LIV-63 collision talk', async (t) => {
     clickPlayer.facing = 'right';
     clickApp.interact();
 
-    const touchPlayer = createPartyPlayer('magician');
-    const touchApp = fakeApp({ player: touchPlayer, npcs });
-    touchPlayer.x = target.x - 1;
-    touchPlayer.y = target.y;
-    touchApp.maybeContactTalk();
+    const bumpPlayer = createPartyPlayer('magician');
+    const bumpApp = fakeApp({ player: bumpPlayer, npcs });
+    bumpPlayer.x = target.x - 1;
+    bumpPlayer.y = target.y;
+    const bumped = findBumpedNpc(npcs, bumpPlayer.x, bumpPlayer.y, target.x, target.y);
+    bumpApp.bumpTalk(bumped);
 
-    assert.deepEqual(touchApp.calls.events, clickApp.calls.events, 'same talk event');
+    assert.deepEqual(bumpApp.calls.events, clickApp.calls.events, 'same talk event');
     assert.deepEqual(
-      touchApp.calls.opened.map((o) => o.id),
+      bumpApp.calls.opened.map((o) => o.id),
       clickApp.calls.opened.map((o) => o.id),
       'same dialogue opened',
     );
+  });
+
+  await t.test('processMovementInput: adjacent standing and walking past stay silent', () => {
+    const player = createPartyPlayer('magician');
+    const npcs = [npc('captain_halden', 5, 5)];
+    const app = moveApp({ player, npcs });
+    app.armContactTalk();
+
+    // Standing directly below the NPC with no movement input: silent.
+    player.x = 5; player.y = 6;
+    app.processMovementInput();
+    assert.equal(app.calls.opened.length, 0, 'standing adjacent does not open');
+
+    // Walking past (left) is a normal step: silent.
+    app.keysDown = new Set(['ArrowLeft']);
+    app.processMovementInput();
+    assert.deepEqual([player.x, player.y], [4, 6], 'walked past');
+    assert.equal(app.calls.opened.length, 0, 'walking past does not open');
+  });
+
+  await t.test('processMovementInput: a walk into the NPC bumps and opens once', () => {
+    const player = createPartyPlayer('magician');
+    const npcs = [npc('captain_halden', 5, 5)];
+    const app = moveApp({ player, npcs });
+    app.armContactTalk();
+    player.x = 5; player.y = 6;
+
+    // Attempt to walk up onto the NPC tile: blocked, and the bump talks.
+    app.keysDown = new Set(['ArrowUp']);
+    app.processMovementInput();
+    assert.deepEqual([player.x, player.y], [5, 6], 'collision blocked the step');
+    assert.equal(app.calls.opened.length, 1, 'walking into the NPC opens');
+    assert.deepEqual(app.calls.events.at(-1), { type: 'talk', npcId: 'captain_halden' });
+
+    // Keep pressing (dialogue closed, still adjacent): must not reopen.
+    app.isPaused = false;
+    app.processMovementInput();
+    assert.equal(app.calls.opened.length, 1, 'no reopen while pressed');
+
+    // Step away, then walk back in: a fresh bump reopens.
+    app.keysDown = new Set(['ArrowDown']);
+    app.processMovementInput();
+    assert.deepEqual([player.x, player.y], [5, 7], 'stepped away');
+    assert.equal(app._bumpTalkNpcId, null, 'the step re-arms the bump');
+    app.keysDown = new Set(['ArrowUp']);
+    app.processMovementInput(); // back to (5,6): free step
+    app.processMovementInput(); // onto (5,5): bump
+    assert.equal(app.calls.opened.length, 2, 'fresh bump after separating reopens');
   });
 });

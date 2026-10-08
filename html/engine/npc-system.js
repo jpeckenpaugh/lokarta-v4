@@ -168,28 +168,20 @@ export function findInteractableNpc(npcs, player) {
 }
 
 /**
- * The blocking NPC in physical contact with the player — the player's own tile
- * or an orthogonally adjacent tile (manhattan distance `<= 1`, the grid-collision
- * definition of "touching"). Nearest first, ties resolved by catalog order.
- * Data-driven: reads the runtime NPC `blocks` flag, never a per-NPC branch.
- * Allocation-light: one scalar pass, no candidate array (LIV-63 touch-to-talk).
+ * The blocking NPC the player bumps by attempting to step from `(fromX,fromY)`
+ * onto `(toX,toY)` — the NPC occupying the destination tile. `from` and `to`
+ * must be orthogonally adjacent (a single grid step), so teleports and diagonal
+ * moves never register as a bump. Data-driven: reads the runtime NPC `blocks`
+ * flag through `npcAt`, never a per-NPC branch. Allocation-free.
  * @param {object[]} npcs
- * @param {{x:number,y:number}} player
+ * @param {number} fromX
+ * @param {number} fromY
+ * @param {number} toX
+ * @param {number} toY
  * @returns {object|null}
  */
-export function findTouchingNpc(npcs, player) {
-  if (!Array.isArray(npcs) || !player) return null;
-  let best = null;
-  let bestDist = 2; // contact is manhattan <= 1; 2 means "none yet"
-  for (let i = 0; i < npcs.length; i++) {
-    const npc = npcs[i];
-    if (!npc || npc.blocks === false) continue;
-    const d = Math.abs(npc.x - player.x) + Math.abs(npc.y - player.y);
-    if (d < bestDist) {
-      best = npc;
-      bestDist = d;
-      if (d === 0) break;
-    }
-  }
-  return best;
+export function findBumpedNpc(npcs, fromX, fromY, toX, toY) {
+  if (!Array.isArray(npcs)) return null;
+  if (Math.abs(toX - fromX) + Math.abs(toY - fromY) !== 1) return null;
+  return npcAt(npcs, toX, toY);
 }

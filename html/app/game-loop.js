@@ -14,7 +14,7 @@ import {
   cycleActiveMember,
   ReviveSystem,
   updateNpcs,
-  npcAt,
+  findBumpedNpc,
 } from '../engine/index.js';
 import {
   firstMonsterOnSegment,
@@ -371,10 +371,10 @@ export const gameLoopMethods = {
       for (const a of PartyAI.livingAllies(this.player)) occupied.add(a.y * width + a.x);
       for (const n of this.npcs) occupied.add(n.y * width + n.x);
       updateNpcs(this.npcs, this.gridMap, deltaSec, occupied);
+      // LIV-66 bump-to-talk: the trigger lives in `processMovementInput`'s
+      // blocked-step branch (see above) — the player must attempt to walk onto
+      // the NPC's tile. Standing adjacent never fires.
       this.updateInteractPrompt();
-      // LIV-63 touch-to-talk: a player step into — or a wanderer stepping into —
-      // an NPC opens its dialogue once per contact (no reopen while overlapping).
-      this.maybeContactTalk();
     }
 
     // 4b. Knockout seam (LIV-44): funnel any 0-HP member (active mirror
@@ -818,16 +818,24 @@ export const gameLoopMethods = {
         } else if (monsterAtTarget) {
           this.selectedMonsterId = monsterAtTarget.id;
           this.logCombat(`Target locked on ${monsterAtTarget.name} (${monsterAtTarget.hp}/${monsterAtTarget.max_hp} HP).`, 'system');
-        } else if (npcAt(this.npcs, targetX, targetY)) {
-          // A neutral body blocks the step (LIV-60 P2); the player just turns
-          // toward it, and the interaction prompt refreshes.
-          this.updateInteractPrompt();
         } else {
-          this.player.x = targetX;
-          this.player.y = targetY;
-          soundFX.play('footstep');
-          setAnimState(this.player, 'walk');
-          if (this.resolvePlayerTileEntry()) return;
+          const bumpedNpc = findBumpedNpc(this.npcs, this.player.x, this.player.y, targetX, targetY);
+          if (bumpedNpc) {
+            // A neutral body blocks the step (LIV-60 P2). LIV-66: that blocked
+            // step is the "bump" that opens its dialogue — merely standing next
+            // to the NPC never does. The player turns toward it and the
+            // interaction prompt refreshes either way.
+            this.bumpTalk(bumpedNpc);
+            this.updateInteractPrompt();
+          } else {
+            this.player.x = targetX;
+            this.player.y = targetY;
+            // A real step re-arms bump-talk so the next walk into an NPC fires.
+            this._bumpTalkNpcId = null;
+            soundFX.play('footstep');
+            setAnimState(this.player, 'walk');
+            if (this.resolvePlayerTileEntry()) return;
+          }
         }
       }
     } else if (this.player) {
