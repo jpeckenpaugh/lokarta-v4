@@ -7,7 +7,9 @@
     "turnInLabel": "Turn in",
     "continueLabel": "Continue",
     "redeemLabel": "Take reward",
-    "closeLabel": "Farewell"
+    "closeLabel": "Farewell",
+    "advanceHint": "▼",
+    "advanceKeys": ["Enter", " ", "Space", "KeyE", "ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"]
   },
   "dialogues": {
     "tide_gate_locked": {

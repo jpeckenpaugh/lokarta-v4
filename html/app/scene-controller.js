@@ -622,10 +622,49 @@ export const sceneControllerMethods = {
       lines,
       actions,
       labels: DIALOGUES_CATALOG?.ui || {},
+      anchor: this.dialogueAnchorFor(ctx),
+      viewport: this.dialogueViewport(),
       onAction: (action) => this.handleDialogueAction(action, ctx),
       onClose: () => this.closeInteraction(),
     });
     return true;
+  },
+
+  /**
+   * Viewport-space anchor for the speaking NPC (LIV-67), so the dialogue renders
+   * as a speech bubble above them. Returns null when there is no NPC target or
+   * no live canvas/renderer (world prompts / tests) — the modal then falls back
+   * to its centered panel. `x` is the NPC's on-screen center; `top`/`bottom`
+   * are its tile edges, mapped through the canvas rect to viewport coords.
+   * @returns {{x:number, top:number, bottom:number, height:number}|null}
+   */
+  dialogueAnchorFor(context) {
+    const targetId = context && context.targetId;
+    if (!targetId || !Array.isArray(this.npcs)) return null;
+    let npc = null;
+    for (const candidate of this.npcs) {
+      if (candidate && candidate.npcId === targetId) { npc = candidate; break; }
+    }
+    const renderer = this.renderer;
+    const canvas = this.canvas;
+    if (!npc || !renderer || !canvas || typeof canvas.getBoundingClientRect !== 'function') return null;
+    const size = Number(renderer.tileSize) || 0;
+    if (size <= 0) return null;
+    const rect = canvas.getBoundingClientRect();
+    const tileX = npc.x * size - (Number(renderer.cameraX) || 0);
+    const tileY = npc.y * size - (Number(renderer.cameraY) || 0);
+    return {
+      x: rect.left + tileX + size / 2,
+      top: rect.top + tileY,
+      bottom: rect.top + tileY + size,
+      height: size,
+    };
+  },
+
+  /** Viewport size for speech-bubble clamping, or null off-DOM. */
+  dialogueViewport() {
+    if (typeof window === 'undefined') return null;
+    return { width: window.innerWidth || 0, height: window.innerHeight || 0 };
   },
 
   /** Player-facing label for a dialogue action, catalog-driven. */

@@ -6,6 +6,11 @@ import { FateGrantSystem } from '../engine/index.js';
 import { towerUnlockInfo } from '../engine/campaign.js';
 import { soundFX } from '../audio/index.js';
 import { HUDManager } from './hud-manager.js';
+import {
+  resolveDialogueAdvanceKeys,
+  isDialogueAdvanceKey,
+  computeDialogueBubblePosition,
+} from './dialogue-bubble.js';
 import { UI_CATALOG, VOCATIONS_CATALOG, listTowerDefinitions, getTowerDefinition, getQuestDefinition } from '../data/index.js';
 import {
   SAVE_SLOT_COUNT,
@@ -82,6 +87,7 @@ export class ModalManager {
   static _reset(overlay) {
     this._clearKeyHandler(overlay);
     overlay.classList.remove('hidden');
+    overlay.classList.remove('dialogue-active');
     overlay.innerHTML = '';
   }
 
@@ -90,6 +96,7 @@ export class ModalManager {
     overlay.classList.add('hidden');
     overlay.innerHTML = '';
     overlay.classList.remove('title-active');
+    overlay.classList.remove('dialogue-active');
   }
 
   /**
@@ -471,17 +478,24 @@ export class ModalManager {
   }
 
   /**
-   * NPC / world-prompt dialogue (LIV-60 P2). Renders a speaker, one or more
-   * lines, and the stage's action buttons (accept/turn-in/shop/temple/rest/
-   * interact). A close button is always offered, so a dialogue can never
-   * soft-lock the player. Actions resolve through the caller's `onAction`.
+   * NPC / world-prompt dialogue (LIV-60 P2, refined LIV-67). Renders a speaker
+   * and plays the stage's lines as sequential **beats** — one line at a time —
+   * advanced by typical keyboard keys (Enter/Space/E/arrows) or click/tap. When
+   * anchored, the panel is a speech bubble placed above the speaking NPC (below
+   * near the top edge) so it never covers the speaker or the field. A close
+   * button is always offered, so a dialogue can never soft-lock the player.
+   * Stage actions (accept/turn-in/shop/temple/rest/interact) appear on the final
+   * beat and resolve through the caller's `onAction`.
    *
    * @param {object} opts
    * @param {string} [opts.speaker]
    * @param {string} [opts.portraitEmoji]
-   * @param {string[]} [opts.lines]
+   * @param {string[]} [opts.lines] - one line per beat
    * @param {Array<{label:string,type:string}>} [opts.actions]
-   * @param {object} [opts.labels] - `dialogues.json.ui` label overrides
+   * @param {object} [opts.labels] - `dialogues.json.ui` label/keys overrides
+   * @param {{x:number, top:number, bottom:number}} [opts.anchor] - speaker
+   *   viewport coords; when present the panel becomes an anchored bubble
+   * @param {{width:number, height:number}} [opts.viewport]
    * @param {(action:object)=>void} [opts.onAction]
    * @param {()=>void} [opts.onClose]
    */
@@ -489,31 +503,104 @@ export class ModalManager {
     const lines = Array.isArray(opts.lines) ? opts.lines : [];
     const actions = Array.isArray(opts.actions) ? opts.actions : [];
     const labels = opts.labels || {};
+    const beats = lines.length;
+    const advanceKeys = resolveDialogueAdvanceKeys(labels);
+    let beatIndex = 0;
     this._reset(modalOverlayEl);
     modalOverlayEl.classList.remove('title-active');
 
-    const lineHtml = lines.map((line) => `<p class="dialogue-line">${line}</p>`).join('');
     const actionHtml = actions
       .map((action, i) => `<button class="action-btn dialogue-action" data-action-index="${i}">${action.label}</button>`)
       .join('');
     modalOverlayEl.innerHTML = `
-      <div class="result-modal dialogue-modal">
+      <div class="result-modal dialogue-modal" role="dialog" aria-modal="true">
+        <div class="dialogue-arrow" aria-hidden="true"></div>
         <div class="dialogue-speaker">
           ${opts.portraitEmoji ? `<span class="dialogue-portrait">${opts.portraitEmoji}</span>` : ''}
           <h2>${opts.speaker || ''}</h2>
         </div>
-        <div class="dialogue-lines">${lineHtml}</div>
-        <div class="dialogue-actions confirm-actions">
+        <div class="dialogue-lines" id="dialogue-lines" aria-live="polite"></div>
+        <div class="dialogue-actions confirm-actions" id="dialogue-actions"${beats > 1 ? ' hidden' : ''}>
           ${actionHtml}
+        </div>
+        <div class="dialogue-foot">
+          <span class="dialogue-beat-count" id="dialogue-beat-count"></span>
+          <span class="dialogue-advance" id="dialogue-advance" aria-hidden="true">${labels.advanceHint || '▼'}</span>
           <button class="action-btn dialogue-close" id="dialogue-close">${labels.closeLabel || opts.closeLabel || 'Farewell'}</button>
         </div>
       </div>
     `;
 
+    const panel = modalOverlayEl.querySelector('.dialogue-modal');
+    const linesEl = modalOverlayEl.querySelector('#dialogue-lines');
+    const actionsEl = modalOverlayEl.querySelector('#dialogue-actions');
+    const advanceEl = modalOverlayEl.querySelector('#dialogue-advance');
+    const beatCountEl = modalOverlayEl.querySelector('#dialogue-beat-count');
+    const arrowEl = modalOverlayEl.querySelector('.dialogue-arrow');
+    const anchor = opts.anchor;
+
+    // Anchoring turns the panel into a viewport-fixed speech bubble and clears
+    // the dimming backdrop so the scene around the speaker stays readable.
+    if (anchor && panel && typeof panel.getBoundingClientRect === 'function') {
+      panel.classList.add('dialogue-bubble');
+      modalOverlayEl.classList.add('dialogue-active');
+    }
+
+    const positionBubble = () => {
+      if (!anchor || !panel || typeof panel.getBoundingClientRect !== 'function') return;
+      const rect = panel.getBoundingClientRect();
+      const width = Math.round(rect.width) || 320;
+      const height = Math.round(rect.height) || 140;
+      const win = typeof window !== 'undefined' ? window : null;
+      const viewport = opts.viewport || {
+        width: (win && win.innerWidth) || width + 16,
+        height: (win && win.innerHeight) || height + 16,
+      };
+      const pos = computeDialogueBubblePosition(anchor, viewport, { width, height });
+      panel.style.left = `${pos.left}px`;
+      panel.style.top = `${pos.top}px`;
+      panel.style.width = `${pos.width}px`;
+      panel.dataset.placement = pos.placement;
+      if (arrowEl) arrowEl.style.left = `${pos.arrowX}px`;
+    };
+
+    const renderBeat = () => {
+      if (linesEl) linesEl.innerHTML = `<p class="dialogue-line">${lines[beatIndex] ?? ''}</p>`;
+      const atEnd = beats === 0 || beatIndex >= beats - 1;
+      if (actionsEl) actionsEl.hidden = beats > 1 && !atEnd;
+      if (advanceEl) advanceEl.hidden = beats <= 1 || atEnd;
+      if (beatCountEl) beatCountEl.textContent = beats > 1 ? `${beatIndex + 1} / ${beats}` : '';
+      positionBubble();
+    };
+
     const close = () => {
       this._close(modalOverlayEl);
       opts.onClose?.();
     };
+    const resolve = () => {
+      if (actions.length) {
+        soundFX.play('click');
+        this._close(modalOverlayEl);
+        opts.onAction?.(actions[0]);
+      } else {
+        soundFX.play('uiBack');
+        close();
+      }
+    };
+    // Steps one beat. Returns false on the final beat so callers can choose to
+    // resolve (keyboard) or wait for an explicit button (pointer).
+    const stepBeat = () => {
+      if (beatIndex >= beats - 1) return false;
+      beatIndex += 1;
+      soundFX.play('uiMove', 0.4);
+      renderBeat();
+      return true;
+    };
+    // Keyboard advance: steps beats, then resolves the stage on the final beat.
+    const advance = () => {
+      if (!stepBeat()) resolve();
+    };
+
     modalOverlayEl.querySelector('#dialogue-close')?.addEventListener('click', () => {
       soundFX.play('uiBack');
       close();
@@ -527,24 +614,25 @@ export class ModalManager {
       });
     });
 
+    // Click / tap anywhere on the panel (except a button) advances a beat; the
+    // final beat's actions / close button are the explicit pointer affordances.
+    panel?.addEventListener('click', (e) => {
+      if (e.target && typeof e.target.closest === 'function' && e.target.closest('button')) return;
+      stepBeat();
+    });
+
+    renderBeat();
+
     const keyHandler = (e) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        this._clearKeyHandler(modalOverlayEl);
         soundFX.play('uiBack');
         close();
-      } else if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        this._clearKeyHandler(modalOverlayEl);
-        if (actions.length) {
-          soundFX.play('click');
-          this._close(modalOverlayEl);
-          opts.onAction?.(actions[0]);
-        } else {
-          soundFX.play('uiBack');
-          close();
-        }
+        return;
       }
+      if (!isDialogueAdvanceKey(e.key, advanceKeys, e.code)) return;
+      e.preventDefault();
+      advance();
     };
     this._setKeyHandler(modalOverlayEl, keyHandler);
   }
