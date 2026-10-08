@@ -120,11 +120,17 @@
     "partyWipeTitle": "THE LIGHT FAILS",
     "partyWipeBody": "The last of your party falls on Floor {floor}. The Temple of the Dawn draws you back and restores you at the tower gate.",
     "visuals": {
-      "description": "Phase 4 knockout/revive presentation (LIV-45). Behavior lives in party_ai.revive (enabled/color/pulseHz/radius); these are the geometry + palette tokens the renderers read. `downed.tintAmount` is the ~40% desaturate/darken wash; the beacon is the E1 'Call for Help' ring; the channel tokens draw the revive tether + progress arc.",
+      "description": "Phase 4 knockout/revive presentation (LIV-45; downed treatment re-specced LIV-49). Behavior lives in party_ai.revive (enabled/color/pulseHz/radius); these are the geometry + palette tokens the renderers read. `downed` authors a near-full grayscale: `desaturate` mixes each palette colour toward its Rec.709 luminance (`luminance` weights), `darken` then multiplies the result, and `tint`/`tintAmount` apply a final cool wash; `rotationDeg` lays the body on its back about the tile centre. The beacon is the E1 'Call for Help' ring; the channel tokens draw the revive tether + progress arc.",
       "downed": {
-        "tint": "#5b6069",
-        "tintAmount": 0.4,
-        "alpha": 0.85,
+        "tint": "#4b5563",
+        "tintAmount": 0.35,
+        "grayscale": true,
+        "desaturate": 0.92,
+        "luminance": { "r": 0.2126, "g": 0.7152, "b": 0.0722 },
+        "darken": 0.18,
+        "alpha": 0.9,
+        "rotationDeg": 90,
+        "rotateOrigin": "tileCenter",
         "glyph": "✚",
         "glyphColor": "#cbd5e1"
       },
@@ -142,6 +148,31 @@
         "tetherAlpha": 0.5,
         "progressRadiusTiles": 0.42,
         "progressLineWidthPx": 4
+      }
+    },
+    "swap": {
+      "description": "Control-swap feedback (LIV-49). Data-only tokens for the KO handoff beat, the fluid position/camera move, and the destination activity flash. `beatMs` is the input-locked dramatic hold at a KO handoff before control transfers (the world keeps simulating; only the incoming actor's input is held). Position and camera interpolate over their `*Ms` with the shared `easing`. The destination flash ramps to `peakAlpha` then eases out over `durationMs`, paired with a locator ring; `mode: additive` lightens the destination sprite. `reducedMotion` collapses the beat + animations and dims the flash to a single frame. Cue names resolve through sounds.json.",
+      "beatMs": 200,
+      "beatLockInput": true,
+      "beatPauseWorld": false,
+      "positionAnimMs": 320,
+      "cameraAnimMs": 420,
+      "easing": "cubic-bezier(0.4,0,0.2,1)",
+      "reducedMotion": { "beatMs": 0, "positionAnimMs": 0, "cameraAnimMs": 0, "flashPeakAlpha": 0.25 },
+      "destinationFlash": {
+        "color": "#fde68a",
+        "coreColor": "#fffbeb",
+        "durationMs": 1000,
+        "easing": "ease-out",
+        "peakAlpha": 0.7,
+        "mode": "additive",
+        "ringRadiusTiles": 0.75,
+        "ringLineWidthPx": 3,
+        "ringAlpha": 0.9
+      },
+      "sfx": {
+        "koHandoff": "koHandoff",
+        "controlSwap": "controlSwap"
       }
     }
   },

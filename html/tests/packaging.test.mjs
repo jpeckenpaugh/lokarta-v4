@@ -53,13 +53,13 @@ test('Lokarta Packaging (splash, title, options, save slots, transitions)', asyn
     });
   });
 
-  await t.test('sounds.json has 23 entries including uiMove and uiBack', () => {
+  await t.test('sounds.json has 25 entries including uiMove and uiBack', () => {
     const soundsPath = resolve(process.cwd(), 'html/data/sounds.json');
     const soundsJson = JSON.parse(readFileSync(soundsPath, 'utf8'));
 
-    assert.equal(Object.keys(soundsJson).length, 23);
-    assert.equal(Object.keys(SOUNDS_CATALOG).length, 23);
-    for (const key of ['uiMove', 'uiBack', 'keyJangle', 'coins']) {
+    assert.equal(Object.keys(soundsJson).length, 25);
+    assert.equal(Object.keys(SOUNDS_CATALOG).length, 25);
+    for (const key of ['uiMove', 'uiBack', 'keyJangle', 'coins', 'koHandoff', 'controlSwap']) {
       assert.ok(soundsJson[key], `Missing sound definition for ${key}`);
       assert.ok(['sweep', 'sequence', 'composite'].includes(soundsJson[key].type), `Invalid sound type for ${key}`);
     }

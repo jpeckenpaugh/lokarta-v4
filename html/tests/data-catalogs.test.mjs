@@ -212,7 +212,7 @@ test('JSON Data Catalogs', async (t) => {
   });
 
   await t.test('loads and validates sounds.json catalog', () => {
-    assert.equal(Object.keys(SOUNDS_CATALOG).length, 23);
+    assert.equal(Object.keys(SOUNDS_CATALOG).length, 25);
     assert.ok(SOUNDS_CATALOG.footstep);
     assert.ok(SOUNDS_CATALOG.wandSpark);
     assert.ok(SOUNDS_CATALOG.victory);
@@ -221,6 +221,9 @@ test('JSON Data Catalogs', async (t) => {
     // Items 4/5: metal key jangle + coin clink SFX.
     assert.ok(SOUNDS_CATALOG.keyJangle);
     assert.ok(SOUNDS_CATALOG.coins);
+    // LIV-49: KO/handoff sting + control-swap cue.
+    assert.ok(SOUNDS_CATALOG.koHandoff);
+    assert.ok(SOUNDS_CATALOG.controlSwap);
   });
 
   await t.test('loads and validates abilities.json catalog', () => {
@@ -528,6 +531,14 @@ test('JSON Data Catalogs', async (t) => {
     assert.ok(UI_CATALOG.entityBars.hpFill);
     assert.equal(UI_CATALOG.entityBars.enemyShowWhen, 'damaged');
     assert.ok(UI_CATALOG.town.title);
+    // LIV-49: downed grayscale + on-back rotation, and the swap-feedback tokens.
+    assert.equal(UI_CATALOG.knockout.visuals.downed.grayscale, true);
+    assert.ok(UI_CATALOG.knockout.visuals.downed.desaturate >= 0.9);
+    assert.equal(UI_CATALOG.knockout.visuals.downed.rotationDeg, 90);
+    assert.ok(UI_CATALOG.knockout.swap.beatMs > 0);
+    assert.ok(UI_CATALOG.knockout.swap.destinationFlash.durationMs >= 900);
+    assert.ok(UI_CATALOG.knockout.swap.sfx.koHandoff);
+    assert.ok(UI_CATALOG.knockout.swap.sfx.controlSwap);
   });
 
   await t.test('every item declares a D1 slotRole', () => {
