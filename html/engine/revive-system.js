@@ -13,6 +13,10 @@
  *     living ally when the active member falls.
  *   - A wipe is `player.party.every(m => m.hp <= 0)` at the same instant and
  *     nothing less; a solo party therefore wipes on its first down.
+ *   - A downed member is recovered either by an adjacent ally channel (the fast
+ *     active rescue) or by a per-member auto-revive timer (the guaranteed
+ *     fallback): 10s/20s/30s by `downCount`, running during combat, cancelled by
+ *     a completed ally revive, and reset only on exiting + re-entering a tower.
  *   - Everything is catalog-driven (`party_ai.json.revive`, `abilities.json`
  *     `canRevive`, `items.json` `effect.canRevive`). No per-class branches.
  *
@@ -43,9 +47,23 @@ export const DEFAULT_REVIVE_CONFIG = Object.freeze({
   interruptOnMove: true,
   channelDecayMult: 2.0,
   reviveOnFloorTransition: true,
-  selfReviveSec: 45,
-  selfReviveHpPct: 0.15,
   bleedOutSec: 0,
+  // LIV-52 time-based auto-revive: the guaranteed per-member fallback that
+  // replaces the retired 45s self-stabilize net. `secs` is the escalation
+  // schedule indexed by a member's `downCount` within the tower (1st -> secs[0]),
+  // `capSec` clamps the last entry, `cancelledByAllyRevive` lets a completed
+  // channel cancel the pending timer, and `resetOnTowerReentry` resets the count
+  // only on exiting + re-entering a tower (never on revive or floor change).
+  autoRevive: Object.freeze({
+    enabled: true,
+    secs: Object.freeze([10, 20, 30]),
+    capSec: 30,
+    resetOnTowerReentry: true,
+    runsDuringCombat: true,
+    cancelledByAllyRevive: true,
+    hpPct: 0.25,
+    manaPct: 0.25,
+  }),
   // LIV-47 E3 "Vigils": generic revive-channel levers. `0` is a no-op for every
   // vocation that does not override them (Fighter sets dragTiles:1 /
   // damageReductionPct:0.25 in party_ai.json; no per-class branch reads them).
@@ -58,14 +76,69 @@ export const DEFAULT_REVIVE_CONFIG = Object.freeze({
 /** Scalar revive config keys copied field-wise from catalog blocks. */
 const REVIVE_NUMBER_KEYS = [
   'channelSec', 'cooldownSec', 'manaCost', 'hpPct', 'manaPct', 'graceSec',
-  'idleSec', 'safetyRadius', 'channelDecayMult', 'selfReviveSec',
-  'selfReviveHpPct', 'bleedOutSec', 'dragTiles', 'damageReductionPct',
+  'idleSec', 'safetyRadius', 'channelDecayMult', 'bleedOutSec', 'dragTiles',
+  'damageReductionPct',
 ];
 const REVIVE_BOOL_KEYS = ['enabled', 'interruptOnDamage', 'interruptOnMove', 'reviveOnFloorTransition'];
 
 function toNumber(value, fallback) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
+}
+
+/** Merges a catalog `autoRevive` block over the baseline (field-wise). */
+function applyAutoReviveBlock(current, block) {
+  const cur = current || DEFAULT_REVIVE_CONFIG.autoRevive;
+  const a = block && typeof block === 'object' ? block : {};
+  const secs = Array.isArray(a.secs)
+    ? a.secs.map((v) => toNumber(v, 0)).filter((v) => v > 0)
+    : null;
+  return {
+    enabled: typeof a.enabled === 'boolean' ? a.enabled : cur.enabled,
+    secs: secs && secs.length ? secs : cur.secs,
+    capSec: toNumber(a.capSec, cur.capSec),
+    resetOnTowerReentry: typeof a.resetOnTowerReentry === 'boolean' ? a.resetOnTowerReentry : cur.resetOnTowerReentry,
+    runsDuringCombat: typeof a.runsDuringCombat === 'boolean' ? a.runsDuringCombat : cur.runsDuringCombat,
+    cancelledByAllyRevive: typeof a.cancelledByAllyRevive === 'boolean' ? a.cancelledByAllyRevive : cur.cancelledByAllyRevive,
+    hpPct: toNumber(a.hpPct, cur.hpPct),
+    manaPct: toNumber(a.manaPct, cur.manaPct),
+  };
+}
+
+/**
+ * Escalating auto-revive window (seconds) for a member's `downCount` within the
+ * tower: `secs[downCount - 1]`, clamped to the last entry, then capped at
+ * `capSec`. `downCount <= 0` uses the first entry (a fresh down is the 1st).
+ * Pure; no catalog lookup so it is safe to call from a per-tick path.
+ * @param {object} autoRevive resolved `revive.autoRevive` block
+ * @param {number} downCount per-member down counter within the tower
+ * @returns {number} seconds until auto-revive
+ */
+export function autoReviveSecForCount(autoRevive, downCount) {
+  const cfg = autoRevive || DEFAULT_REVIVE_CONFIG.autoRevive;
+  const fallback = DEFAULT_REVIVE_CONFIG.autoRevive.secs;
+  const secs = Array.isArray(cfg.secs) && cfg.secs.length ? cfg.secs : fallback;
+  const idx = Math.min(Math.max(1, Math.floor(toNumber(downCount, 1))) - 1, secs.length - 1);
+  const base = toNumber(secs[idx], secs[secs.length - 1]);
+  const cap = toNumber(cfg.capSec, DEFAULT_REVIVE_CONFIG.autoRevive.capSec);
+  return cap > 0 ? Math.min(base, cap) : base;
+}
+
+/**
+ * Seconds a downed member has left before auto-revive (>= 0), derived from the
+ * window stamped at `markDowned` time. This is the value the renderer drains, so
+ * it is a lean scalar read with no config resolution. Returns 0 when the member
+ * has no pending window.
+ * @param {object} member
+ * @param {number} elapsedSec current run clock
+ * @returns {number}
+ */
+export function autoReviveRemainingSec(member, elapsedSec) {
+  if (!member || typeof member !== 'object') return 0;
+  const total = toNumber(member.autoReviveTotalSec, 0);
+  if (!(total > 0)) return 0;
+  const remaining = total - (toNumber(elapsedSec, 0) - toNumber(member.downedAtSec, 0));
+  return remaining > 0 ? remaining : 0;
 }
 
 function applyReviveBlock(out, block) {
@@ -75,6 +148,9 @@ function applyReviveBlock(out, block) {
   }
   for (const key of REVIVE_BOOL_KEYS) {
     if (typeof block[key] === 'boolean') out[key] = block[key];
+  }
+  if (block.autoRevive && typeof block.autoRevive === 'object') {
+    out.autoRevive = applyAutoReviveBlock(out.autoRevive, block.autoRevive);
   }
   if (block.boss && typeof block.boss === 'object') {
     out.boss = {
@@ -101,7 +177,12 @@ function applyReviveBlock(out, block) {
  * @returns {object}
  */
 export function resolveReviveConfig(vocation = null) {
-  const out = { ...DEFAULT_REVIVE_CONFIG, boss: { ...DEFAULT_REVIVE_CONFIG.boss }, potion: { ...DEFAULT_REVIVE_CONFIG.potion } };
+  const out = {
+    ...DEFAULT_REVIVE_CONFIG,
+    boss: { ...DEFAULT_REVIVE_CONFIG.boss },
+    potion: { ...DEFAULT_REVIVE_CONFIG.potion },
+    autoRevive: { ...DEFAULT_REVIVE_CONFIG.autoRevive, secs: [...DEFAULT_REVIVE_CONFIG.autoRevive.secs] },
+  };
   const catalogDefault = PARTY_AI_CATALOG && PARTY_AI_CATALOG.revive;
   applyReviveBlock(out, catalogDefault);
   const key = vocation ? String(vocation).toLowerCase() : null;
@@ -140,6 +221,7 @@ export function markDowned(actor, ctx = {}) {
   if (!actor || typeof actor !== 'object') return false;
   if (actor.combatState === 'downed' || actor.lifeState === 'downed') return false;
   if (Number(actor.hp) > 0) return false;
+  const auto = resolveReviveConfig(actor.vocation).autoRevive;
   actor.combatState = 'downed';
   actor.lifeState = 'downed';
   actor.hp = 0;
@@ -153,6 +235,13 @@ export function markDowned(actor, ctx = {}) {
   actor._reviveProgressSec = 0;
   actor._reviveBlocked = false;
   actor._reviveDraggedTiles = 0;
+  // LIV-52: every down increments the per-member escalation counter (it is never
+  // reset on revive, only on exiting + re-entering a tower) and stamps the
+  // auto-revive window the timer drains.
+  actor.downCount = Math.max(0, Math.floor(toNumber(actor.downCount, 0))) + 1;
+  const total = autoReviveSecForCount(auto, actor.downCount);
+  actor.autoReviveTotalSec = auto.enabled ? total : 0;
+  actor.autoReviveRemainingSec = auto.enabled ? total : 0;
   return true;
 }
 
@@ -174,6 +263,11 @@ export function applyRevive(member, config = DEFAULT_REVIVE_CONFIG) {
   member.combatState = 'active';
   member.lifeState = 'alive';
   member.downedAtSec = 0;
+  // LIV-52: a completed revive (ally channel or auto-revive) cancels any pending
+  // auto-revive window. `downCount` is deliberately NOT reset here — the
+  // escalation persists across revives until the tower is re-entered.
+  member.autoReviveTotalSec = 0;
+  member.autoReviveRemainingSec = 0;
   member.reviveGraceSec = toNumber(config.graceSec, DEFAULT_REVIVE_CONFIG.graceSec);
   member.aiTargetId = null;
   member.aiRetargetTimer = 0;
@@ -551,6 +645,9 @@ export function markPartyDowned(player, ctx = {}) {
         member.downedAtSec = player.downedAtSec;
         member.downedFloor = player.downedFloor;
         member.reviveGraceSec = 0;
+        member.downCount = player.downCount;
+        member.autoReviveTotalSec = player.autoReviveTotalSec;
+        member.autoReviveRemainingSec = player.autoReviveRemainingSec;
         changed = true;
       }
     } else if (markDowned(member, markCtx)) {
@@ -565,8 +662,8 @@ export function markPartyDowned(player, ctx = {}) {
  *   1. funnels every 0-HP member through `markDowned` (active mirror included);
  *   2. hands control to a living ally when the active member falls;
  *   3. evaluates the simultaneous full-party wipe FIRST (a solo party ejects on
- *      its first down and never self-stabilizes);
- *   4. ticks interruptible revive channels + the self-stabilize safety net.
+ *      its first down and never auto-revives);
+ *   4. ticks interruptible revive channels + the per-member auto-revive timer.
  *
  * @param {object} player top-level (active-authoritative) player
  * @param {object} [ctx] { deltaSec, elapsedSec, monsters, combatIdleSec, active, floor, gridMap }
@@ -593,12 +690,14 @@ export function evaluateParty(player, ctx = {}) {
 
   // 3. Wipe is evaluated before any revive: a simultaneous all-down is an
   //    immediate eject (a solo party wipes on its first down, never
-  //    self-stabilizes). Only a surviving member keeps the run alive.
+  //    auto-revives). Only a surviving member keeps the run alive, so the timer
+  //    can never nullify a wipe.
   result.wiped = evaluateWipe(player);
   if (result.wiped) return result;
 
-  // 4. Channels + self-stabilize. Channels belong to the reviver; self-revive
-  //    belongs to the downed member and is a last-resort safety net.
+  // 4. Channels + auto-revive. Channels belong to the living reviver; the
+  //    per-member auto-revive timer belongs to each downed body and is the
+  //    guaranteed fallback (it runs during combat, unlike the channel gate).
   for (let i = 0; i < party.length; i++) {
     const member = party[i];
     if (!member) continue;
@@ -608,14 +707,50 @@ export function evaluateParty(player, ctx = {}) {
       continue;
     }
     const cfg = resolveReviveConfig(member.vocation);
-    if (cfg.selfReviveSec > 0
-      && (markCtx.elapsedSec - toNumber(member.downedAtSec, markCtx.elapsedSec)) >= cfg.selfReviveSec) {
-      applyRevive(member, { ...cfg, hpPct: cfg.selfReviveHpPct, manaPct: 0 });
+    const auto = cfg.autoRevive;
+    if (!auto.enabled) continue;
+    const total = toNumber(member.autoReviveTotalSec, 0) > 0
+      ? toNumber(member.autoReviveTotalSec, 0)
+      : autoReviveSecForCount(auto, member.downCount);
+    if (!(member.autoReviveTotalSec > 0)) member.autoReviveTotalSec = total;
+    const remaining = total - (markCtx.elapsedSec - toNumber(member.downedAtSec, markCtx.elapsedSec));
+    member.autoReviveRemainingSec = remaining > 0 ? remaining : 0;
+    if (remaining <= 0) {
+      applyRevive(member, { ...cfg, hpPct: auto.hpPct, manaPct: auto.manaPct });
       if (i === activeIdx) syncActiveMirror(player, member);
-      result.events.push({ type: 'selfRevive', member });
+      result.events.push({ type: 'autoRevive', member });
     }
   }
   return result;
+}
+
+/**
+ * LIV-52 tower-reentry reset: clears each member's `downCount` (and the derived
+ * auto-revive window), so the first down in a freshly entered tower is 10s
+ * again. Called ONLY on exiting + re-entering a tower — never on revive, floor
+ * change, or save/load. Returns true when anything changed.
+ * @param {object} player
+ * @returns {boolean}
+ */
+export function resetAutoReviveCounts(player) {
+  if (!player || typeof player !== 'object') return false;
+  let changed = false;
+  const reset = (m) => {
+    if (!m || typeof m !== 'object') return;
+    if (Math.floor(toNumber(m.downCount, 0)) !== 0
+      || toNumber(m.autoReviveTotalSec, 0) !== 0
+      || toNumber(m.autoReviveRemainingSec, 0) !== 0) {
+      m.downCount = 0;
+      m.autoReviveTotalSec = 0;
+      m.autoReviveRemainingSec = 0;
+      changed = true;
+    }
+  };
+  if (Array.isArray(player.party)) {
+    for (let i = 0; i < player.party.length; i++) reset(player.party[i]);
+  }
+  reset(player);
+  return changed;
 }
 
 /** Copies a revived party entry's resources onto the top-level active mirror. */
@@ -627,6 +762,9 @@ function syncActiveMirror(player, member) {
   player.lifeState = member.lifeState;
   player.downedAtSec = member.downedAtSec;
   player.reviveGraceSec = member.reviveGraceSec;
+  player.downCount = member.downCount;
+  player.autoReviveTotalSec = member.autoReviveTotalSec;
+  player.autoReviveRemainingSec = member.autoReviveRemainingSec;
 }
 
 /** Convenience barrel for consumers that prefer a namespace. */
@@ -640,6 +778,9 @@ export const ReviveSystem = {
   applyRevive,
   evaluateWipe,
   hasLivingMember,
+  autoReviveSecForCount,
+  autoReviveRemainingSec,
+  resetAutoReviveCounts,
   orthogonalAdjacent,
   reviverChannelDamageReduction,
   hasLivingHostileWithin,
