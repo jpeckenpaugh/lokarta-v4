@@ -2,9 +2,19 @@
  * Lokarta: Come Into The Light - Input Controller Subsystem
  */
 
-import { GestureEngine } from '../engine/index.js';
+import { GestureEngine, NPC_INTERACT_RADIUS } from '../engine/index.js';
 import { EQUIPMENT_KEY_MAP, PARTY_CYCLE_BINDINGS } from '../engine/config.js';
+import { KEYBINDINGS_CATALOG } from '../data/index.js';
 import { soundFX } from '../audio/index.js';
+
+/**
+ * Keyboard-event codes that trigger an interaction (`keybindings.json.interact`).
+ * Catalog-driven so a rebind (or a new key like Square on a gamepad shim) is a
+ * data edit. Space/F by default.
+ */
+const INTERACT_KEY_CODE_SET = new Set(
+  Array.isArray(KEYBINDINGS_CATALOG?.interact) ? KEYBINDINGS_CATALOG.interact : ['Space', 'KeyF']
+);
 
 /** `{ KeyQ: 'main_hand', KeyE: 'armor', ... }` from `keybindings.json`. */
 const EQUIPMENT_KEY_CODE_MAP = Object.fromEntries(
@@ -66,6 +76,15 @@ export class InputController {
         return;
       }
 
+      // Interact (LIV-60 P2): talk to an adjacent NPC / examine a world object.
+      // Handled before `keysDown` so the interact key never leaks into movement.
+      if (INTERACT_KEY_CODE_SET.has(e.code)) {
+        e.preventDefault();
+        soundFX.init();
+        this.app.interact();
+        return;
+      }
+
       this.app.keysDown.add(e.code);
 
       // Equipment abilities: q/w/e/r map to main_hand/off_hand/armor/relic
@@ -107,6 +126,25 @@ export class InputController {
         const clickY = e.clientY - rect.top;
 
         const gridPos = this.app.renderer.screenToGrid(clickX, clickY);
+
+        // Tap-to-interact (LIV-60 P2): an adjacent NPC or world object takes the
+        // tap before monster/chest targeting. Out of reach, it falls through.
+        const player = this.app.player;
+        const reach = NPC_INTERACT_RADIUS;
+        const tappedNpc = (this.app.npcs || []).find(
+          (n) => n.x === gridPos.x && n.y === gridPos.y
+        );
+        if (tappedNpc && Math.abs(tappedNpc.x - player.x) + Math.abs(tappedNpc.y - player.y) <= reach) {
+          this.app.openNpcDialogue(tappedNpc);
+          return;
+        }
+        const tappedObject = (this.app.scene?.interactables || []).find(
+          (i) => i.kind === 'object' && i.x === gridPos.x && i.y === gridPos.y
+        );
+        if (tappedObject && Math.abs(tappedObject.x - player.x) + Math.abs(tappedObject.y - player.y) <= reach) {
+          this.app.interactWithSceneObject(tappedObject);
+          return;
+        }
 
         const clickedMonster = this.app.monsters.find(
           m => m.x === gridPos.x && m.y === gridPos.y && m.visible && m.hp > 0

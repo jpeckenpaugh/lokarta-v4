@@ -81,6 +81,8 @@ export const inventoryControllerMethods = {
     if (res.success) {
       soundFX.play('itemPickup');
       this.logCombat(res.message, 'loot');
+      // Quest `fetch` objective seam (LIV-60 P3): the picked item id advances.
+      this.fireQuestEvent?.({ type: 'fetch', itemId: res.item?.item_id, quantity: res.item?.quantity || 1 });
       this.addFloatingText(`+${res.item?.name}`, gridX, gridY, '#22c55e', { durationMs: FLOATING_LOOT_MS });
       this.updateHUD();
       await this.persistSave();
@@ -125,6 +127,7 @@ export const inventoryControllerMethods = {
       if (addRes.success) {
         picked += 1;
         pickedNames.push(stack.name);
+        this.fireQuestEvent?.({ type: 'fetch', itemId: stack.item_id, quantity: stack.quantity || 1 });
       } else {
         // No room: leave the item on the tile so it is not lost.
         this.gridMap.addItem(chest.x, chest.y, { ...stack, x: chest.x, y: chest.y });

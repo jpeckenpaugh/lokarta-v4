@@ -562,6 +562,24 @@ export class CanvasRenderer {
       }
     }
 
+    // 5a. Neutral NPCs Layer (LIV-60 P2): drawn through the shared actor
+    //     pipeline with the catalog `renderTheme` tint so no bespoke art is
+    //     required. Scene-only, so a tower floor draws nothing here.
+    const npcs = this.npcs;
+    if (Array.isArray(npcs) && npcs.length > 0) {
+      for (const npc of npcs) {
+        if (!npc) continue;
+        const npcScreenX = npc.x * CONFIG.GRID_SIZE - this.cameraX;
+        const npcScreenY = npc.y * CONFIG.GRID_SIZE - this.cameraY;
+        if (npcScreenX < -CONFIG.GRID_SIZE || npcScreenY < -CONFIG.GRID_SIZE
+          || npcScreenX > width || npcScreenY > height) continue;
+        SpriteRenderer.drawActor(ctx, npc, npcScreenX, npcScreenY, {
+          size: CONFIG.GRID_SIZE,
+          tint: npc.renderTheme || undefined,
+        });
+      }
+    }
+
     // 5b. Party Allies Layer (LIV-13/WS4): every non-active member draws with
     //     the shared player sprite pipeline (vocation sprite + animation). A
     //     downed body (LIV-45) stays on the board, greyed + darkened, with no
@@ -596,6 +614,10 @@ export class CanvasRenderer {
     //     clearly over the existing lighting.
     this.renderPlayerVfx(ctx, player, playerScreenX, playerScreenY);
 
+    // 6b-2. Interaction prompt (LIV-60 P2): a small label above the NPC / world
+    //       object the player can talk to or examine right now.
+    if (this.interactPrompt) this.renderInteractPrompt(ctx, this.interactPrompt);
+
     // 6c. Knockout VFX (LIV-45): the E1 "Call for Help" beacon over every downed
     //     body and the revive channel tether/progress arc. Drawn last so the
     //     rescue read survives the fog, bars and player sprite.
@@ -617,6 +639,32 @@ export class CanvasRenderer {
    * Draws one prop layer (`decor` rugs or `prop` furniture) on lit, in-bounds
    * tiles. No per-frame allocation; props are static data (D4 §6.1/§6.3).
    */
+  /**
+   * Draws the interaction prompt bubble (`{x, y, text}` in grid space) above an
+   * NPC/world object. Presentation-only; called at most once per frame and only
+   * while a target is in reach (LIV-60 P2).
+   */
+  renderInteractPrompt(ctx, prompt) {
+    const text = prompt && prompt.text;
+    if (!text) return;
+    const px = prompt.x * CONFIG.GRID_SIZE - this.cameraX + CONFIG.GRID_SIZE / 2;
+    const py = prompt.y * CONFIG.GRID_SIZE - this.cameraY - 6;
+    ctx.save();
+    ctx.font = '600 12px system-ui, sans-serif';
+    const w = ctx.measureText(text).width + 12;
+    const h = 18;
+    ctx.fillStyle = 'rgba(5, 6, 8, 0.82)';
+    ctx.fillRect(px - w / 2, py - h, w, h);
+    ctx.strokeStyle = '#e5b95c';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(px - w / 2, py - h, w, h);
+    ctx.fillStyle = '#f8fafc';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, px, py - h / 2);
+    ctx.restore();
+  }
+
   /**
    * Draws small HP (+MP for the player) bars above an actor. Pure fillRect()
    * primitives with cached tokens — no per-frame allocations, so the 60 FPS

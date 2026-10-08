@@ -368,6 +368,12 @@ export const combatControllerMethods = {
         const deadMonster = this.monsters[index];
         const isBoss = deadMonster.isBoss || deadMonster.id.includes('boss') || deadMonster.max_hp >= 200;
 
+        // Quest `kill` objective seam (LIV-60 P3): the catalog monster `type`
+        // advances any active kill objective that targets it.
+        if (typeof this.fireQuestEvent === 'function') {
+          this.fireQuestEvent({ type: 'kill', monsterType: deadMonster.type, quantity: 1 });
+        }
+
         // Items 4/5: every drop (equipment, potions, gold, keys) lands on
         // the ground and must be walked over to collect. Multi-item drops spread
         // across distinct adjacent squares instead of stacking one tile.

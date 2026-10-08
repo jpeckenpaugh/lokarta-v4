@@ -13,6 +13,8 @@ import {
   PartyAI,
   cycleActiveMember,
   ReviveSystem,
+  updateNpcs,
+  npcAt,
 } from '../engine/index.js';
 import {
   firstMonsterOnSegment,
@@ -288,6 +290,14 @@ export const gameLoopMethods = {
       LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
     }
 
+    // 3b. Overworld roamers (LIV-60 P3): top spawn zones back up to `maxAlive`
+    //     and wake any within aggro reach. Ambient scenes skip the tower FOV
+    //     pass, so aggro is handled here. Tower floors are unaffected.
+    if (this.scene) {
+      this.updateSceneMonsters(deltaSec);
+      this.updateSceneAggro();
+    }
+
     // 4. Update monster AI (targets the nearest living party member)
     const positionsBefore = this.monsters.map(m => ({ m, x: m.x, y: m.y }));
     const aiResults = EntityAI.updateMonsters(
@@ -345,6 +355,23 @@ export const gameLoopMethods = {
       if (m.hp <= 0) continue;
       if (m.x !== x || m.y !== y) setAnimState(m, 'walk');
       else if (m.anim && m.anim.state === 'walk') setAnimState(m, 'idle');
+    }
+
+    // 4a. Neutral NPCs (LIV-60 P2): stationary/wander, catalog `aiType`. The
+    //     occupancy set keeps NPCs off the player, living monsters, living
+    //     allies, and each other. Scene-only, so tower ticks are untouched.
+    if (Array.isArray(this.npcs) && this.npcs.length > 0) {
+      const width = this.gridMap.width;
+      // Reuse one occupancy set across ticks (clear, don't reallocate) to honor
+      // the no-transient-allocation hot-path rule (agents.md §3).
+      const occupied = this._npcOccupied || (this._npcOccupied = new Set());
+      occupied.clear();
+      occupied.add(this.player.y * width + this.player.x);
+      for (const m of this.monsters) if (m.hp > 0) occupied.add(m.y * width + m.x);
+      for (const a of PartyAI.livingAllies(this.player)) occupied.add(a.y * width + a.x);
+      for (const n of this.npcs) occupied.add(n.y * width + n.x);
+      updateNpcs(this.npcs, this.gridMap, deltaSec, occupied);
+      this.updateInteractPrompt();
     }
 
     // 4b. Knockout seam (LIV-44): funnel any 0-HP member (active mirror
@@ -680,6 +707,9 @@ export const gameLoopMethods = {
     }
     // The renderer resolves the scene theme + ambient mode from this handle.
     this.renderer.scene = this.scene || null;
+    // Neutral NPCs + the interaction prompt target for this frame (LIV-60 P2).
+    this.renderer.npcs = Array.isArray(this.npcs) ? this.npcs : null;
+    this.renderer.interactPrompt = this.interactPromptTarget || null;
     this.renderer.render(
       this.gridMap,
       this.player,
@@ -781,6 +811,10 @@ export const gameLoopMethods = {
         } else if (monsterAtTarget) {
           this.selectedMonsterId = monsterAtTarget.id;
           this.logCombat(`Target locked on ${monsterAtTarget.name} (${monsterAtTarget.hp}/${monsterAtTarget.max_hp} HP).`, 'system');
+        } else if (npcAt(this.npcs, targetX, targetY)) {
+          // A neutral body blocks the step (LIV-60 P2); the player just turns
+          // toward it, and the interaction prompt refreshes.
+          this.updateInteractPrompt();
         } else {
           this.player.x = targetX;
           this.player.y = targetY;
@@ -822,6 +856,9 @@ export const gameLoopMethods = {
     // Walkable overworld seams (LIV-59 P1): scene portals (town <-> island <->
     // tower entrance) fire before building doorways, then doorway interactions.
     if (this.scene) {
+      // `reach` objectives fire on every tile entry (LIV-60 P3).
+      this.fireQuestEvent({ type: 'reach', sceneId: this.scene.sceneId, x: this.player.x, y: this.player.y });
+      this.updateInteractPrompt();
       const portal = this.scenePortalAt(this.player.x, this.player.y);
       if (portal) return this.handleScenePortal(portal);
       const building = this.sceneBuildingAt(this.player.x, this.player.y);

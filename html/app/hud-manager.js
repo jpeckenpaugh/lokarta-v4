@@ -7,7 +7,7 @@
  * `#sidebar-hud` drives both drag and click-to-swap.
  */
 
-import { InventorySystem, LightingSystem, DoorSystem, CombatSystem, EconomySystem } from '../engine/index.js';
+import { InventorySystem, LightingSystem, DoorSystem, CombatSystem, EconomySystem, questLogEntries } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
 import { ITEMS_CATALOG, DOORS_CATALOG, UI_CATALOG, VOCATIONS_CATALOG, PARTY_AI_CATALOG } from '../data/index.js';
 import { EQUIPMENT_KEY_MAP, ACTIVE_SLOT_KEYS, INVENTORY_CONFIG } from '../engine/config.js';
@@ -249,11 +249,48 @@ export class HUDManager {
 
   static updateHUD(elements, app) {
     HUDManager.bindHUDEvents(elements, app);
-    const { statusBarsEl, loadoutEl, backpackEl } = elements;
+    const { statusBarsEl, loadoutEl, backpackEl, questLogEl } = elements;
     HUDManager.renderStatusBars(statusBarsEl, app.player, app.currentFloorName);
+    HUDManager.renderQuestLog(questLogEl, app);
     HUDManager.renderLoadout(loadoutEl, app);
     HUDManager.renderBackpack(backpackEl, app);
     HUDManager.updateKnockoutPrompt(app);
+  }
+
+  /**
+   * Quest Log panel (LIV-60 P3). Rendered from `player.questState` through the
+   * quest-system's catalog-aware accessor; copy resolves from `ui.json.quests`.
+   * Diffed against the last signature so a 10 Hz tick that changes nothing does
+   * not rebuild the DOM.
+   */
+  static renderQuestLog(questLogEl, app) {
+    if (!questLogEl) return;
+    const copy = UI_CATALOG?.quests || {};
+    const entries = questLogEntries(app?.player?.questState);
+    const sig = JSON.stringify(entries);
+    if (questLogEl._questSig === sig) return;
+    questLogEl._questSig = sig;
+
+    const header = `<div class="panel-header">${copy.logTitle || 'Quest Log'}</div>`;
+    if (entries.length === 0) {
+      questLogEl.innerHTML = `${header}<div class="quest-empty">${copy.noActiveQuests || 'No active quests.'}</div>`;
+      return;
+    }
+    const rows = entries.map((entry) => {
+      const objectives = entry.objectives.map((obj) => {
+        const label = copy[obj.logKey] || obj.id;
+        const progress = (copy.objectiveProgress || '{current}/{count}')
+          .replace('{current}', String(obj.count))
+          .replace('{count}', String(obj.target));
+        return `<li class="quest-objective ${obj.done ? 'done' : ''}"><span class="quest-obj-label">${label}</span><span class="quest-obj-progress">${progress}</span></li>`;
+      }).join('');
+      const ready = entry.status === 'complete';
+      return `<div class="quest-entry ${ready ? 'ready' : ''}">
+        <div class="quest-name">${entry.name}${ready ? ' ★' : ''}</div>
+        <ul class="quest-objectives">${objectives}</ul>
+      </div>`;
+    }).join('');
+    questLogEl.innerHTML = `${header}${rows}`;
   }
 
   static renderStatusBars(statusBarsEl, player, currentFloorName) {

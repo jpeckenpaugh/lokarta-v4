@@ -23,8 +23,11 @@ import { ModalManager } from './modal-manager.js';
  */
 export const floorControllerMethods = {
   applyDungeonData(floorData, options = {}) {
-    // A tower floor replaces any walkable overworld scene (LIV-59 P1).
+    // A tower floor replaces any walkable overworld scene (LIV-59 P1). Neutral
+    // overworld NPCs and their prompt are scene-only (LIV-60 P2).
     this.scene = null;
+    this.npcs = [];
+    this.interactPromptTarget = null;
     this.currentFloorName = floorData.biome_name || 'The Gatehouse';
     this.gridMap.loadFromMatrix(floorData.tiles);
 

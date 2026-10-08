@@ -1307,3 +1307,33 @@
 .tower-complete-modal .result-subtitle {
   margin: 4px 0;
 }
+
+/* Dialogue modal (LIV-60 P2) */
+.dialogue-modal .dialogue-speaker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+}
+
+.dialogue-modal .dialogue-portrait {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.dialogue-modal .dialogue-lines {
+  margin: 12px 0;
+}
+
+.dialogue-modal .dialogue-line {
+  margin: 6px 0;
+  color: #e2e8f0;
+  line-height: 1.45;
+}
+
+.dialogue-modal .dialogue-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}

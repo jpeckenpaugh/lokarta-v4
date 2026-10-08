@@ -113,6 +113,7 @@ export const hudFxMethods = {
         sidebarEl: this.sidebarEl,
         loadoutEl: this.loadoutEl,
         backpackEl: this.backpackEl,
+        questLogEl: this.questLogEl,
       },
       this
     );

@@ -1192,3 +1192,51 @@
 .knockout-prompt[hidden] {
   display: none;
 }
+
+/* Quest Log panel (LIV-60 P3) */
+.quest-panel .quest-empty {
+  padding: 6px 8px;
+  font-size: 12px;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.quest-panel .quest-entry {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.quest-panel .quest-entry.ready {
+  background: rgba(229, 185, 92, 0.12);
+}
+
+.quest-panel .quest-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #e5b95c;
+  margin-bottom: 3px;
+}
+
+.quest-panel .quest-objectives {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.quest-panel .quest-objective {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 11px;
+  color: #cbd5e1;
+}
+
+.quest-panel .quest-objective.done {
+  color: #22c55e;
+  text-decoration: line-through;
+}
+
+.quest-panel .quest-obj-progress {
+  font-variant-numeric: tabular-nums;
+  color: #94a3b8;
+}

@@ -34,6 +34,10 @@ export class LokartaApp {
     this.player = createPartyPlayer('magician');
     this.gridMap = new GridMap();
     this.monsters = [];
+    // Neutral overworld NPCs (LIV-60 P2), populated per scene.
+    this.npcs = [];
+    // Interaction prompt target `{x,y,text}` for the current frame, or null.
+    this.interactPromptTarget = null;
     this.chests = [];
     this.props = [];
     this.ambientLights = [];
@@ -84,6 +88,7 @@ export class LokartaApp {
     this.sidebarEl = document.getElementById('sidebar-hud');
     this.loadoutEl = document.getElementById('loadout-container');
     this.backpackEl = document.getElementById('backpack-container');
+    this.questLogEl = document.getElementById('quest-log-container');
     this.abilityBarEl = document.getElementById('ability-bar');
     this.combatLogScrollEl = document.getElementById('log-entries-container');
     this.modalOverlayEl = document.getElementById('modal-overlay');

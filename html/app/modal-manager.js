@@ -470,6 +470,85 @@ export class ModalManager {
     this._setKeyHandler(modalOverlayEl, keyHandler);
   }
 
+  /**
+   * NPC / world-prompt dialogue (LIV-60 P2). Renders a speaker, one or more
+   * lines, and the stage's action buttons (accept/turn-in/shop/temple/rest/
+   * interact). A close button is always offered, so a dialogue can never
+   * soft-lock the player. Actions resolve through the caller's `onAction`.
+   *
+   * @param {object} opts
+   * @param {string} [opts.speaker]
+   * @param {string} [opts.portraitEmoji]
+   * @param {string[]} [opts.lines]
+   * @param {Array<{label:string,type:string}>} [opts.actions]
+   * @param {object} [opts.labels] - `dialogues.json.ui` label overrides
+   * @param {(action:object)=>void} [opts.onAction]
+   * @param {()=>void} [opts.onClose]
+   */
+  static showDialogueModal(modalOverlayEl, opts = {}) {
+    const lines = Array.isArray(opts.lines) ? opts.lines : [];
+    const actions = Array.isArray(opts.actions) ? opts.actions : [];
+    const labels = opts.labels || {};
+    this._reset(modalOverlayEl);
+    modalOverlayEl.classList.remove('title-active');
+
+    const lineHtml = lines.map((line) => `<p class="dialogue-line">${line}</p>`).join('');
+    const actionHtml = actions
+      .map((action, i) => `<button class="action-btn dialogue-action" data-action-index="${i}">${action.label}</button>`)
+      .join('');
+    modalOverlayEl.innerHTML = `
+      <div class="result-modal dialogue-modal">
+        <div class="dialogue-speaker">
+          ${opts.portraitEmoji ? `<span class="dialogue-portrait">${opts.portraitEmoji}</span>` : ''}
+          <h2>${opts.speaker || ''}</h2>
+        </div>
+        <div class="dialogue-lines">${lineHtml}</div>
+        <div class="dialogue-actions confirm-actions">
+          ${actionHtml}
+          <button class="action-btn dialogue-close" id="dialogue-close">${labels.closeLabel || opts.closeLabel || 'Farewell'}</button>
+        </div>
+      </div>
+    `;
+
+    const close = () => {
+      this._close(modalOverlayEl);
+      opts.onClose?.();
+    };
+    modalOverlayEl.querySelector('#dialogue-close')?.addEventListener('click', () => {
+      soundFX.play('uiBack');
+      close();
+    });
+    modalOverlayEl.querySelectorAll('[data-action-index]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const action = actions[Number(btn.getAttribute('data-action-index'))];
+        soundFX.play('click');
+        this._close(modalOverlayEl);
+        opts.onAction?.(action);
+      });
+    });
+
+    const keyHandler = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        this._clearKeyHandler(modalOverlayEl);
+        soundFX.play('uiBack');
+        close();
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        this._clearKeyHandler(modalOverlayEl);
+        if (actions.length) {
+          soundFX.play('click');
+          this._close(modalOverlayEl);
+          opts.onAction?.(actions[0]);
+        } else {
+          soundFX.play('uiBack');
+          close();
+        }
+      }
+    };
+    this._setKeyHandler(modalOverlayEl, keyHandler);
+  }
+
   static showCharacterSelectModal(modalOverlayEl, onSelectVocation) {
     this._reset(modalOverlayEl);
     modalOverlayEl.classList.remove('title-active');
