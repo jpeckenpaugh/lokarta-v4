@@ -25,6 +25,7 @@ import { soundFX, ambientDirector } from '../audio/index.js';
 import { KEYBINDINGS_CATALOG, UI_CATALOG, VOCATIONS_CATALOG } from '../data/index.js';
 import { setAnimState, advanceAnim } from './animation-state.js';
 import { swapWithPartyMemberAt } from '../engine/party-swap.js';
+import { runEquipTickEffect } from './equip-tick-effects.js';
 
 const DIRECTION_VECTORS = {
   up: { dx: 0, dy: -1 },
@@ -48,87 +49,6 @@ const STATUS_FLASH_COLORS = {
   root: '#8a9a5b',
 };
 const DEFAULT_STATUS_FLASH_COLOR = '#f97316';
-
-/**
- * Lifetime (seconds) of the Luminous Prayer orb VFX after each heal pulse
- *, resolved from `ui.json.playerVfx.luminousPrayer`.
- */
-const LUMINOUS_PRAYER_VFX_SEC = Number(UI_CATALOG?.playerVfx?.luminousPrayer?.durationSec) || 1.6;
-
-/**
- * Equipped-item passive tick effects, keyed by the catalog `tickEffectKey`
- * (`items.json`). The 10 Hz tick looks up the handler for the equipped relic /
- * armor; an item without a key (or an unknown key) is a silent no-op. Every
- * interval/amount is read from the item's catalog fields, so a new passive is a
- * catalog entry plus — only when functionally new — one handler here.
- */
-const EQUIP_TICK_EFFECTS = {
-  luminous_prayer_passive: (loop, item, deltaSec) => {
-    if (!loop.prayerAccumulator) loop.prayerAccumulator = 0;
-    loop.prayerAccumulator += deltaSec;
-    const intervalSec = Number(item.prayerPulseSec) || 10;
-    if (loop.prayerAccumulator < intervalSec) return;
-    loop.prayerAccumulator -= intervalSec;
-
-    const rank = item.itemLevel || 1;
-    const poolPerRank = Number(item.prayerPoolPerRank) || 2;
-    let poolRemaining = rank * poolPerRank;
-
-    let hpRestored = 0;
-    let manaRestored = 0;
-    const hpNeeded = Math.max(0, loop.player.max_hp - loop.player.hp);
-    const manaNeeded = Math.max(0, loop.player.max_mana - loop.player.mana);
-
-    if (hpNeeded > 0 && poolRemaining > 0) {
-      hpRestored = Math.min(hpNeeded, poolRemaining);
-      poolRemaining -= hpRestored;
-      loop.player.hp += hpRestored;
-    }
-    if (manaNeeded > 0 && poolRemaining > 0) {
-      manaRestored = Math.min(manaNeeded, poolRemaining);
-      poolRemaining -= manaRestored;
-      loop.player.mana += manaRestored;
-    }
-    if (hpRestored <= 0 && manaRestored <= 0) return;
-
-    soundFX.play('holyChime');
-    loop.player.luminousPrayerVfxSec = LUMINOUS_PRAYER_VFX_SEC;
-    const text = hpRestored > 0 && manaRestored > 0
-      ? `+${hpRestored} HP / +${manaRestored} MP`
-      : (hpRestored > 0 ? `+${hpRestored} HP` : `+${manaRestored} MP`);
-    loop.addFloatingText(text, loop.player.x, loop.player.y, '#f59e0b');
-    loop.logCombat(`Luminous Amulet Prayer restored ${text}.`, 'spell');
-    loop.updateHUD();
-  },
-  power_pulse_passive: (loop, item, deltaSec) => {
-    if (!loop.powerPulseAccumulator) loop.powerPulseAccumulator = 0;
-    loop.powerPulseAccumulator += deltaSec;
-
-    const rankCap = EconomySystem.maxRankForParty(loop.player);
-    const rank = Math.min(rankCap, Math.max(1, item.itemLevel || 1));
-    const base = Number(item.pulseIntervalBaseSec) || 22;
-    const per = Number(item.pulseIntervalPerRankSec) || 2;
-    const min = Number(item.pulseIntervalMinSec) || 12;
-    const intervalSec = Math.max(min, base - per * rank);
-    if (loop.powerPulseAccumulator < intervalSec) return;
-    loop.powerPulseAccumulator -= intervalSec;
-
-    const mpRestored = Math.max(1, rank * (Number(item.mpPulsePerRank) || 1));
-    if (loop.player.mana >= loop.player.max_mana) return;
-    const actualRestored = Math.min(mpRestored, loop.player.max_mana - loop.player.mana);
-    loop.player.mana += actualRestored;
-    soundFX.play('manaRegen');
-    loop.addFloatingText(`+${actualRestored} MP Pulse`, loop.player.x, loop.player.y, '#38bdf8');
-    loop.logCombat(`Apprentice's Cape Power Pulse restored +${actualRestored} MP!`, 'spell');
-    loop.updateHUD();
-  },
-};
-
-/** Runs an equipped item's catalog-declared passive tick effect, if any. */
-function runEquipTickEffect(loop, item, deltaSec) {
-  const handler = item && EQUIP_TICK_EFFECTS[item.tickEffectKey];
-  if (handler) handler(loop, item, deltaSec);
-}
 
 /**
  * Game loop and per-frame presentation: fixed-rate tick, animation clocks, and render.

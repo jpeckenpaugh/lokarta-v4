@@ -10,6 +10,7 @@ export * from './input-controller.js';
 export * from './ability-bar.js';
 export * from './app-controller.js';
 export * from './game-loop.js';
+export * from './equip-tick-effects.js';
 export * from './hud-fx.js';
 export * from './combat-controller.js';
 export * from './inventory-controller.js';

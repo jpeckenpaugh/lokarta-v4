@@ -7,6 +7,7 @@ import { HUDManager } from '../app/hud-manager.js';
 import { ModalManager } from '../app/modal-manager.js';
 import { InputController } from '../app/input-controller.js';
 import { LokartaApp } from '../app/app-controller.js';
+import { runEquipTickEffect, EQUIP_TICK_EFFECTS } from '../app/equip-tick-effects.js';
 import * as AppExports from '../app/index.js';
 import * as RootAppExports from '../app.js';
 
@@ -147,3 +148,27 @@ test('App Submodules & Root Re-exports', async (t) => {
   });
 });
 
+
+test('Equipped-item passive tick effects dispatch by catalog tickEffectKey', () => {
+  assert.equal(typeof runEquipTickEffect, 'function');
+  assert.equal(typeof EQUIP_TICK_EFFECTS.luminous_prayer_passive, 'function');
+  assert.equal(typeof EQUIP_TICK_EFFECTS.power_pulse_passive, 'function');
+
+  const events = [];
+  const loop = {
+    player: { hp: 10, max_hp: 50, mana: 0, max_mana: 30, x: 1, y: 1 },
+    addFloatingText: () => events.push('text'),
+    logCombat: () => events.push('log'),
+    updateHUD: () => events.push('hud'),
+  };
+
+  // An item with a catalog tickEffectKey runs its handler.
+  runEquipTickEffect(loop, { item_id: 'relic_luminous_amulet', tickEffectKey: 'luminous_prayer_passive', prayerPulseSec: 5, prayerPoolPerRank: 2, itemLevel: 1 }, 5);
+  assert.equal(loop.player.hp, 12, 'luminous prayer restores HP from the rank pool');
+  assert.ok(events.includes('hud'), 'handler repaints the HUD');
+
+  // An item with no/unknown key is a safe no-op.
+  const before = loop.player.hp;
+  runEquipTickEffect(loop, { item_id: 'apprentice_wand' }, 100);
+  assert.equal(loop.player.hp, before, 'Unknown/absent tickEffectKey never throws or mutates');
+});
