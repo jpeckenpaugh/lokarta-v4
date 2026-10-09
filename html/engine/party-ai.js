@@ -315,9 +315,26 @@ function manaFraction(actor) {
   return Math.max(0, Math.min(1, actor.mana / actor.max_mana));
 }
 
+/**
+ * Support-target dispatch (keyed by catalog ability `type`). Each resolver
+ * returns the most-helpful friendly actor for a support cast, or null when no
+ * ally qualifies. Adding a support kind is a table entry, not a new branch.
+ */
+const SUPPORT_TARGET_RESOLVERS = {
+  heal: (actor, spec, ctx, support) => {
+    const best = CombatSystem.selectHealTarget(actor, ctx.allies, Number(spec.healRadius) || 0);
+    if (!best) return null;
+    return hpFraction(best) <= support.healPct ? best : null;
+  },
+  shield: (actor, spec, ctx, support) => {
+    const radius = Number(spec.range || spec.healRadius) || 0;
+    return CombatSystem.selectShieldTarget(actor, ctx.allies, radius, support.shieldPct);
+  },
+};
+
 /** True for the support kinds (ally heal / ally shield). */
 function isSupportKind(spec) {
-  return Boolean(spec) && (spec.type === 'heal' || spec.type === 'shield');
+  return Boolean(spec) && Boolean(SUPPORT_TARGET_RESOLVERS[spec.type]);
 }
 
 /**
@@ -329,16 +346,8 @@ function isSupportKind(spec) {
 function supportTarget(actor, profile, spec, ctx) {
   const support = profile.support;
   if (!support || support.enabled !== true) return null;
-  if (spec.type === 'heal') {
-    const best = CombatSystem.selectHealTarget(actor, ctx.allies, Number(spec.healRadius) || 0);
-    if (!best) return null;
-    return hpFraction(best) <= support.healPct ? best : null;
-  }
-  if (spec.type === 'shield') {
-    const radius = Number(spec.range || spec.healRadius) || 0;
-    return CombatSystem.selectShieldTarget(actor, ctx.allies, radius, support.shieldPct);
-  }
-  return null;
+  const resolver = SUPPORT_TARGET_RESOLVERS[spec.type];
+  return resolver ? resolver(actor, spec, ctx, support) : null;
 }
 
 /**

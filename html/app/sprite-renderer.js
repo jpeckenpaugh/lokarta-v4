@@ -173,42 +173,58 @@ function fillNative(ctx, screenX, screenY, u, x, y, w, h, color) {
 }
 
 /**
+ * Wall-feature dispatch table (keyed by theme feature name). Each handler draws
+ * a 32x32-native castle motif with integer fillRect only. Unknown names are a
+ * safe no-op, so a theme may declare a feature before its renderer ships.
+ */
+const WALL_FEATURE_RENDERERS = {
+  sconce: (ctx, screenX, screenY, u, f) => {
+    fillNative(ctx, screenX, screenY, u, 24, 10, 4, 10, f.sconce);
+    fillNative(ctx, screenX, screenY, u, 24, 6, 4, 4, f.flame);
+    fillNative(ctx, screenX, screenY, u, 25, 7, 2, 2, '#ffffff');
+  },
+  banner: (ctx, screenX, screenY, u, f) => {
+    fillNative(ctx, screenX, screenY, u, 15, 4, 1, 20, f.bannerTrim);
+    fillNative(ctx, screenX, screenY, u, 10, 4, 12, 18, f.banner);
+    fillNative(ctx, screenX, screenY, u, 10, 4, 12, 2, f.bannerTrim);
+    fillNative(ctx, screenX, screenY, u, 10, 20, 12, 2, f.bannerTrim);
+  },
+  window: (ctx, screenX, screenY, u, f, theme) => {
+    fillNative(ctx, screenX, screenY, u, 10, 4, 12, 18, theme.wall.topHighlight);
+    fillNative(ctx, screenX, screenY, u, 12, 6, 8, 14, f.window);
+    fillNative(ctx, screenX, screenY, u, 15, 6, 2, 14, theme.wall.gridLine);
+  },
+};
+
+/**
  * Draws a 32x32-native castle motif on a wall tile using integer fillRect only.
  * @param {CanvasRenderingContext2D} ctx
  * @param {'sconce'|'banner'|'window'} name
  */
 export function drawWallFeature(ctx, name, screenX, screenY, size, theme) {
-  const u = size / 32;
-  const f = theme.features || {};
-  if (name === 'sconce') {
-    fillNative(ctx, screenX, screenY, u, 24, 10, 4, 10, f.sconce);
-    fillNative(ctx, screenX, screenY, u, 24, 6, 4, 4, f.flame);
-    fillNative(ctx, screenX, screenY, u, 25, 7, 2, 2, '#ffffff');
-  } else if (name === 'banner') {
-    fillNative(ctx, screenX, screenY, u, 15, 4, 1, 20, f.bannerTrim);
-    fillNative(ctx, screenX, screenY, u, 10, 4, 12, 18, f.banner);
-    fillNative(ctx, screenX, screenY, u, 10, 4, 12, 2, f.bannerTrim);
-    fillNative(ctx, screenX, screenY, u, 10, 20, 12, 2, f.bannerTrim);
-  } else if (name === 'window') {
-    fillNative(ctx, screenX, screenY, u, 10, 4, 12, 18, theme.wall.topHighlight);
-    fillNative(ctx, screenX, screenY, u, 12, 6, 8, 14, f.window);
-    fillNative(ctx, screenX, screenY, u, 15, 6, 2, 14, theme.wall.gridLine);
-  }
+  const renderer = WALL_FEATURE_RENDERERS[name];
+  if (!renderer) return;
+  renderer(ctx, screenX, screenY, size / 32, theme.features || {}, theme);
 }
 
 /**
  * Data-driven prop id for a ground item: keys resolve by `keyTier`, chests by
- * `chestTier` (falling back to `tier`). No string heuristics.
+ * `chestTier` (falling back to `tier`). Type -> tier-map field is a dispatch
+ * table, so a new prop type is a catalog + table entry, never a branch.
  * @returns {string|null}
  */
+const PROP_TYPE_FIELD = {
+  key: 'key',
+  chest: 'chest',
+};
+
 export function resolvePropId(item) {
   if (!item) return null;
+  const field = PROP_TYPE_FIELD[item.type];
+  if (!field) return null;
   const tier = item.keyTier || item.chestTier || item.tier;
   const map = tier && PROP_IDS_BY_TIER[tier];
-  if (!map) return null;
-  if (item.type === 'key') return map.key;
-  if (item.type === 'chest') return map.chest;
-  return null;
+  return map ? map[field] || null : null;
 }
 
 /**
@@ -715,6 +731,33 @@ const ITEM_RENDERERS = {
   },
 };
 
+/**
+ * Shared cultist robe silhouette. Shadow vs elite differ only by palette, so
+ * each `MONSTER_RENDERERS` entry selects its own colors at dispatch time instead
+ * of branching on the live monster type inside one renderer.
+ */
+function drawCultist(ctx, cx, cy, u, robe, hood) {
+  ctx.fillStyle = robe;
+  ctx.beginPath();
+  ctx.moveTo(cx - 7 * u, cy + 12 * u);
+  ctx.lineTo(cx + 7 * u, cy + 12 * u);
+  ctx.lineTo(cx + 4 * u, cy - 4 * u);
+  ctx.lineTo(cx - 4 * u, cy - 4 * u);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = hood;
+  ctx.beginPath();
+  ctx.arc(cx, cy - 6 * u, 6 * u, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#a855f7';
+  ctx.beginPath();
+  ctx.arc(cx - 2 * u, cy - 6 * u, 1.5 * u, 0, Math.PI * 2);
+  ctx.arc(cx + 2 * u, cy - 6 * u, 1.5 * u, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 const MONSTER_RENDERERS = {
   giant_rat: (ctx, cx, cy, u) => {
     ctx.fillStyle = '#5a3d28';
@@ -746,31 +789,8 @@ const MONSTER_RENDERERS = {
     ctx.arc(cx + 2 * u, cy - 4 * u, 1 * u, 0, Math.PI * 2);
     ctx.fill();
   },
-  shadow_cultist: (ctx, cx, cy, u, monster) => {
-    const isElite = monster.type === 'elite_cultist';
-    ctx.fillStyle = isElite ? '#3b0764' : '#1e1b4b';
-    ctx.beginPath();
-    ctx.moveTo(cx - 7 * u, cy + 12 * u);
-    ctx.lineTo(cx + 7 * u, cy + 12 * u);
-    ctx.lineTo(cx + 4 * u, cy - 4 * u);
-    ctx.lineTo(cx - 4 * u, cy - 4 * u);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = isElite ? '#6b21a8' : '#312e81';
-    ctx.beginPath();
-    ctx.arc(cx, cy - 6 * u, 6 * u, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#a855f7';
-    ctx.beginPath();
-    ctx.arc(cx - 2 * u, cy - 6 * u, 1.5 * u, 0, Math.PI * 2);
-    ctx.arc(cx + 2 * u, cy - 6 * u, 1.5 * u, 0, Math.PI * 2);
-    ctx.fill();
-  },
-  elite_cultist: (ctx, cx, cy, u, monster) => {
-    MONSTER_RENDERERS.shadow_cultist(ctx, cx, cy, u, monster);
-  },
+  shadow_cultist: (ctx, cx, cy, u) => drawCultist(ctx, cx, cy, u, '#1e1b4b', '#312e81'),
+  elite_cultist: (ctx, cx, cy, u) => drawCultist(ctx, cx, cy, u, '#3b0764', '#6b21a8'),
   abyssal_overlord: (ctx, cx, cy, u) => {
     ctx.fillStyle = '#450a0a';
     ctx.beginPath();
@@ -1375,7 +1395,7 @@ export class SpriteRenderer {
     const cx = screenX + size / 2;
     const cy = screenY + size / 2;
 
-    const isBoss = monster.isBoss || monster.type === 'abyssal_overlord';
+    const isBoss = monster.isBoss === true;
     // Per-monster visual overrides (LIV-71): a data-driven fur tint replaces the
     // shared giant_rat look for named elites like The Gutter King; a crown
     // overlay is drawn above the sprite. Absent overrides leave the sprite intact.

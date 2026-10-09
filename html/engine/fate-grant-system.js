@@ -303,16 +303,11 @@ export class FateGrantSystem {
       const itemToPlace = JSON.parse(JSON.stringify(card.item));
       if (!itemToPlace.itemLevel) itemToPlace.itemLevel = 1;
 
-      // Roll fixed damage stats for items with random ranges when offered/drafted
-      if (itemToPlace.item_id === 'apprentice_wand' && !itemToPlace.damage) {
-        itemToPlace.damage = Math.floor(Math.random() * (16 - 12 + 1)) + 12;
-      }
-
+      const catalogItem = ITEMS_CATALOG[itemToPlace.item_id];
       // Merge functional catalog fields the card payload omits (LOK-12 Golden
       // gear relies on equipped instances carrying actionKey/cooldown/ammo/
       // absorb fields even when placed via card payloads that only carry the
       // cosmetic fields).
-      const catalogItem = ITEMS_CATALOG[itemToPlace.item_id];
       const FUNCTIONAL_ITEM_KEYS = [
         'slot', 'damageMin', 'damageMax', 'range', 'cooldown', 'manaCost',
         'actionKey', 'arrowCapacity', 'arrowCount', 'ammoRegenSec',
@@ -332,6 +327,14 @@ export class FateGrantSystem {
             itemToPlace[key] = catalogItem[key];
           }
         }
+      }
+
+      // Roll a fixed `damage` for any catalog item authored with a damage range
+      // (matches the draft-offer path at generateDraftOffer). Id-independent.
+      if (catalogItem && !itemToPlace.damage
+        && Number.isFinite(catalogItem.damageMin) && Number.isFinite(catalogItem.damageMax)
+        && catalogItem.damageMax >= catalogItem.damageMin) {
+        itemToPlace.damage = Math.floor(Math.random() * (catalogItem.damageMax - catalogItem.damageMin + 1)) + catalogItem.damageMin;
       }
 
       // Stackable acquisitions (potion stashes, ammo) top up an

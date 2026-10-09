@@ -3,6 +3,17 @@
  * Provides zero-dependency procedural audio driven by JSON sound definitions.
  */
 
+/**
+ * Sound-synthesis dispatch table: `sounds.json` `type` -> private renderer
+ * method. Adding a new synthesis shape is a table entry + a method, never a
+ * `switch` change. Unknown types are a safe no-op (silent).
+ */
+const SOUND_RENDERER_METHODS = {
+  sweep: '_playSweep',
+  sequence: '_playSequence',
+  composite: '_playComposite',
+};
+
 export class AudioSystem {
   constructor() {
     this.ctx = null;
@@ -253,16 +264,9 @@ export class AudioSystem {
     const now = this.ctx.currentTime;
     const vScale = typeof volumeScale === 'number' ? Math.max(0.10, Math.min(1.0, volumeScale)) : 1.0;
 
-    switch (config.type) {
-      case 'sweep':
-        this._playSweep(config, now, vScale);
-        break;
-      case 'sequence':
-        this._playSequence(config, now, vScale);
-        break;
-      case 'composite':
-        this._playComposite(config, now, vScale);
-        break;
+    const renderMethod = SOUND_RENDERER_METHODS[config.type];
+    if (renderMethod && typeof this[renderMethod] === 'function') {
+      this[renderMethod](config, now, vScale);
     }
   }
 

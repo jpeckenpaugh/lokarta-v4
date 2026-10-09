@@ -46,6 +46,16 @@ const STATE_CLASSES = [
 /** Reasons whose button reads as "suppressed" (dimmed, non-firing). */
 const SUPPRESSED_REASONS = new Set(['mana', 'ammo', 'no-target', 'active', 'dead', 'inactive']);
 
+/** Aria suffix per guard reason (dispatch table, not a switch ladder). */
+const STATE_SUFFIX_BY_REASON = {
+  cooldown: 'recharging',
+  mana: 'out of mana',
+  ammo: 'out of ammo',
+  'no-target': 'no target',
+  active: 'already active',
+  ok: 'ready',
+};
+
 export class AbilityBar {
   constructor(app) {
     this.app = app;
@@ -506,14 +516,8 @@ export class AbilityBar {
   }
 
   _stateSuffix(reason, ctx) {
-    switch (reason) {
-      case 'cooldown': return 'recharging';
-      case 'mana': return 'out of mana';
-      case 'ammo': return 'out of ammo';
-      case 'no-target': return 'no target';
-      case 'active': return 'already active';
-      case 'ok': return 'ready';
-      default: return ctx.actionKey ? 'ready' : 'no ability';
-    }
+    const suffix = STATE_SUFFIX_BY_REASON[reason];
+    if (suffix) return suffix;
+    return ctx.actionKey ? 'ready' : 'no ability';
   }
 }

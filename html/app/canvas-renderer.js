@@ -554,7 +554,7 @@ export class CanvasRenderer {
       if (monster.visible && monster.hp > 0) {
         const screenX = monster.x * CONFIG.GRID_SIZE - this.cameraX;
         const screenY = monster.y * CONFIG.GRID_SIZE - this.cameraY;
-        const isBoss = monster.isBoss || monster.type === 'abyssal_overlord';
+        const isBoss = monster.isBoss === true;
         const d = Math.hypot(monster.x - player.x, monster.y - player.y) / playerRadius;
         monster._dim = isBoss ? 1 : Math.max(0.65, Math.min(1, 1 - 0.35 * d));
         SpriteRenderer.drawMonster(ctx, monster, screenX, screenY);

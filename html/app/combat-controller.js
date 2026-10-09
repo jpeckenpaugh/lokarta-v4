@@ -17,8 +17,10 @@ import {
 } from '../engine/index.js';
 import { soundFX } from '../audio/index.js';
 import { ITEMS_CATALOG, UI_CATALOG } from '../data/index.js';
+import { SPRITE_CATALOG } from '../assets/sprites/index.js';
 import { TOWER_LEVEL_COUNT } from '../services/floor-generator.js';
 import { setAnimState, dirFromFacing } from './animation-state.js';
+import { resolveSpriteId } from './sprite-renderer.js';
 
 /**
  * Lifetime (seconds) of the Luminous Prayer orb VFX after each heal pulse
@@ -47,8 +49,8 @@ export const combatControllerMethods = {
 
     soundFX.init();
 
-    // 1. Consumable items (potions)
-    if (item.type === 'consumable') {
+    // 1. Consumable items (potions); dispatched on the catalog effect.
+    if (InventorySystem.hasConsumableEffect(item)) {
       const res = InventorySystem.consumeItem(this.player, item, () => {
         if (item.quantity > 1) {
           item.quantity -= 1;
@@ -367,7 +369,9 @@ export const combatControllerMethods = {
       const index = this.monsters.findIndex(m => m.id === res.defeatedMonsterId);
       if (index !== -1) {
         const deadMonster = this.monsters[index];
-        const isBoss = deadMonster.isBoss || deadMonster.id.includes('boss') || deadMonster.max_hp >= 200;
+        // Boss identity is fully declarative: the generator/catalog stamp
+        // `isBoss`; no id/health heuristics here.
+        const isBoss = deadMonster.isBoss === true;
 
         // I10 Bestiary: record the first defeat of this foe on the save envelope
         // (spoiler-safe — a foe only appears in the codex once beaten).
@@ -494,7 +498,11 @@ export const combatControllerMethods = {
   spawnDeathEffect(actor) {
     if (!actor) return;
     if (!this.deathEffects) this.deathEffects = [];
-    const frames = (actor.type === 'abyssal_overlord' || actor.isBoss) ? 6 : 4;
+    // Frame count comes from the actor's authored death animation (sprite def),
+    // falling back to a boss/non-boss default only when no sprite resolves.
+    const spriteDef = SPRITE_CATALOG[resolveSpriteId(actor)] || null;
+    const deathFrames = spriteDef?.animations?.death?.down?.length;
+    const frames = deathFrames || (actor.isBoss ? 6 : 4);
     const facing = actor.facing || 'down';
     this.deathEffects.push({
       spriteId: actor.type || actor.vocation || actor.spriteId,

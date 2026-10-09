@@ -312,12 +312,20 @@ export class CombatSystem {
     return best;
   }
 
+  /** Catalog-declared ammo type of a carried/ground item, or null. */
+  static ammoTypeOf(item) {
+    if (!item) return null;
+    return item.ammoType || ITEMS_CATALOG[item.item_id]?.ammoType || null;
+  }
+
   static findArrowItem(player) {
+    // Ammo identity is a catalog field (`items.json.ammoType`), never an id
+    // heuristic. Any carried stack that declares an ammo type qualifies.
     // Check Action Bar first
     if (player.action_bar) {
       for (let i = 0; i < player.action_bar.length; i++) {
         const item = player.action_bar[i];
-        if (item && item.item_id === 'arrows' && item.quantity > 0) {
+        if (item && item.quantity > 0 && CombatSystem.ammoTypeOf(item)) {
           return { inActionBar: true, index: i, item };
         }
       }
@@ -326,7 +334,7 @@ export class CombatSystem {
     if (player.backpack) {
       for (let i = 0; i < player.backpack.length; i++) {
         const item = player.backpack[i];
-        if (item && item.item_id === 'arrows' && item.quantity > 0) {
+        if (item && item.quantity > 0 && CombatSystem.ammoTypeOf(item)) {
           return { inBackpack: true, index: i, item };
         }
       }
@@ -1222,9 +1230,11 @@ export class CombatSystem {
     const pushbackRange = item.pushbackRange || 1;
     const stunSec = item.stunSec || 1.0;
 
+    // Integer tile hashing for occupancy (§3.2), not template-string keys.
+    const width = gridMap.width;
     const occupiedTiles = new Set();
     for (const m of monsters) {
-      if (m && m.hp > 0) occupiedTiles.add(`${m.x},${m.y}`);
+      if (m && m.hp > 0) occupiedTiles.add(m.y * width + m.x);
     }
 
     const affected = [];
@@ -1248,11 +1258,11 @@ export class CombatSystem {
         const ny = toY + dy;
         if (!gridMap.isWalkable(nx, ny)) break; // wall / out of bounds -> stop
         if (nx === player.x && ny === player.y) break; // never shove into the player
-        if (occupiedTiles.has(`${nx},${ny}`)) break; // tile occupied by another monster
-        occupiedTiles.delete(`${m.x},${m.y}`);
+        if (occupiedTiles.has(ny * width + nx)) break; // tile occupied by another monster
+        occupiedTiles.delete(m.y * width + m.x);
         toX = nx;
         toY = ny;
-        occupiedTiles.add(`${toX},${toY}`);
+        occupiedTiles.add(toY * width + toX);
         moved += 1;
       }
 

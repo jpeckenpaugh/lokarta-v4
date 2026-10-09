@@ -56,6 +56,81 @@ const DEFAULT_STATUS_FLASH_COLOR = '#f97316';
 const LUMINOUS_PRAYER_VFX_SEC = Number(UI_CATALOG?.playerVfx?.luminousPrayer?.durationSec) || 1.6;
 
 /**
+ * Equipped-item passive tick effects, keyed by the catalog `tickEffectKey`
+ * (`items.json`). The 10 Hz tick looks up the handler for the equipped relic /
+ * armor; an item without a key (or an unknown key) is a silent no-op. Every
+ * interval/amount is read from the item's catalog fields, so a new passive is a
+ * catalog entry plus — only when functionally new — one handler here.
+ */
+const EQUIP_TICK_EFFECTS = {
+  luminous_prayer_passive: (loop, item, deltaSec) => {
+    if (!loop.prayerAccumulator) loop.prayerAccumulator = 0;
+    loop.prayerAccumulator += deltaSec;
+    const intervalSec = Number(item.prayerPulseSec) || 10;
+    if (loop.prayerAccumulator < intervalSec) return;
+    loop.prayerAccumulator -= intervalSec;
+
+    const rank = item.itemLevel || 1;
+    const poolPerRank = Number(item.prayerPoolPerRank) || 2;
+    let poolRemaining = rank * poolPerRank;
+
+    let hpRestored = 0;
+    let manaRestored = 0;
+    const hpNeeded = Math.max(0, loop.player.max_hp - loop.player.hp);
+    const manaNeeded = Math.max(0, loop.player.max_mana - loop.player.mana);
+
+    if (hpNeeded > 0 && poolRemaining > 0) {
+      hpRestored = Math.min(hpNeeded, poolRemaining);
+      poolRemaining -= hpRestored;
+      loop.player.hp += hpRestored;
+    }
+    if (manaNeeded > 0 && poolRemaining > 0) {
+      manaRestored = Math.min(manaNeeded, poolRemaining);
+      poolRemaining -= manaRestored;
+      loop.player.mana += manaRestored;
+    }
+    if (hpRestored <= 0 && manaRestored <= 0) return;
+
+    soundFX.play('holyChime');
+    loop.player.luminousPrayerVfxSec = LUMINOUS_PRAYER_VFX_SEC;
+    const text = hpRestored > 0 && manaRestored > 0
+      ? `+${hpRestored} HP / +${manaRestored} MP`
+      : (hpRestored > 0 ? `+${hpRestored} HP` : `+${manaRestored} MP`);
+    loop.addFloatingText(text, loop.player.x, loop.player.y, '#f59e0b');
+    loop.logCombat(`Luminous Amulet Prayer restored ${text}.`, 'spell');
+    loop.updateHUD();
+  },
+  power_pulse_passive: (loop, item, deltaSec) => {
+    if (!loop.powerPulseAccumulator) loop.powerPulseAccumulator = 0;
+    loop.powerPulseAccumulator += deltaSec;
+
+    const rankCap = EconomySystem.maxRankForParty(loop.player);
+    const rank = Math.min(rankCap, Math.max(1, item.itemLevel || 1));
+    const base = Number(item.pulseIntervalBaseSec) || 22;
+    const per = Number(item.pulseIntervalPerRankSec) || 2;
+    const min = Number(item.pulseIntervalMinSec) || 12;
+    const intervalSec = Math.max(min, base - per * rank);
+    if (loop.powerPulseAccumulator < intervalSec) return;
+    loop.powerPulseAccumulator -= intervalSec;
+
+    const mpRestored = Math.max(1, rank * (Number(item.mpPulsePerRank) || 1));
+    if (loop.player.mana >= loop.player.max_mana) return;
+    const actualRestored = Math.min(mpRestored, loop.player.max_mana - loop.player.mana);
+    loop.player.mana += actualRestored;
+    soundFX.play('manaRegen');
+    loop.addFloatingText(`+${actualRestored} MP Pulse`, loop.player.x, loop.player.y, '#38bdf8');
+    loop.logCombat(`Apprentice's Cape Power Pulse restored +${actualRestored} MP!`, 'spell');
+    loop.updateHUD();
+  },
+};
+
+/** Runs an equipped item's catalog-declared passive tick effect, if any. */
+function runEquipTickEffect(loop, item, deltaSec) {
+  const handler = item && EQUIP_TICK_EFFECTS[item.tickEffectKey];
+  if (handler) handler(loop, item, deltaSec);
+}
+
+/**
  * Game loop and per-frame presentation: fixed-rate tick, animation clocks, and render.
  * Assigned onto `LokartaApp.prototype` from `app-controller.js`.
  */
@@ -223,73 +298,10 @@ export const gameLoopMethods = {
     // and resetting the moment the player steps away (LIV-74).
     this.updateSpringRegen(deltaSec);
 
-    // Auto-Prayer Pulse (Luminous Amulet every 10 seconds)
-    const equippedRelic = this.player.paperdoll?.relic;
-    if (equippedRelic && equippedRelic.item_id === 'relic_luminous_amulet') {
-      if (!this.prayerAccumulator) this.prayerAccumulator = 0;
-      this.prayerAccumulator += deltaSec;
-      if (this.prayerAccumulator >= 10.0) {
-        this.prayerAccumulator -= 10.0;
-        const rank = equippedRelic.itemLevel || 1;
-        const pointsPool = rank * 2; // Rank 1: 2, Rank 2: 4, Rank 3: 6, Rank 4: 8, Rank 5: 10
-
-        let hpNeeded = Math.max(0, this.player.max_hp - this.player.hp);
-        let manaNeeded = Math.max(0, this.player.max_mana - this.player.mana);
-
-        let hpRestored = 0;
-        let manaRestored = 0;
-        let poolRemaining = pointsPool;
-
-        if (hpNeeded > 0 && poolRemaining > 0) {
-          hpRestored = Math.min(hpNeeded, poolRemaining);
-          poolRemaining -= hpRestored;
-          this.player.hp += hpRestored;
-        }
-
-        if (manaNeeded > 0 && poolRemaining > 0) {
-          manaRestored = Math.min(manaNeeded, poolRemaining);
-          poolRemaining -= manaRestored;
-          this.player.mana += manaRestored;
-        }
-
-        if (hpRestored > 0 || manaRestored > 0) {
-          soundFX.play('holyChime');
-          this.player.luminousPrayerVfxSec = LUMINOUS_PRAYER_VFX_SEC;
-          let text = '';
-          if (hpRestored > 0 && manaRestored > 0) text = `+${hpRestored} HP / +${manaRestored} MP`;
-          else if (hpRestored > 0) text = `+${hpRestored} HP`;
-          else text = `+${manaRestored} MP`;
-
-          this.addFloatingText(text, this.player.x, this.player.y, '#f59e0b');
-          this.logCombat(`Luminous Amulet Prayer restored ${text}.`, 'spell');
-          this.updateHUD();
-        }
-      }
-    }
-
-    // Power Pulse (Apprentice's Cape armor)
-    const equippedArmor = this.player.paperdoll?.armor;
-    if (equippedArmor && equippedArmor.item_id === 'apprentice_cape') {
-      if (!this.powerPulseAccumulator) this.powerPulseAccumulator = 0;
-      this.powerPulseAccumulator += deltaSec;
-      const rankCap = EconomySystem.maxRankForParty(this.player);
-      const rank = Math.min(rankCap, Math.max(1, equippedArmor.itemLevel || 1));
-      const intervalSec = Math.max(12, 22 - 2 * rank); // Rank 1: 20s, Rank 2: 18s, ... floors at 12s from Rank 5
-
-      if (this.powerPulseAccumulator >= intervalSec) {
-        this.powerPulseAccumulator -= intervalSec;
-        const mpRestored = rank; // +1 MP at Rank 1 up to +5 MP at Rank 5
-
-        if (this.player.mana < this.player.max_mana) {
-          const actualRestored = Math.min(mpRestored, this.player.max_mana - this.player.mana);
-          this.player.mana += actualRestored;
-          soundFX.play('manaRegen');
-          this.addFloatingText(`+${actualRestored} MP Pulse`, this.player.x, this.player.y, '#38bdf8');
-          this.logCombat(`Apprentice's Cape Power Pulse restored +${actualRestored} MP!`, 'spell');
-          this.updateHUD();
-        }
-      }
-    }
+    // Equipped passive tick effects (Luminous Amulet auto-prayer, Apprentice's
+    // Cape power pulse) are dispatched by the item's catalog `tickEffectKey`.
+    runEquipTickEffect(this, this.player.paperdoll?.relic, deltaSec);
+    runEquipTickEffect(this, this.player.paperdoll?.armor, deltaSec);
 
     // 3. Update lighting. Outdoor scenes are ambient (fully lit); tower floors
     // keep the player-radius FOV unchanged (LIV-59 P1).
@@ -961,55 +973,59 @@ export const gameLoopMethods = {
   resolveWaveLandedMonsters(carriedMonsters, fX, fY) {
     if (!carriedMonsters || carriedMonsters.length === 0) return;
 
-    // Filter surviving monsters
-    const survivors = carriedMonsters.filter(c => c.monster && c.monster.hp > 0);
-    if (survivors.length === 0) return;
+    const width = this.gridMap.width;
+    const hash = (x, y) => y * width + x;
 
-    // Group survivors by target landing tile
-    const occupiedTiles = new Set();
-    // Track monsters that are already stationary on the map (not in the wave)
-    for (const m of this.monsters) {
-      if (m.hp > 0 && !survivors.some(s => s.monster.id === m.id)) {
-        occupiedTiles.add(`${m.x},${m.y}`);
+    // Survivors + their ids in one pass (no per-iteration `.some`/`.filter`).
+    const survivors = [];
+    const survivorIds = new Set();
+    for (const c of carriedMonsters) {
+      if (c.monster && c.monster.hp > 0) {
+        survivors.push(c);
+        survivorIds.add(c.monster.id);
       }
     }
+    if (survivors.length === 0) return;
+
+    // Integer-keyed occupancy of monsters already stationary on the map.
+    const occupiedTiles = new Set();
+    for (const m of this.monsters) {
+      if (m.hp > 0 && !survivorIds.has(m.id)) occupiedTiles.add(hash(m.x, m.y));
+    }
+
+    // Landing offsets depend only on the wave direction: compute once per call.
+    const checkOffsets = [
+      [-fX, -fY], [-fY, -fX], [fY, fX], [fX, fY], [-fX * 2, -fY * 2],
+    ];
 
     for (const entry of survivors) {
       const m = entry.monster;
-      const originalKey = `${m.x},${m.y}`;
+      const originalKey = hash(m.x, m.y);
 
       if (!occupiedTiles.has(originalKey)) {
         // Tile is free, keep monster here
         occupiedTiles.add(originalKey);
-      } else {
-        // Tile is occupied, find closest adjacent free walkable tile
-        let placed = false;
-        // Search directions: backwards along wave path first, then sides, then forwards
-        const checkOffsets = [
-          { dx: -fX, dy: -fY },
-          { dx: -fY, dy: -fX },
-          { dx: fY, dy: fX },
-          { dx: fX, dy: fY },
-          { dx: -fX * 2, dy: -fY * 2 },
-        ];
-
-        for (const off of checkOffsets) {
-          const nx = m.x + off.dx;
-          const ny = m.y + off.dy;
-          const key = `${nx},${ny}`;
-          if (this.gridMap.isWalkable(nx, ny) && !occupiedTiles.has(key)) {
-            m.x = nx;
-            m.y = ny;
-            occupiedTiles.add(key);
-            placed = true;
-            break;
-          }
+        continue;
+      }
+      // Tile is occupied, find closest adjacent free walkable tile
+      let placed = false;
+      // Search directions: backwards along wave path first, then sides, then forwards
+      for (let i = 0; i < checkOffsets.length; i++) {
+        const nx = m.x + checkOffsets[i][0];
+        const ny = m.y + checkOffsets[i][1];
+        const key = hash(nx, ny);
+        if (this.gridMap.isWalkable(nx, ny) && !occupiedTiles.has(key)) {
+          m.x = nx;
+          m.y = ny;
+          occupiedTiles.add(key);
+          placed = true;
+          break;
         }
+      }
 
-        if (!placed) {
-          // Fallback: keep on original tile if no adjacent space exists
-          occupiedTiles.add(originalKey);
-        }
+      if (!placed) {
+        // Fallback: keep on original tile if no adjacent space exists
+        occupiedTiles.add(originalKey);
       }
     }
 
@@ -1134,18 +1150,20 @@ export const gameLoopMethods = {
             this.addFloatingText(`-${stepDmg}`, m.x, m.y, '#ff66dd');
           }
 
-          // Check for co-located monsters riding the wave together (Stack Collision)
-          const tileCounts = {};
+          // Check for co-located monsters riding the wave together (Stack Collision).
+          // Integer tile hash (no string keys, §3.2).
+          const stackWidth = this.gridMap.width;
+          const tileCounts = new Map();
           for (const entry of activeCarried) {
             if (entry.monster.hp <= 0) continue;
-            const key = `${entry.monster.x},${entry.monster.y}`;
-            tileCounts[key] = (tileCounts[key] || 0) + 1;
+            const key = entry.monster.y * stackWidth + entry.monster.x;
+            tileCounts.set(key, (tileCounts.get(key) || 0) + 1);
           }
 
           for (const entry of activeCarried) {
             if (entry.monster.hp <= 0) continue;
-            const key = `${entry.monster.x},${entry.monster.y}`;
-            if (tileCounts[key] > 1) {
+            const key = entry.monster.y * stackWidth + entry.monster.x;
+            if (tileCounts.get(key) > 1) {
               const stackDmg = 10;
               entry.monster.hp -= stackDmg;
               this.addFloatingText(`-${stackDmg} Stack Collide!`, entry.monster.x, entry.monster.y, '#f59e0b');

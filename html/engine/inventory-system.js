@@ -23,6 +23,17 @@ const EQUIP_SLOT_ORDER = EQUIPMENT_SLOT_KEYS;
 /** Item types that occupy an equipment slot (fallback when `slotRole` is absent). */
 const EQUIPPABLE_TYPES = new Set(['weapon', 'offhand', 'armor', 'relic']);
 
+/** Item type -> paperdoll slot (legacy fallback when no explicit `slot`). */
+const TYPE_EQUIP_SLOT = {
+  weapon: 'main_hand',
+  offhand: 'off_hand',
+  armor: 'armor',
+  relic: 'relic',
+};
+
+/** Item type -> active-slot role (legacy fallback when no explicit `slotRole`). */
+const TYPE_ACTIVE_ROLE = new Set(['consumable', 'item']);
+
 /** Slot-role dispatch (D1 §0.3): catalog-declared, never a string heuristic. */
 const ITEM_SLOT_ROLE = {
   active: 'active',
@@ -128,7 +139,7 @@ export class InventorySystem {
     if (role && ITEM_SLOT_ROLE[role]) return role;
     // Legacy fallback for saves/items authored before `slotRole` existed.
     const type = item.type || catalogItem.type;
-    if (type === 'consumable' || type === 'item') return 'active';
+    if (TYPE_ACTIVE_ROLE.has(type)) return 'active';
     if (EQUIPPABLE_TYPES.has(type)) return 'equipment';
     return 'bank';
   }
@@ -147,11 +158,7 @@ export class InventorySystem {
     const slot = item.slot || catalogItem?.slot;
     if (slot) return slot;
     const type = item.type || catalogItem?.type;
-    if (type === 'weapon') return 'main_hand';
-    if (type === 'offhand') return 'off_hand';
-    if (type === 'armor') return 'armor';
-    if (type === 'relic') return 'relic';
-    return null;
+    return TYPE_EQUIP_SLOT[type] || null;
   }
 
   static isEquippable(item) {
@@ -272,8 +279,9 @@ export class InventorySystem {
     const maxStack = InventorySystem.getMaxStack(groundItem.item_id);
     let totalPickedUp = 0;
 
-    // 0. Floor arrow drops fill the equipped quiver first.
-    if (groundItem.item_id === 'arrows') {
+    // 0. Floor ammo drops fill the equipped quiver first (catalog `ammoType`).
+    const groundAmmoType = groundItem.ammoType || ITEMS_CATALOG[groundItem.item_id]?.ammoType;
+    if (groundAmmoType) {
       const quiver = player.paperdoll?.off_hand;
       if (quiver && typeof quiver.arrowCount === 'number' && typeof quiver.arrowCapacity === 'number') {
         const space = quiver.arrowCapacity - quiver.arrowCount;
@@ -604,7 +612,7 @@ export class InventorySystem {
     const item = player.backpack[slotIndex];
     if (!item) return { success: false, message: 'Slot is empty.' };
 
-    if (item.type === 'consumable') {
+    if (InventorySystem.hasConsumableEffect(item)) {
       return InventorySystem.consumeItem(player, item, () => {
         if (item.quantity > 1) item.quantity -= 1;
         else player.backpack[slotIndex] = null;
@@ -704,6 +712,13 @@ export class InventorySystem {
     const aName = a ? a.name : 'Empty';
     const bName = b ? b.name : 'Empty';
     return { success: true, message: `Swapped ${aName} ↔ ${bName}.` };
+  }
+
+  /** True when the item resolves to a catalog-declared consumable effect. */
+  static hasConsumableEffect(item) {
+    if (!item) return false;
+    const effect = item.effect || ITEMS_CATALOG[item.item_id]?.effect;
+    return Boolean(effect && CONSUMABLE_EFFECTS[effect.kind]);
   }
 
   static consumeItem(player, item, removeCallback) {
