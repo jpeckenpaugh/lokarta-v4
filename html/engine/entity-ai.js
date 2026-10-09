@@ -4,9 +4,30 @@
 
 import { CONFIG } from './config.js';
 import { LightingSystem } from './lighting-system.js';
-import { MONSTERS_CATALOG } from '../data/index.js';
+import { MONSTERS_CATALOG, resolveMonsterDefinition } from '../data/index.js';
 import { CombatSystem } from './combat-system.js';
 import { MONSTER_FACTION } from './faction.js';
+
+/** Cardinal neighbor offsets (static, frozen: no per-tick allocation, §3.1). */
+const CARDINAL_DIRS = Object.freeze([
+  Object.freeze({ x: 0, y: -1, dir: 'up' }),
+  Object.freeze({ x: 0, y: 1, dir: 'down' }),
+  Object.freeze({ x: -1, y: 0, dir: 'left' }),
+  Object.freeze({ x: 1, y: 0, dir: 'right' }),
+]);
+
+/** Cardinal neighbor tile deltas as flat `[dx, dy]` pairs (A* neighbor loop). */
+const CARDINAL_DELTAS = Object.freeze([
+  Object.freeze([0, -1]),
+  Object.freeze([0, 1]),
+  Object.freeze([-1, 0]),
+  Object.freeze([1, 0]),
+]);
+
+/** Integer grid hash (no string keys in hot loops, §3.2). Module-level: no closure alloc. */
+function gridHash(x, y, width) {
+  return y * width + x;
+}
 
 /**
  * Attack-pattern dispatch (catalog `attacks[].kind` -> handler). Every handler
@@ -210,8 +231,9 @@ export class EntityAI {
         continue;
       }
 
-      // Dispatch via AI_HANDLERS map driven by catalog metadata
-      const mData = MONSTERS_CATALOG[monster.type] || (monster.type === 'boss_overlord' ? MONSTERS_CATALOG.abyssal_overlord : null);
+      // Dispatch via AI_HANDLERS map driven by catalog metadata (aliases resolve
+      // through the catalog, so no per-type branches live here).
+      const mData = resolveMonsterDefinition(monster.type);
       const aiType = mData?.aiType || 'chase';
       const handler = AI_HANDLERS[aiType] || AI_HANDLERS.chase;
       const action = handler(monster, target, gridMap, monsters, mData);
@@ -252,17 +274,12 @@ export class EntityAI {
 
   static idleWander(monster, gridMap, allMonsters) {
     if (Math.random() < 0.4) return;
-    const directions = [
-      { x: 0, y: -1, dir: 'up' },
-      { x: 0, y: 1, dir: 'down' },
-      { x: -1, y: 0, dir: 'left' },
-      { x: 1, y: 0, dir: 'right' },
-    ];
-    const choice = directions[Math.floor(Math.random() * directions.length)];
+    const choice = CARDINAL_DIRS[Math.floor(Math.random() * CARDINAL_DIRS.length)];
     const nx = monster.x + choice.x;
     const ny = monster.y + choice.y;
 
-    if (gridMap.isWalkable(nx, ny) && !allMonsters.some(m => m.id !== monster.id && m.hp > 0 && m.x === nx && m.y === ny)) {
+    const occupied = EntityAI.occupiedHashSet(allMonsters, monster.id, gridMap.width);
+    if (gridMap.isWalkable(nx, ny) && !occupied.has(ny * gridMap.width + nx)) {
       monster.facing = choice.dir;
       monster.x = nx;
       monster.y = ny;
@@ -312,7 +329,8 @@ export class EntityAI {
         { x: monster.x, y: monster.y },
         { x: player.x, y: player.y },
         gridMap,
-        allMonsters.filter(m => m.id !== monster.id && m.hp > 0)
+        allMonsters,
+        monster.id
       );
 
       if (nextStep && (nextStep.x !== player.x || nextStep.y !== player.y)) {
@@ -394,7 +412,8 @@ export class EntityAI {
           { x: cultist.x, y: cultist.y },
           { x: player.x, y: player.y },
           gridMap,
-          allMonsters.filter(m => m.id !== cultist.id && m.hp > 0)
+          allMonsters,
+          cultist.id
         );
         if (nextStep && (nextStep.x !== player.x || nextStep.y !== player.y)) {
           cultist.facing = EntityAI.getFacing(cultist.x, cultist.y, nextStep.x, nextStep.y);
@@ -498,7 +517,8 @@ export class EntityAI {
         { x: monster.x, y: monster.y },
         { x: player.x, y: player.y },
         gridMap,
-        monsters
+        monsters,
+        monster.id
       );
       if (nextStep && (nextStep.x !== player.x || nextStep.y !== player.y)) {
         monster.facing = EntityAI.getFacing(monster.x, monster.y, nextStep.x, nextStep.y);
@@ -525,7 +545,8 @@ export class EntityAI {
       { x: monster.x, y: monster.y },
       { x: player.x, y: player.y },
       gridMap,
-      monsters
+      monsters,
+      monster.id
     );
     if (nextStep && (nextStep.x !== player.x || nextStep.y !== player.y)) {
       monster.facing = EntityAI.getFacing(monster.x, monster.y, nextStep.x, nextStep.y);
@@ -847,23 +868,17 @@ export class EntityAI {
   }
 
   static findRetreatStep(monster, player, gridMap, allMonsters) {
-    const directions = [
-      { x: 0, y: -1 },
-      { x: 0, y: 1 },
-      { x: -1, y: 0 },
-      { x: 1, y: 0 },
-    ];
-
     let bestStep = null;
     let maxDist = Math.hypot(monster.x - player.x, monster.y - player.y);
 
-    for (const dir of directions) {
+    for (let i = 0; i < CARDINAL_DIRS.length; i++) {
+      const dir = CARDINAL_DIRS[i];
       const nx = monster.x + dir.x;
       const ny = monster.y + dir.y;
 
       if (!gridMap.isWalkable(nx, ny)) continue;
       if (nx === player.x && ny === player.y) continue;
-      if (allMonsters.some(m => m.id !== monster.id && m.hp > 0 && m.x === nx && m.y === ny)) continue;
+      if (EntityAI.tileOccupied(allMonsters, monster.id, nx, ny)) continue;
 
       const d = Math.hypot(nx - player.x, ny - player.y);
       if (d > maxDist) {
@@ -875,21 +890,34 @@ export class EntityAI {
     return bestStep;
   }
 
-  static findNextStepAStar(start, goal, gridMap, otherMonsters = []) {
-    const width = gridMap.width;
-    const toHash = (x, y) => y * width + x;
+  /** Allocation-free occupancy test (no closure/array alloc; §3.1). */
+  static tileOccupied(monsters, excludeId, x, y) {
+    for (let i = 0; i < monsters.length; i++) {
+      const m = monsters[i];
+      if (!m || m.hp <= 0) continue;
+      if (excludeId && m.id === excludeId) continue;
+      if (m.x === x && m.y === y) return true;
+    }
+    return false;
+  }
 
+  static findNextStepAStar(start, goal, gridMap, otherMonsters = [], excludeId = null) {
+    const width = gridMap.width;
+
+    // Precompute occupancy hashes in one pass (no array allocation, §3.1/§3.5).
     const blockedMonsterSet = new Set();
     for (let i = 0; i < otherMonsters.length; i++) {
       const m = otherMonsters[i];
-      if (m) blockedMonsterSet.add(toHash(m.x, m.y));
+      if (!m || m.hp <= 0) continue;
+      if (excludeId && m.id === excludeId) continue;
+      blockedMonsterSet.add(gridHash(m.x, m.y, width));
     }
 
     const openHeap = new MinHeap();
     const openMap = new Map();
     const closedSet = new Set();
 
-    const startHash = toHash(start.x, start.y);
+    const startHash = gridHash(start.x, start.y, width);
     const startH = Math.abs(start.x - goal.x) + Math.abs(start.y - goal.y);
     const startNode = {
       x: start.x,
@@ -903,11 +931,11 @@ export class EntityAI {
     openHeap.push(startNode);
     openMap.set(startHash, startNode);
 
-    const goalHash = toHash(goal.x, goal.y);
+    const goalHash = gridHash(goal.x, goal.y, width);
 
     while (openHeap.size > 0) {
       const current = openHeap.pop();
-      const currentHash = toHash(current.x, current.y);
+      const currentHash = gridHash(current.x, current.y, width);
       openMap.delete(currentHash);
       closedSet.add(currentHash);
 
@@ -915,19 +943,12 @@ export class EntityAI {
         return EntityAI.reconstructFirstStep(current);
       }
 
-      const neighbors = [
-        { x: current.x, y: current.y - 1 },
-        { x: current.x, y: current.y + 1 },
-        { x: current.x - 1, y: current.y },
-        { x: current.x + 1, y: current.y },
-      ];
-
-      for (let i = 0; i < 4; i++) {
-        const nx = neighbors[i].x;
-        const ny = neighbors[i].y;
+      for (let i = 0; i < CARDINAL_DELTAS.length; i++) {
+        const nx = current.x + CARDINAL_DELTAS[i][0];
+        const ny = current.y + CARDINAL_DELTAS[i][1];
 
         if (!gridMap.isInBounds(nx, ny)) continue;
-        const nHash = toHash(nx, ny);
+        const nHash = gridHash(nx, ny, width);
         if (closedSet.has(nHash)) continue;
 
         if (nHash !== goalHash) {

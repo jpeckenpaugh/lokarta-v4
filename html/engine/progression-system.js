@@ -2,41 +2,56 @@
  * Lokarta: Come Into The Light - Progression & Leveling Subsystem
  */
 
-import { CONFIG } from './config.js';
-import { MONSTERS_CATALOG, VOCATIONS_CATALOG } from '../data/index.js';
+import {
+  VOCATIONS_CATALOG,
+  ECONOMY_CATALOG,
+  resolveMonsterDefinition,
+} from '../data/index.js';
+
+/** Progression tunables (economy.json `progression`), with safe numeric fallbacks. */
+const PROGRESSION = ECONOMY_CATALOG?.progression || {};
 
 export class ProgressionSystem {
-  static MAX_LEVEL = 20;
+  static MAX_LEVEL = Number(PROGRESSION.maxLevel) || 20;
 
   /**
-   * Calculates XP required to advance from current level to next (Level 1-20: level * 100).
+   * Calculates XP required to advance from current level to next.
+   * Step is catalog-driven (`economy.json.progression.xpPerLevel`).
    * @param {number} level
    * @returns {number}
    */
   static getXpForLevel(level) {
-    return Math.max(1, level) * 100;
+    const perLevel = Number(PROGRESSION.xpPerLevel) || 100;
+    return Math.max(1, level) * perLevel;
   }
 
   /**
    * Determine XP rewarded for defeating an enemy at given floor depth.
+   * All numbers originate in `monsters.json` (`baseXp` / `xpFloorScale` /
+   * `xpFloorMode`) with fallbacks from `economy.json.progression`.
    * @param {string} monsterType
    * @param {number} floor
    * @param {boolean} [isBoss=false]
    * @returns {number}
    */
   static getMonsterXp(monsterType, floor = 1, isBoss = false) {
-    const info = MONSTERS_CATALOG[monsterType] || (monsterType === 'boss_overlord' ? MONSTERS_CATALOG.abyssal_overlord : null);
+    const info = resolveMonsterDefinition(monsterType);
     if (info) {
       if (info.isBoss || isBoss) return info.baseXp;
-      const floorMult = monsterType === 'giant_rat' ? floor : (floor - 1);
+      // `inclusive` scales from floor 1 (e.g. giant_rat); `offset` skips floor 1.
+      const floorMult = info.xpFloorMode === 'inclusive' ? floor : (floor - 1);
       return info.baseXp + floorMult * info.xpFloorScale;
     }
-    if (isBoss) return 500;
-    return 30 + floor * 5;
+    if (isBoss) return Number(PROGRESSION.unknownBossXp) || 500;
+    const base = Number(PROGRESSION.unknownMonsterBaseXp) || 30;
+    const perFloor = Number(PROGRESSION.unknownMonsterXpPerFloor) || 5;
+    return base + floor * perFloor;
   }
 
   /**
    * Computes active skill boosts and stat modifiers for a given vocation and level.
+   * `damageStep` comes from `vocations.json`; an unknown vocation uses the
+   * catalog `defaults` step (no per-vocation JS ladder).
    * @param {'magician'|'archer'|'fighter'|'paladin'} vocation
    * @param {number} level
    * @returns {{ damageMultiplier: number, bonusRange: number, bonusRegen: number }}
@@ -44,7 +59,8 @@ export class ProgressionSystem {
   static computeSkillBoosts(vocation, level) {
     const levelDelta = Math.max(0, level - 1);
     const vocInfo = VOCATIONS_CATALOG[vocation];
-    const damageStep = vocInfo ? vocInfo.damageStep : (vocation === 'magician' ? 0.10 : vocation === 'archer' ? 0.12 : vocation === 'fighter' ? 0.15 : 0.11);
+    const defaultStep = Number(PROGRESSION.defaultDamageStep) || 0;
+    const damageStep = vocInfo && Number.isFinite(vocInfo.damageStep) ? vocInfo.damageStep : defaultStep;
 
     return {
       damageMultiplier: Number((1.0 + levelDelta * damageStep).toFixed(2)),

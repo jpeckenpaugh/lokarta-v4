@@ -146,6 +146,31 @@ export const TOWER_LEVELS_CATALOG = {
 
 export const CARDS_CATALOG = cardsData;
 export const MONSTERS_CATALOG = monstersData;
+
+/**
+ * Reverse index of catalog-declared `aliases` (e.g. `abyssal_overlord` carries
+ * `["boss_overlord"]`). Lets legacy persisted monster types resolve to their
+ * current definition without any `type === 'boss_overlord'` branch in JS.
+ * Built once at module load.
+ */
+const MONSTER_ALIASES = new Map();
+for (const [key, def] of Object.entries(monstersData)) {
+  if (def && Array.isArray(def.aliases)) {
+    for (const alias of def.aliases) MONSTER_ALIASES.set(alias, key);
+  }
+}
+
+/**
+ * Resolves a monster definition by catalog key, following any declared alias.
+ * Unknown keys return undefined so callers keep their existing fallbacks.
+ */
+export function resolveMonsterDefinition(monsterType) {
+  if (!monsterType) return undefined;
+  return monstersData[monsterType]
+    || monstersData[MONSTER_ALIASES.get(monsterType)]
+    || undefined;
+}
+
 export const ITEMS_CATALOG = itemsData;
 export const VOCATIONS_CATALOG = vocationsData;
 export const SOUNDS_CATALOG = soundsData;

@@ -7,6 +7,15 @@
     "pickupMagnet": false,
     "dropLabelColor": "#fbbf24"
   },
+  "progression": {
+    "maxLevel": 20,
+    "xpPerLevel": 100,
+    "unknownMonsterBaseXp": 30,
+    "unknownMonsterXpPerFloor": 5,
+    "unknownBossXp": 500,
+    "defaultDamageStep": 0,
+    "description": "Leveling tunables (LIV-94): the level cap, per-level XP step, and the fallbacks used when a monster/vocation is absent from its catalog. JS reads these instead of embedding literals."
+  },
   "passiveRecovery": {
     "intervalSec": 10,
     "hpPerTick": 1,

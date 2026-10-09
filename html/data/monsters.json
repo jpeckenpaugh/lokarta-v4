@@ -13,6 +13,7 @@
     "aiType": "chase",
     "baseXp": 20,
     "xpFloorScale": 4,
+    "xpFloorMode": "inclusive",
     "svgCode": "1F407",
     "lootTable": [
       {
@@ -125,6 +126,7 @@
     "faction": "monsters",
     "name": "The Spire Warden",
     "isBoss": true,
+    "aliases": ["boss_overlord"],
     "baseHp": 600,
     "baseAttack": 20,
     "baseDefense": 6,
