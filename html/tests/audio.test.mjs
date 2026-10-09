@@ -15,6 +15,8 @@ test('AudioSystem & JSON Sound Catalog', async (t) => {
     'footstep_sand', 'footstep_stone',
     // LIV-97 quest / boss / key-event SFX plus the previously-silent keys.
     'questAccept', 'questObjective', 'questComplete',
+    // LIV-98: "requirements met" fanfare.
+    'questReady',
     'bossEntrance', 'bossDefeat', 'enemyCast',
     'enterVillage', 'enterIsle', 'gateUnlock', 'enterTower', 'teleport',
     'fountain', 'healReceived', 'playerStun', 'playerDefeat', 'revive',

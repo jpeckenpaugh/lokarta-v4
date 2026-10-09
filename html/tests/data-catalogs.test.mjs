@@ -222,7 +222,7 @@ test('JSON Data Catalogs', async (t) => {
   });
 
   await t.test('loads and validates sounds.json catalog', () => {
-    assert.equal(Object.keys(SOUNDS_CATALOG).length, 59);
+    assert.equal(Object.keys(SOUNDS_CATALOG).length, 60);
     assert.ok(SOUNDS_CATALOG.footstep);
     assert.ok(SOUNDS_CATALOG.wandSpark);
     assert.ok(SOUNDS_CATALOG.victory);
@@ -245,8 +245,9 @@ test('JSON Data Catalogs', async (t) => {
     assert.ok(SOUNDS_CATALOG.forgeHammer);
     assert.ok(SOUNDS_CATALOG.shopBell);
     // LIV-97: quest, boss, and key-event SFX, plus the previously-silent keys.
+    // LIV-98: questReady ("requirements met") fanfare.
     for (const key of [
-      'questAccept', 'questObjective', 'questComplete',
+      'questAccept', 'questObjective', 'questComplete', 'questReady',
       'bossEntrance', 'bossDefeat', 'enemyCast',
       'enterVillage', 'enterIsle', 'gateUnlock', 'enterTower', 'teleport',
       'fountain', 'healReceived', 'playerStun', 'playerDefeat', 'revive',

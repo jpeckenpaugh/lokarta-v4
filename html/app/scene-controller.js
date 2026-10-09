@@ -550,16 +550,25 @@ export const sceneControllerMethods = {
   /** Emits HUD cues + a save for quest progress changes. */
   applyQuestChanges(changes) {
     const copy = UI_CATALOG?.quests || {};
+    let completing = false;
     for (const change of changes) {
       if (change.completed) {
+        completing = true;
         this.logCombat(fmt(copy.completedCue, { quest: change.questName }) || `${change.questName} ready to turn in.`, 'spell');
       } else if (change.objectiveId) {
         this.logCombat(fmt(copy.updatedCue, { quest: change.questName }) || `${change.questName} updated.`, 'system');
       }
     }
-    // One step/objective-complete cue per event, even when several objectives
-    // advanced together (the full reward fanfare is the turn-in `questComplete`).
-    if (changes.length > 0) soundFX.play('questObjective');
+    // All steps done -> a distinct "requirements met" fanfare that points the
+    // player back to the NPC. The quest engine emits `completed:true` only on
+    // the active -> complete transition (quest-system.js), so this never replays
+    // on later recordEvent ticks. Non-completing batches keep the per-step cue;
+    // the turn-in `questComplete` fanfare stays the bigger celebration.
+    if (completing) {
+      soundFX.play('questReady');
+    } else if (changes.length > 0) {
+      soundFX.play('questObjective');
+    }
     if (typeof this.updateHUD === 'function') this.updateHUD();
     this.refreshQuestMarkers();
     this.persistSave?.(false);

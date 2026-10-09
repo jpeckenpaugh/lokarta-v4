@@ -362,6 +362,17 @@
       { "freq": 1318.51, "time": 0.46, "duration": 0.55 }
     ]
   },
+  "questReady": {
+    "kind": "sfx",
+    "type": "sequence",
+    "oscType": "triangle",
+    "gain": 0.19,
+    "notes": [
+      { "freq": 587.33, "time": 0.00, "duration": 0.16 },
+      { "freq": 739.99, "time": 0.09, "duration": 0.16 },
+      { "freq": 880.00, "time": 0.18, "duration": 0.26 }
+    ]
+  },
   "bossEntrance": {
     "kind": "sfx",
     "type": "composite",
@@ -407,13 +418,14 @@
   },
   "enterIsle": {
     "kind": "sfx",
-    "type": "sequence",
-    "oscType": "triangle",
-    "gain": 0.15,
-    "notes": [
-      { "freq": 293.66, "time": 0.00, "duration": 0.25 },
-      { "freq": 440.00, "time": 0.09, "duration": 0.38 }
-    ]
+    "type": "sweep",
+    "oscType": "sine",
+    "startFreq": 261.63,
+    "endFreq": 523.25,
+    "duration": 0.85,
+    "attack": 0.40,
+    "gain": 0.08,
+    "filter": { "type": "lowpass", "freq": 1100 }
   },
   "gateUnlock": {
     "kind": "sfx",

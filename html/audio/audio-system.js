@@ -515,6 +515,25 @@ export class AudioSystem {
   // Internal Sound Synthesizers
   // ==========================================================================
 
+  /**
+   * Applies a one-shot gain envelope. When `attack` (seconds) is present the
+   * gain ramps up from silence before decaying, which removes the hard onset
+   * transient; without it the legacy instant-attack decay is preserved so
+   * existing recipes are byte-identical. Purely data-driven — a catalog value.
+   */
+  _applyOneShotGain(gainParam, now, peak, duration, attack = 0) {
+    const safePeak = Math.max(0.0001, peak);
+    const a = Math.max(0, Math.min(Number(attack) || 0, duration));
+    if (a > 0) {
+      gainParam.setValueAtTime(0.0001, now);
+      gainParam.linearRampToValueAtTime(safePeak, now + a);
+      gainParam.exponentialRampToValueAtTime(0.001, now + duration);
+    } else {
+      gainParam.setValueAtTime(safePeak, now);
+      gainParam.exponentialRampToValueAtTime(0.001, now + duration);
+    }
+  }
+
   _playSweep(config, now, volumeScale = 1.0) {
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
@@ -534,8 +553,7 @@ export class AudioSystem {
     osc.frequency.exponentialRampToValueAtTime(Math.max(0.001, config.endFreq), now + config.duration);
 
     const effGain = Math.max(0.0001, (config.gain || 0.15) * volumeScale);
-    gain.gain.setValueAtTime(effGain, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + config.duration);
+    this._applyOneShotGain(gain.gain, now, effGain, config.duration, config.attack);
 
     lastNode.connect(gain);
     gain.connect(this.masterGain);
@@ -558,8 +576,13 @@ export class AudioSystem {
       const noteDuration = note.duration || 0.1;
 
       osc.frequency.setValueAtTime(note.freq, noteTime);
-      gain.gain.setValueAtTime(masterVolume, noteTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, noteTime + noteDuration);
+      this._applyOneShotGain(
+        gain.gain,
+        noteTime,
+        masterVolume,
+        noteDuration,
+        note.attack != null ? note.attack : config.attack
+      );
 
       osc.connect(gain);
       gain.connect(this.masterGain);
@@ -574,8 +597,7 @@ export class AudioSystem {
 
     if (config.oscillators) {
       const gain = this.ctx.createGain();
-      gain.gain.setValueAtTime(effGain, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + config.duration);
+      this._applyOneShotGain(gain.gain, now, effGain, config.duration, config.attack);
       gain.connect(this.masterGain);
 
       config.oscillators.forEach(oscConfig => {
@@ -608,8 +630,7 @@ export class AudioSystem {
       filter.frequency.exponentialRampToValueAtTime(config.filter.endFreq, now + config.duration);
       filter.Q.setValueAtTime(config.filter.Q || 1, now);
 
-      gain.gain.setValueAtTime(effGain, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + config.duration);
+      this._applyOneShotGain(gain.gain, now, effGain, config.duration, config.attack);
 
       osc.connect(filter);
       filter.connect(gain);
@@ -646,11 +667,12 @@ export class AudioSystem {
       "questAccept": { "kind": "sfx", "type": "sequence", "oscType": "sine", "gain": 0.18, "notes": [{ "freq": 587.33, "time": 0.00, "duration": 0.14 }, { "freq": 880.00, "time": 0.10, "duration": 0.24 }] },
       "questObjective": { "kind": "sfx", "type": "sequence", "oscType": "triangle", "gain": 0.16, "notes": [{ "freq": 659.25, "time": 0.00, "duration": 0.10 }, { "freq": 987.77, "time": 0.07, "duration": 0.20 }] },
       "questComplete": { "kind": "sfx", "type": "sequence", "oscType": "triangle", "gain": 0.22, "notes": [{ "freq": 523.25, "time": 0.00, "duration": 0.18 }, { "freq": 659.25, "time": 0.10, "duration": 0.18 }, { "freq": 783.99, "time": 0.20, "duration": 0.18 }, { "freq": 1046.50, "time": 0.30, "duration": 0.22 }, { "freq": 1318.51, "time": 0.46, "duration": 0.55 }] },
+      "questReady": { "kind": "sfx", "type": "sequence", "oscType": "triangle", "gain": 0.19, "notes": [{ "freq": 587.33, "time": 0.00, "duration": 0.16 }, { "freq": 739.99, "time": 0.09, "duration": 0.16 }, { "freq": 880.00, "time": 0.18, "duration": 0.26 }] },
       "bossEntrance": { "kind": "sfx", "type": "composite", "duration": 1.10, "gain": 0.30, "oscillators": [{ "type": "sawtooth", "startFreq": 110, "endFreq": 55 }, { "type": "square", "startFreq": 55, "endFreq": 36 }] },
       "bossDefeat": { "kind": "sfx", "type": "sequence", "oscType": "sawtooth", "gain": 0.24, "notes": [{ "freq": 196.00, "time": 0.00, "duration": 0.40 }, { "freq": 155.56, "time": 0.22, "duration": 0.45 }, { "freq": 110.00, "time": 0.48, "duration": 0.70 }] },
       "enemyCast": { "kind": "sfx", "type": "composite", "oscType": "sawtooth", "startFreq": 300, "endFreq": 700, "duration": 0.30, "gain": 0.18, "lfo": { "oscType": "sine", "freq": 22, "gain": 60 }, "filter": { "type": "bandpass", "startFreq": 600, "endFreq": 1600, "Q": 4 } },
       "enterVillage": { "kind": "sfx", "type": "sequence", "oscType": "sine", "gain": 0.16, "notes": [{ "freq": 392.00, "time": 0.00, "duration": 0.28 }, { "freq": 523.25, "time": 0.08, "duration": 0.30 }, { "freq": 659.25, "time": 0.16, "duration": 0.40 }] },
-      "enterIsle": { "kind": "sfx", "type": "sequence", "oscType": "triangle", "gain": 0.15, "notes": [{ "freq": 293.66, "time": 0.00, "duration": 0.25 }, { "freq": 440.00, "time": 0.09, "duration": 0.38 }] },
+      "enterIsle": { "kind": "sfx", "type": "sweep", "oscType": "sine", "startFreq": 261.63, "endFreq": 523.25, "duration": 0.85, "attack": 0.40, "gain": 0.08, "filter": { "type": "lowpass", "freq": 1100 } },
       "gateUnlock": { "kind": "sfx", "type": "composite", "duration": 0.50, "gain": 0.26, "oscillators": [{ "type": "square", "startFreq": 160, "endFreq": 70 }, { "type": "triangle", "startFreq": 320, "endFreq": 150 }] },
       "enterTower": { "kind": "sfx", "type": "sequence", "oscType": "triangle", "gain": 0.20, "notes": [{ "freq": 261.63, "time": 0.00, "duration": 0.30 }, { "freq": 329.63, "time": 0.10, "duration": 0.30 }, { "freq": 392.00, "time": 0.20, "duration": 0.30 }, { "freq": 523.25, "time": 0.32, "duration": 0.50 }] },
       "teleport": { "kind": "sfx", "type": "composite", "oscType": "sine", "startFreq": 1200, "endFreq": 200, "duration": 0.40, "gain": 0.18, "lfo": { "oscType": "sine", "freq": 18, "gain": 120 }, "filter": { "type": "bandpass", "startFreq": 2000, "endFreq": 400, "Q": 5 } },
