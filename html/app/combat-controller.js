@@ -365,13 +365,15 @@ export const combatControllerMethods = {
     if (res.projectiles) this.projectiles.push(...res.projectiles);
 
     if (res.defeatedMonsterId) {
-      soundFX.play('monsterDeath');
       const index = this.monsters.findIndex(m => m.id === res.defeatedMonsterId);
       if (index !== -1) {
         const deadMonster = this.monsters[index];
         // Boss identity is fully declarative: the generator/catalog stamp
-        // `isBoss`; no id/health heuristics here.
+        // `isBoss`/`isElite`; no id/health heuristics here. A boss or mini-boss
+        // gets the defeat sting, a regular foe the generic death sweep.
         const isBoss = deadMonster.isBoss === true;
+        const isElite = deadMonster.isElite === true;
+        soundFX.play(isBoss || isElite ? 'bossDefeat' : 'monsterDeath');
 
         // I10 Bestiary: record the first defeat of this foe on the save envelope
         // (spoiler-safe — a foe only appears in the codex once beaten).

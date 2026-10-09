@@ -12,7 +12,13 @@ test('AudioSystem & JSON Sound Catalog', async (t) => {
     'uiMove', 'uiBack', 'keyJangle', 'coins', 'koHandoff', 'controlSwap',
     // LIV-82 positional ambience one-shots.
     'gullCry', 'birdSong', 'crowdMurmur', 'forgeHammer', 'shopBell', 'cricketChirp',
-    'footstep_sand', 'footstep_stone'
+    'footstep_sand', 'footstep_stone',
+    // LIV-97 quest / boss / key-event SFX plus the previously-silent keys.
+    'questAccept', 'questObjective', 'questComplete',
+    'bossEntrance', 'bossDefeat', 'enemyCast',
+    'enterVillage', 'enterIsle', 'gateUnlock', 'enterTower', 'teleport',
+    'fountain', 'healReceived', 'playerStun', 'playerDefeat', 'revive',
+    'holyChime', 'manaRegen', 'uiDenied'
   ];
   const AMBIENT_KEYS = [
     'amb_island_surf', 'amb_island_night', 'amb_town_day', 'amb_town_night',

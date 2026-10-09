@@ -266,6 +266,12 @@ export const gameLoopMethods = {
       const isActiveTarget = hitTarget === this.player;
       if (res.message) this.logCombat(res.message, 'combat');
       if (res.projectiles) this.projectiles.push(...res.projectiles);
+      // Enemy special-ability/spell cast: projectile/AoE/dash/summon results all
+      // carry a projectile or spawned opponents (see entity-ai), so the cast
+      // sting fires once per result; plain melee stays on `monsterAttack`.
+      if ((res.projectiles && res.projectiles.length > 0) || (res.spawns && res.spawns.length > 0)) {
+        soundFX.play('enemyCast');
+      }
       // Catalog `onHit` status effects land on whichever member was struck.
       if (res.statusEffects) {
         for (const eff of res.statusEffects) {
@@ -276,6 +282,7 @@ export const gameLoopMethods = {
               hitTarget.y,
               STATUS_FLASH_COLORS[eff.status] || DEFAULT_STATUS_FLASH_COLOR
             );
+            if (isActiveTarget && eff.status === 'stun') soundFX.play('playerStun');
           }
         }
       }
@@ -336,10 +343,11 @@ export const gameLoopMethods = {
     // 4b. Knockout seam (LIV-44): funnel any 0-HP member (active mirror
     //     included) through the single `markDowned` transition before the ally
     //     AI so the revive planner can see the downed body.
-    ReviveSystem.markPartyDowned(this.player, {
+    const newlyDowned = ReviveSystem.markPartyDowned(this.player, {
       elapsedSec: this.elapsedSec,
       floor: this.player.current_floor,
     });
+    if (newlyDowned) soundFX.play('playerDefeat');
 
     // 4c. Party auto-AI (LIV-13/WS4): non-active members act after the player
     //     and monsters. Engine decides + applies movement/abilities; the app
@@ -390,7 +398,14 @@ export const gameLoopMethods = {
     if (!this.findAdjacentSpring()) {
       this.springRegenAccumulator = 0;
       this.springRegenStreak = 0;
+      this._atSpring = false;
       return false;
+    }
+    // One-time arrival shimmer when the player first steps beside a fountain;
+    // the per-second restore below keeps the `holyChime` pulse.
+    if (!this._atSpring) {
+      this._atSpring = true;
+      soundFX.play('fountain');
     }
     this.springRegenAccumulator += deltaSec;
     if (this.springRegenAccumulator < 1) return false;
@@ -591,7 +606,7 @@ export const gameLoopMethods = {
       return;
     }
     if (ev.type === 'revived') {
-      soundFX.play('holyChime');
+      soundFX.play('revive');
       this.addFloatingText('REVIVED', member.x, member.y, '#fde68a');
       this.logCombat(`${ev.member?.vocation ? String(ev.member.vocation).toUpperCase() : 'An ally'} is back on their feet.`, 'spell');
       this.updateHUD();
@@ -600,7 +615,7 @@ export const gameLoopMethods = {
     }
     if (ev.type === 'autoRevive') {
       // LIV-52: the pending timer elapsed — the member stands back up in place.
-      soundFX.play('holyChime');
+      soundFX.play('revive');
       this.addFloatingText('REVIVED', member.x, member.y, '#fde68a');
       const vocab = VOCATIONS_CATALOG?.[member.vocation];
       const nameOf = (vocab && vocab.name) || (member.vocation ? member.vocation.charAt(0).toUpperCase() + member.vocation.slice(1) : 'An ally');
@@ -650,6 +665,7 @@ export const gameLoopMethods = {
 
     // Ally heal: float the restored HP on the healed member.
     if (res.healAmount > 0 || res.hpRestored > 0) {
+      soundFX.play('healReceived');
       if (res.message) this.logCombat(res.message, 'spell');
       const hx = res.targetX ?? member.x;
       const hy = res.targetY ?? member.y;

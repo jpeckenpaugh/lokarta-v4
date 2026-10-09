@@ -145,7 +145,7 @@ export const shopControllerMethods = {
   templeHeal() {
     const res = EconomySystem.templeHeal(this.player);
     if (res.success) {
-      soundFX.play('holyChime');
+      soundFX.play('healReceived');
       this.logCombat(res.message, 'spell');
       this.updateHUD();
       this.persistSave(true);

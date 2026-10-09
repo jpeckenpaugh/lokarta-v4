@@ -222,7 +222,7 @@ test('JSON Data Catalogs', async (t) => {
   });
 
   await t.test('loads and validates sounds.json catalog', () => {
-    assert.equal(Object.keys(SOUNDS_CATALOG).length, 40);
+    assert.equal(Object.keys(SOUNDS_CATALOG).length, 59);
     assert.ok(SOUNDS_CATALOG.footstep);
     assert.ok(SOUNDS_CATALOG.wandSpark);
     assert.ok(SOUNDS_CATALOG.victory);
@@ -244,6 +244,19 @@ test('JSON Data Catalogs', async (t) => {
     assert.ok(SOUNDS_CATALOG.gullCry);
     assert.ok(SOUNDS_CATALOG.forgeHammer);
     assert.ok(SOUNDS_CATALOG.shopBell);
+    // LIV-97: quest, boss, and key-event SFX, plus the previously-silent keys.
+    for (const key of [
+      'questAccept', 'questObjective', 'questComplete',
+      'bossEntrance', 'bossDefeat', 'enemyCast',
+      'enterVillage', 'enterIsle', 'gateUnlock', 'enterTower', 'teleport',
+      'fountain', 'healReceived', 'playerStun', 'playerDefeat', 'revive',
+      'holyChime', 'manaRegen', 'uiDenied',
+    ]) {
+      const def = SOUNDS_CATALOG[key];
+      assert.ok(def, `Missing sound definition for ${key}`);
+      assert.notEqual(def.kind, 'ambient', `${key} must be a one-shot`);
+      assert.ok(['sweep', 'sequence', 'composite'].includes(def.type), `${key} has an invalid type`);
+    }
   });
 
   await t.test('loads and validates abilities.json catalog', () => {

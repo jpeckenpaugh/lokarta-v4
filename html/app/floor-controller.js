@@ -110,6 +110,10 @@ export const floorControllerMethods = {
     }));
     if (this.player) this.player.anim = createAnimState(this.player.facing || 'down');
 
+    // Boss/mini-boss entrance sting: declared by catalog `isBoss` on the floor's
+    // spawned monsters, never an id heuristic.
+    if (this.monsters.some(m => m.isBoss === true)) soundFX.play('bossEntrance');
+
     // A new floor identity is a tower/level transition: the whole party must be
     // transported to the active member's arrival tile. Merely honoring a
     // member's old coordinates when they happen to be walkable on the new floor
@@ -431,7 +435,7 @@ export const floorControllerMethods = {
   handleTownGate(gridX, gridY) {
     if (this.location === 'town') return;
     soundFX.init();
-    soundFX.play('uiBack');
+    soundFX.play('teleport');
     this.logCombat('The Tower Gate hums — you return to the Town of Lokarta.', 'system');
     this.addFloatingText('TOWN', gridX, gridY, '#e5b95c');
     this.leaveTower();
@@ -559,6 +563,7 @@ export const floorControllerMethods = {
     this.closeModal();
     this.isPaused = false;
     this.logCombat('You step through the tower gate. The ascent begins.', 'system');
+    soundFX.play('enterTower');
     // Fallback re-offer (LIV-64): only when the actor still has no primary
     // weapon. The first-quest accept grant equips the weapon to the paperdoll
     // but leaves the hotbar empty, so this guard prevents a duplicate grant.
@@ -605,6 +610,7 @@ export const floorControllerMethods = {
       LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
       this.updateHUD();
       await this.persistSave(true);
+      soundFX.play('teleport');
       this.enterTower();
       return true;
     } catch (err) {

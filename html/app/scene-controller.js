@@ -244,8 +244,10 @@ export const sceneControllerMethods = {
     if (!gate) return false;
     const state = evaluateSceneGate(this.player, gate);
     if (state.open) {
+      const wasOpen = (gate.tiles || []).every((t) => this.gridMap?.getTile?.(t[0], t[1])?.gateOpen === true);
       this.setSceneGateTilesOpen(gate);
-      soundFX.play('keyJangle');
+      // First-time unlock sting; a re-walk of an already-open gate stays silent.
+      if (!wasOpen) soundFX.play('gateUnlock');
       return true;
     }
     const key = `sceneGate:${x},${y}`;
@@ -315,6 +317,11 @@ export const sceneControllerMethods = {
     });
     this.monsters = plan.map((spawn) => this.buildSceneMonster(spawn));
     this._sceneMonsterSeq = plan.length;
+    // Boss/elite entrance sting, declared by the catalog-stamped `isBoss`/
+    // `isElite` flags (see scene-spawner). Fires once per scene load.
+    if (this.monsters.some((m) => m.isBoss === true || m.isElite === true)) {
+      soundFX.play('bossEntrance');
+    }
   },
 
   /**
@@ -424,6 +431,7 @@ export const sceneControllerMethods = {
     this.isInGameplay = true;
     if (!this.isRunning) this.startGameLoop();
     this.logCombat(fmt(UI_CATALOG?.island?.arrived, { scene: scene.name }) || `You arrive at ${scene.name}.`, 'system');
+    soundFX.play(scene.sceneKind === 'town' ? 'enterVillage' : 'enterIsle');
     this.persistSave?.(false);
     return true;
   },
@@ -497,6 +505,7 @@ export const sceneControllerMethods = {
       LightingSystem.updateLighting(this.gridMap, this.player, this.ambientLights, this.monsters);
       this.updateHUD();
       await this.persistSave(true);
+      soundFX.play('teleport');
       this.enterTower();
     } catch (err) {
       console.error('Tower entrance error:', err);
@@ -548,6 +557,9 @@ export const sceneControllerMethods = {
         this.logCombat(fmt(copy.updatedCue, { quest: change.questName }) || `${change.questName} updated.`, 'system');
       }
     }
+    // One step/objective-complete cue per event, even when several objectives
+    // advanced together (the full reward fanfare is the turn-in `questComplete`).
+    if (changes.length > 0) soundFX.play('questObjective');
     if (typeof this.updateHUD === 'function') this.updateHUD();
     this.refreshQuestMarkers();
     this.persistSave?.(false);
@@ -835,6 +847,7 @@ export const sceneControllerMethods = {
     const res = acceptQuest(this.player.questState, this.player, questId);
     if (res.ok) {
       const copy = UI_CATALOG?.quests || {};
+      soundFX.play('questAccept');
       this.logCombat(fmt(copy.newQuestCue, { quest: getQuestDefinition(questId)?.name || questId }), 'spell');
       this.updateHUD();
       this.refreshQuestMarkers();
@@ -869,6 +882,7 @@ export const sceneControllerMethods = {
     const res = turnInQuest(this.player.questState, this.player, questId);
     if (res.ok) {
       const copy = UI_CATALOG?.quests || {};
+      soundFX.play('questComplete');
       this.logCombat(fmt(copy.turnedInCue, { quest: getQuestDefinition(questId)?.name || questId }), 'spell');
       this.announceRewards(res.rewards);
       this.updateHUD();
@@ -931,6 +945,7 @@ export const sceneControllerMethods = {
       member.hp = member.max_hp;
       member.mana = member.max_mana;
     }
+    soundFX.play('healReceived');
     this.logCombat('You rest. The party is restored.', 'spell');
     this.updateHUD();
     this.persistSave?.(false);
