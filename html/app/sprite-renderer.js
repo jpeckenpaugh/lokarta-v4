@@ -1146,7 +1146,11 @@ export class SpriteRenderer {
       const nh = (propDef.native?.h || SPRITE_NATIVE) * scale;
       const dx = Math.round(screenX + (size - nw) / 2);
       const dy = Math.round(screenY + (size - nh) / 2);
-      const frameId = item.type === 'chest' ? (opts.open || item.opened ? 'open' : 'closed') : 'icon';
+      // Frame is chosen from the prop's authored frames, not the item type: a
+      // prop with open/closed frames (chests) toggles on state; otherwise `icon`.
+      const frames = propDef.frames || {};
+      const hasToggleFrames = Boolean(frames.open || frames.closed);
+      const frameId = hasToggleFrames ? ((opts.open || item.opened) ? 'open' : 'closed') : 'icon';
       if (drawPropFrame(ctx, propDef, frameId, dx, dy, drawSize)) {
         SpriteRenderer.drawItemQuantity(ctx, item, screenX, screenY, size);
         return;
