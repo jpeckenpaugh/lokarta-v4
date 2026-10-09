@@ -33,15 +33,15 @@ The **board** owns product direction, priorities, final approvals, and browser/g
 
 ### Specific Rules:
 1. **Catalog Ground Truth:**
-   All stats, spell radii, weapon types, damage steps, drop tables, sound frequencies, keybindings, monster AI types, party AI profiles, presentation tunables, and room coordinates **must** originate in the 22 JSON catalogs:
-   - `cards.json`, `monsters.json`, `items.json`, `vocations.json`, `sounds.json`, `abilities.json`, `biomes.json`, `encounters.json`, `dungeons.json`, `tower_levels.json`, `doors.json`, `chests.json`, `tile_themes.json`, `keybindings.json`, `ui.json`, `economy.json`, `party_ai.json`, `islands.json`, `towns.json`, `npcs.json`, `quests.json`, `dialogues.json`.
+   All stats, spell radii, weapon types, damage steps, drop tables, sound frequencies, keybindings, monster AI types, party AI profiles, presentation tunables, and room coordinates **must** originate in the 23 JSON catalogs:
+   - `cards.json`, `monsters.json`, `items.json`, `vocations.json`, `sounds.json`, `abilities.json`, `biomes.json`, `encounters.json`, `dungeons.json`, `tower_levels.json`, `doors.json`, `chests.json`, `tile_themes.json`, `keybindings.json`, `ui.json`, `economy.json`, `party_ai.json`, `islands.json`, `towns.json`, `npcs.json`, `quests.json`, `dialogues.json`, `codex.json`.
 2. **No String Heuristics:**
    Never write heuristics like `itemId.includes('bow')`, `name.includes('cultist')`, or `vocation === 'fighter'` in game logic.
    - If an item needs a specific combat handler: declare `"actionKey": "bow_shot"` in `items.json`.
    - If a monster uses standoff AI: declare `"aiType": "standoff"` in `monsters.json`.
    - If an item belongs to a vocation: declare `"vocationAffinity": "archer"` in `items.json`.
 3. **Polymorphic Dispatch Tables:**
-   Replace `switch` statements and `if/else` ladders with dictionary dispatch tables (e.g., `AI_HANDLERS`, `WEAPON_RENDERERS`, `ITEM_RENDERERS`, `TILE_RENDERERS`).
+   Replace `switch` statements and `if/else` ladders with dictionary dispatch tables (e.g., `AI_HANDLERS`, `EQUIP_TICK_EFFECTS`, `WEAPON_RENDERERS`, `ITEM_RENDERERS`, `TILE_RENDERERS`).
    - Adding a new monster or weapon should only require adding a catalog JSON entry and (if visually unique) a renderer function in the dispatch table.
 4. **Graceful Defaults:**
    Always supply a safe fallback in dispatch lookups:

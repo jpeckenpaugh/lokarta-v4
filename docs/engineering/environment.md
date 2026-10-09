@@ -42,7 +42,7 @@ The test harness uses Node.js's native test runner without third-party framework
   ```bash
   node --test html/tests/*.test.mjs
   ```
-* **Coverage Scope (114 test suites / 984 cases):**
+* **Coverage Scope (118 test suites / 1035 cases):**
   * Procedural tower ascent across all four towers, stair traversal, and key-gated locks.
   * Island/town scene composition, NPC dialogue, the quest chain, and the Spire access gate.
   * 16-bit sprite & prop asset validation, palette contracts, and preview drift checks.

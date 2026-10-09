@@ -1144,7 +1144,7 @@ LIV-58 is content only. The Tech Lead's P0 (`scene-composer.js`, tile-type appen
    handlers and `xp|gold|item|unlock_tower|set_flag` reward handlers (the `item`
    handler reads `vocationItems`); read the `spire_of_light.accessGate` predicate at
    the Tide Gate and `handleSelectTower`.
-5. **Validation**: `liv57-scene-composer.test.mjs` should assert `WATER` impassable and
+5. **Validation**: `liv59-scene-composer.test.mjs` should assert `WATER` impassable and
    spawn→town / spawn→tower-entrance reachability; the four new monsters must keep the
    `data-catalogs`/`sprite-assets` gates green (shared `spriteId` verifies that).
 
