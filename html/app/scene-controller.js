@@ -93,6 +93,20 @@ const DIALOGUE_ACTION_HANDLERS = {
 };
 
 /**
+ * Dialogue action -> button label resolver (dispatch table, not a switch).
+ * Each resolver reads the catalog `dialogue.ui` copy with a safe static
+ * fallback; unknown action types use `dialogueActionLabel`'s default.
+ */
+const DIALOGUE_ACTION_LABELS = {
+  accept_quest: (labels) => labels.acceptLabel || 'Accept',
+  turn_in_quest: (labels) => labels.turnInLabel || 'Turn in',
+  open_shop: () => 'Trade',
+  open_temple: () => 'Pray',
+  rest: () => 'Rest',
+  interact: (labels) => UI_CATALOG?.island?.shrineRitePrompt || labels.continueLabel || 'Continue',
+};
+
+/**
  * Quest `onAccept` effect dispatch table (quests.json `onAccept[].type`). Runs
  * once on the inactive -> active transition, so accepting arms the player
  * immediately (LIV-64) and a re-accept/reload can never replay the grant.
@@ -797,15 +811,9 @@ export const sceneControllerMethods = {
   /** Player-facing label for a dialogue action, catalog-driven. */
   dialogueActionLabel(action, def, ctx) {
     const labels = DIALOGUES_CATALOG?.ui || {};
-    switch (action.type) {
-      case 'accept_quest': return labels.acceptLabel || 'Accept';
-      case 'turn_in_quest': return labels.turnInLabel || 'Turn in';
-      case 'open_shop': return 'Trade';
-      case 'open_temple': return 'Pray';
-      case 'rest': return 'Rest';
-      case 'interact': return UI_CATALOG?.island?.shrineRitePrompt || labels.continueLabel || 'Continue';
-      default: return labels.continueLabel || 'Continue';
-    }
+    const resolver = action && DIALOGUE_ACTION_LABELS[action.type];
+    if (resolver) return resolver(labels);
+    return labels.continueLabel || 'Continue';
   },
 
   /** Dispatches a dialogue action; unknown actions close the dialogue. */

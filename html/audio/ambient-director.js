@@ -202,12 +202,15 @@ export class AmbientDirector {
     const player = ctx.player;
     if (!amb || !player) return;
 
-    for (const emitter of amb.emitters) {
+    for (let i = 0; i < amb.emitters.length; i++) {
+      const emitter = amb.emitters[i];
       if (!Number.isFinite(emitter.x) || !Number.isFinite(emitter.y)) continue;
       if (emitter.phase && emitter.phase !== this.phase) continue;
       if (emitter.weather && emitter.weather !== this.weather) continue;
       const limit = emitter.rateLimitMs != null ? emitter.rateLimitMs : amb.oneShotRateLimitMs;
-      if (!this.canPlayAt(`${emitter.soundId}@${emitter.x},${emitter.y}`, nowMs, limit)) continue;
+      // Static emitter index is the stable rate-limit key (integer, no string
+      // allocation each tick — the emitters array is fixed per ambience).
+      if (!this.canPlayAt(i, nowMs, limit)) continue;
       this.audio.playAt(emitter.soundId, emitter.x, emitter.y, player.x, player.y);
     }
 
