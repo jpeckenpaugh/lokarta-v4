@@ -45,7 +45,7 @@
     "prop_altar": { "kind": "prop", "class": "free", "file": "./props/prop_altar.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 29 }, "frames": ["idle"] },
     "prop_throne": { "kind": "prop", "class": "wall", "file": "./props/prop_throne.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 29 }, "frames": ["idle"] },
     "prop_net": { "kind": "prop", "class": "free", "file": "./props/prop_net.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 }, "frames": ["idle"] },
-    "prop_fishers_net": { "kind": "prop", "class": "free", "file": "./props/prop_fishers_net.json", "native": { "w": 128, "h": 64 }, "anchor": { "x": 64, "y": 62 }, "frames": ["idle", "view_0", "view_180"] },
+    "prop_fishers_net": { "kind": "prop", "class": "free", "file": "./props/prop_fishers_net.json", "native": { "w": 256, "h": 64 }, "anchor": { "x": 128, "y": 62 }, "frames": ["idle", "view_0", "view_180"] },
     "prop_fishers_net_vertical": { "kind": "prop", "class": "free", "file": "./props/prop_fishers_net_vertical.json", "native": { "w": 64, "h": 128 }, "anchor": { "x": 32, "y": 126 }, "frames": ["idle", "view_90", "view_270"] },
     "prop_drying_rack": { "kind": "prop", "class": "free", "file": "./props/prop_drying_rack.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 }, "frames": ["idle"] },
     "prop_fish_barrel": { "kind": "prop", "class": "free", "file": "./props/prop_fish_barrel.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 29 }, "frames": ["idle"] },

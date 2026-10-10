@@ -6,6 +6,21 @@ the opt-in `--yaw` arg plus the new 60° default documented below, and no commit
 sprite def was regenerated. Findings are restated here and posted on
 [LIV-127](/LIV/issues/LIV-127).
 
+> **Landed in [LIV-129](/LIV/issues/LIV-129) (re-render pass).** The 10 buildings
+> + props were re-baked at `rise:60` (orthographic), `bake-fisher-assets.mjs` now
+> pins `BAKE_RISE=60`, and every def emits a
+> `camera:{projection,rise,yaw,views}` block checked by a T0 conformance
+> assertion (`html/tests/liv129-camera-baseline.test.mjs`, keyed on `baked3d`).
+> Actor `vocations/archer` is untouched (shallower than 60°, §12.1). Because a
+> 45° yaw changes each asset's projected aspect (hut 0.76→0.93, fishers_house
+> 0.88→1.06, longhouse 2.06→1.08), `yaw` is **0 across this set** for the pass —
+> the isometric-yaw selection is a per-asset art-direction decision (the plumbing
+> is live, one line per spec). Re-derived tile counts (measured projected aspect
+> at the baseline, not the bbox-corner estimate in §4): **longhouse 12×4 → 12×6**
+> (aspect 2.06) and **face-on net 2×1 → 4×1** (aspect 3.52); edge-on net stays
+> 1×2. The §4 aspects below were bbox-corner estimates and over-count the
+> pitch-depth term — the measured rendered silhouettes are the authority.
+
 > **Resolution ([LIV-130](/LIV/issues/LIV-130), 2026-10-10).** The board accepted
 > this analysis in [LIV-126](/LIV/issues/LIV-126) plan rev 1, and the contract in
 > [art-direction.md §12](art-direction.md) now encodes it. Two open questions below

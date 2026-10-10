@@ -36,11 +36,13 @@ test('LIV-113 fisher assets — longhouse, fishers house, fishers net', async (t
       assert.deepEqual(tileCanvasSize(def.tiles, nativePerTile(def)), def.native, `${id} native == tiles * 64`);
       assert.match(def.source, /_optimized\.glb/, `${id} baked from a provided GLB`);
     }
-    // The board asked for the longhouse ~6x12; the projection is ~2.8:1, so the
-    // aspect-correct whole-tile multiple at the requested 12-tile width is 12x4.
-    // LIV-121: at N64 that is 768x256 native (12*64 x 4*64).
-    assert.deepEqual(BUILDING_CATALOG.longhouse.tiles, { w: 12, h: 4 });
-    assert.deepEqual(BUILDING_CATALOG.longhouse.native, { w: 768, h: 256 });
+    // LIV-129: at the 60° perspective baseline the longhouse's projected
+    // silhouette aspect is ~2.06, so at the requested 12-tile width the
+    // aspect-matched whole-tile multiple is 12x6 (the earlier bbox-corner
+    // estimate of ~1.53 / 12x4 over-counted the pitch-depth term).
+    // At N64 that is 768x384 native (12*64 x 6*64).
+    assert.deepEqual(BUILDING_CATALOG.longhouse.tiles, { w: 12, h: 6 });
+    assert.deepEqual(BUILDING_CATALOG.longhouse.native, { w: 768, h: 384 });
   });
 
   await t.test('2. longhouse is placed center-top, front-facing (replaces the middle hut)', () => {
@@ -48,8 +50,8 @@ test('LIV-113 fisher assets — longhouse, fishers house, fishers net', async (t
     const lb = town.buildings.find((b) => b.silhouette === 'longhouse');
     assert.ok(lb, 'longhouse is placed in Havenreach');
     const [x0, y0, x1, y1] = lb.footprint;
-    assert.deepEqual([x1 - x0 + 1, y1 - y0 + 1], [12, 4], '12x4 footprint');
-    assert.ok(y1 <= 4, 'sits in the top row');
+    assert.deepEqual([x1 - x0 + 1, y1 - y0 + 1], [12, 6], '12x6 footprint at the 60° baseline');
+    assert.ok(y1 <= 6, 'sits in the top row');
     // Roughly centered across the interior (open columns 1..width-2).
     const center = (1 + (town.width - 2)) / 2;
     assert.ok(Math.abs((x0 + x1) / 2 - center) <= 1, 'longhouse is centered');

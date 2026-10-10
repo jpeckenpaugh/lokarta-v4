@@ -192,8 +192,8 @@ test('LIV-121 silhouette ground shadow', async (t) => {
 
   await t.test('9. the building blit sizes N64 from the def into the footprint (scale 1)', () => {
     const ctx = makeFakeCtx();
-    const def = BUILDING_CATALOG.longhouse; // 768x256 native, 12x4 tiles
-    const ok = drawSpriteFrameInto(ctx, def, 'view_0', 0, 0, 768, 256);
-    assert.equal(ok, true, 'N64 longhouse blits into its 12x4 footprint at scale 1');
+    const def = BUILDING_CATALOG.longhouse; // 768x384 native, 12x6 tiles
+    const ok = drawSpriteFrameInto(ctx, def, 'view_0', 0, 0, 768, 384);
+    assert.equal(ok, true, 'N64 longhouse blits into its 12x6 footprint at scale 1');
   });
 });

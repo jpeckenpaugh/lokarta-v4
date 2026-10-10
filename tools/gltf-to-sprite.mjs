@@ -943,6 +943,10 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
     method: multiTile
       ? `ortho-software-raster@${renderRes} -> chop-to-tile-canvas(${tiles.w}x${tiles.h}@${pxPerTile}px${stretchX ? ', stretchX' : ''}${margin ? `, margin ${margin}` : ''}) -> ${pipeline}`
       : `ortho-software-raster@${renderRes} -> ${size}px box-downscale -> ${pipeline}`,
+    // LIV-129: record the render camera so a conformance check can assert the
+    // 3D-render perspective baseline (art-direction.md §12). `views` are the
+    // EFFECTIVE frame azimuths (`view_<az>`), already offset by `yaw`.
+    ...(baked ? { camera: { projection: 'orthographic', rise, yaw, views: effViews } } : {}),
     native: multiTile ? { w: tiles.w * pxPerTile, h: tiles.h * pxPerTile } : { w: size, h: size },
     anchor: multiTile ? { x: Math.floor((tiles.w * pxPerTile) / 2), y: tiles.h * pxPerTile - 2 } : { x: Math.floor(size / 2), y: size - 2 },
     ...(quant ? { quantize: quant } : {}),
@@ -1065,6 +1069,9 @@ export async function buildAnimatedAsset({
     ...(outline ? {} : { outline: false }),
     source: `${path.basename(glbPath)} (glTF-Transform ${j.asset && j.asset.generator})`,
     method: `skinned-skeleton-sample(clip=${anim ? anim.name : 'rest'}, ${sampleTimes.length} frames) -> ortho-software-raster@${renderRes} -> ${size}px box-downscale -> ${pipeline}`,
+    // LIV-129: camera metadata for the rigged/actor path too; actors are the
+    // documented exception to the 60° baseline (art-direction.md §12.1).
+    ...(baked ? { camera: { projection: 'orthographic', rise, yaw: 0, views } } : {}),
     clip: anim ? anim.name : null,
     native: { w: size, h: size },
     anchor: { x: Math.floor(size / 2), y: size - 2 },

@@ -192,6 +192,66 @@ export function validateSpriteDef(def, { label = def && def.id } = {}) {
   return { errors };
 }
 
+/** Boolean/class helper: is a def a rigged/actor 3D bake (the §12.1 exception)? */
+export function isActorDef(def) {
+  return !!def && (def.kind === 'actor' || def.kind === 'vocation');
+}
+
+/**
+ * LIV-129 baseline (art-direction.md §12.1): a Top-Down Oblique "3/4"
+ * orthographic camera at **60° from the horizon** for buildings and props. The
+ * rigged-actor class is the one documented exception — it stays **shallower
+ * than 60°** (`rise < 60`) to keep the walk-cycle side read.
+ */
+export const CAMERA_BASELINE = { projection: 'orthographic', rise: 60 };
+export const ACTOR_CAMERA_RISE_CEIL = 60;
+
+/** True when a def carries a `camera` block emitted by the 3D bake pipeline. */
+export function hasCamera(def) {
+  return !!(def && def.camera && typeof def.camera === 'object');
+}
+
+/**
+ * Enforce the LIV-129 3D-render camera baseline for a **3D-baked** def
+ * (`baked3d`). Grandfathered (non-`baked3d`) defs return no errors — the
+ * baseline is a moving-forward policy for GLB-sourced art only (§12.5).
+ *
+ * Buildings/props must declare `projection:"orthographic"` and `rise:60`.
+ * Actors must declare an orthographic camera shallower than 60° (§12.1).
+ * `camera.views` must be a non-empty azimuth list, each with a matching
+ * `view_<az>` frame so the recorded camera cannot drift from the emitted frames.
+ */
+export function validateCameraBaseline(def, { label = def && def.id, actorRiseCeil = ACTOR_CAMERA_RISE_CEIL } = {}) {
+  const errors = [];
+  const push = (m) => errors.push(`${label}: ${m}`);
+  if (!isBaked3d(def)) return { errors };
+  const actor = isActorDef(def);
+  const cam = def.camera;
+  if (!hasCamera(def)) {
+    // The rigged-actor look is still pending (§12.1): an actor without camera
+    // metadata is exempt, not failing. Every building/prop must carry it.
+    if (!actor) push('3D-baked def is missing `camera` metadata (LIV-129)');
+    return { errors };
+  }
+  if (cam.projection !== CAMERA_BASELINE.projection) push(`camera.projection "${cam.projection}" != "${CAMERA_BASELINE.projection}"`);
+  if (!Number.isFinite(cam.rise)) push('camera.rise must be a number');
+  if (!Number.isFinite(cam.yaw)) push('camera.yaw must be a number');
+  if (!Array.isArray(cam.views) || cam.views.length === 0) {
+    push('camera.views must be a non-empty azimuth array');
+  } else {
+    const frameAz = new Set(Object.keys(def.frames || {}).filter((k) => /^view_\d+$/.test(k)).map((k) => Number(k.slice(5))));
+    for (const az of cam.views) if (!frameAz.has(az)) push(`camera view_${az} has no matching frame`);
+  }
+  if (Number.isFinite(cam.rise)) {
+    if (actor) {
+      if (!(cam.rise < actorRiseCeil)) push(`actor camera.rise ${cam.rise} must be < ${actorRiseCeil} (actor exception, §12.1)`);
+    } else if (cam.rise !== CAMERA_BASELINE.rise) {
+      push(`camera.rise ${cam.rise} != baseline ${CAMERA_BASELINE.rise}`);
+    }
+  }
+  return { errors };
+}
+
 /** Multi-tile-only guard used by the footprint contract test. */
 export function validateMultiTileDef(def, opts) {
   if (!isMultiTile(def)) return { errors: [`${(opts && opts.label) || (def && def.id)}: not a multi-tile def`] };
@@ -209,6 +269,7 @@ export function validateCommittedMultiTileDefs({ dir = POC_DIR } = {}) {
     if (!isMultiTile(def)) continue;
     count++;
     errors.push(...validateSpriteDef(def, { label: f }).errors);
+    errors.push(...validateCameraBaseline(def, { label: f }).errors);
   }
   return { errors, count };
 }

@@ -90,7 +90,7 @@
             6,
             1,
             17,
-            4
+            6
           ],
           "silhouette": "longhouse"
         },
@@ -229,19 +229,19 @@
         {
           "propId": "prop_fishers_net",
           "x": 5,
-          "y": 5,
+          "y": 7,
           "frame": "view_0"
         },
         {
           "propId": "prop_fishers_net",
           "x": 10,
-          "y": 5,
+          "y": 7,
           "frame": "view_0"
         },
         {
           "propId": "prop_fishers_net",
           "x": 15,
-          "y": 5,
+          "y": 7,
           "frame": "view_180"
         },
         {

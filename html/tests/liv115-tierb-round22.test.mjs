@@ -142,9 +142,12 @@ test('LIV-115 fix 4 — nets render 2x1 / 1x2 by orientation', async (t) => {
     const h = PROP_CATALOG.prop_fishers_net;
     const v = PROP_CATALOG.prop_fishers_net_vertical;
     assert.ok(h && v, 'both net orientations registered');
-    assert.deepEqual(h.tiles, { w: 2, h: 1 }, 'horizontal net is 2x1');
-    // LIV-121: the 3D-baked nets are N64, so 2x1 is 128x64 and 1x2 is 64x128.
-    assert.deepEqual(h.native, { w: 128, h: 64 });
+    // LIV-129: at the 60° baseline the face-on net's projected aspect widens to
+    // ~3.52, so the aspect-matched canvas is 4x1 (was 2x1); the edge-on net stays
+    // 1x2 (its full-height vertical sliver).
+    assert.deepEqual(h.tiles, { w: 4, h: 1 }, 'horizontal net is 4x1');
+    // LIV-121: the 3D-baked nets are N64, so 4x1 is 256x64 and 1x2 is 64x128.
+    assert.deepEqual(h.native, { w: 256, h: 64 });
     assert.deepEqual(v.tiles, { w: 1, h: 2 }, 'vertical net is 1x2');
     assert.deepEqual(v.native, { w: 64, h: 128 });
     for (const def of [h, v]) {
@@ -170,7 +173,7 @@ test('LIV-115 fix 4 — nets render 2x1 / 1x2 by orientation', async (t) => {
       return ext;
     };
     const h = measure(PROP_CATALOG.prop_fishers_net, 'view_0');
-    assert.ok(h.x >= 128, `horizontal net spans 2 display tiles (x=${h.x})`);
+    assert.ok(h.x >= 128, `horizontal net spans >= 2 display tiles (x=${h.x})`);
     const v = measure(PROP_CATALOG.prop_fishers_net_vertical, 'view_90');
     assert.ok(v.y >= 128, `vertical net spans 2 display tiles tall (y=${v.y})`);
   });

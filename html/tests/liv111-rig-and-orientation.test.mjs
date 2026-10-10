@@ -246,7 +246,9 @@ test('LIV-111 hut orientation — variants + Havenreach placement rules', async 
       const def = BUILDING_CATALOG[b.silhouette];
       const facing = MAP[facingFrame(def)] || 'forward';
       const [x0, y0, x1, y1] = b.footprint;
-      if (y1 <= 4) rows.top.push({ b, facing });
+      // LIV-129: the longhouse grew to 12x6 at the 60° baseline, so the
+      // top row now spans y1..6.
+      if (y1 <= 6) rows.top.push({ b, facing });
       else if (y0 >= 16) rows.bottom.push({ b, facing });
       else if (x0 <= 3) rows.left.push({ b, facing });
       else if (x1 >= 20) rows.right.push({ b, facing });
