@@ -106,7 +106,7 @@ function sampleBilinear(tex, u, v) {
 }
 
 /* ---------------- orthographic software rasteriser ---------------- */
-export function render(glb, tex, { azimuth = 0, rise = 10, targetH = 512, ambient = 0.30, light = [-0.45, 0.72, 0.53] } = {}) {
+export function render(glb, tex, { azimuth = 0, rise = 10, targetH = 512, ambient = 0.30, light = [-0.45, 0.72, 0.53], rim = 0, bounce = 0 } = {}) {
   const j = glb.json; const prim = j.meshes[0].primitives[0];
   const pos = readAccessor(glb, prim.attributes.POSITION);
   const nrm = prim.attributes.NORMAL != null ? readAccessor(glb, prim.attributes.NORMAL) : null;
@@ -145,9 +145,20 @@ export function render(glb, tex, { azimuth = 0, rise = 10, targetH = 512, ambien
       else { Nx = 0; Ny = 0; Nz = 1; }
       const nl = Math.hypot(Nx, Ny, Nz) || 1; Nx /= nl; Ny /= nl; Nz /= nl;
       const diff = Math.max(0, Nx * Lx + Ny * Ly + Nz * Lz);
-      const shade = ambient + 0.85 * Math.pow(diff, 0.9);
+      let shade = ambient + 0.85 * Math.pow(diff, 0.9);
+      // Tier B (LIV-109): baked 135-degree key already comes from `light`
+      // (upper-left). Add an inner rim-light band on grazing, key-facing
+      // normals so the silhouette's lit edge gets the brightest ramp step.
+      if (rim > 0) {
+        const grazing = 1 - Math.min(1, Math.abs(Nz));
+        const keyEdge = Math.max(0, Nx * Lx + Ny * Ly);
+        shade += rim * grazing * grazing * (0.30 + keyEdge);
+      }
       let cre = 200, cgr = 190, cbl = 180;
       if (tex && uv) { const uu = w0 * uv.data[p0 * 2] + w1 * uv.data[p1 * 2] + w2 * uv.data[p2 * 2]; const vv = w0 * uv.data[p0 * 2 + 1] + w1 * uv.data[p1 * 2 + 1] + w2 * uv.data[p2 * 2 + 1]; const col = sampleBilinear(tex, uu, vv); cre = col[0]; cgr = col[1]; cbl = col[2]; }
+      // Cool bounce shade in the lower-right (shadow) so baked assets share one
+      // consistent light model: warm key upper-left, cool ambient fill.
+      if (bounce > 0) { const k = (1 - diff) * bounce; cre = cre * (1 - k) + 38 * k; cgr = cgr * (1 - k) + 54 * k; cbl = cbl * (1 - k) + 96 * k; }
       const di4 = di * 4; rgba[di4] = Math.min(255, cre * shade); rgba[di4 + 1] = Math.min(255, cgr * shade); rgba[di4 + 2] = Math.min(255, cbl * shade); rgba[di4 + 3] = 255; depth[di] = z;
     }
   }
@@ -207,6 +218,116 @@ export function outlinePass(idx, w, h) {
     if (op(x - 1, y) || op(x + 1, y) || op(x, y - 1) || op(x, y + 1)) rows[y][x] = '0';
   }
   return rows.map(r => r.join(''));
+}
+
+/* ---------------- Tier B "baked" shading (LIV-109) ---------------- */
+// 2x2 Bayer matrix normalised to /4. Ordered-dither thresholds between two
+// ADJACENT ramp steps; this is the on-grid dither the art-direction doc allows.
+const BAYER2X2 = [0, 2, 3, 1];
+
+/** Rec.601 luma — the ramp axis a reviewer perceives. */
+export function luma(r, g, b) { return 0.299 * r + 0.587 * g + 0.114 * b; }
+
+/**
+ * Builds a Tier B "baked" palette: `families` chromaticity clusters (materials),
+ * each carrying `steps` ordered luminance entries (shadow -> base -> light ->
+ * rim). This guarantees the §5.3 ">=4-step ramp per material" contract instead
+ * of letting a naive median-cut scatter colors arbitrarily.
+ *
+ * Returns `{ families, steps, colors, assign(r,g,b) }` where `colors` is the
+ * ramp-ordered RGB list indexed `family*steps + step`, and `assign` returns the
+ * family index plus a continuous `pos` in [0,1] along that family's luma range
+ * (the dither pass turns `pos` into a step).
+ */
+export function rampPalette(pixels, { families = 6, steps = 4 } = {}) {
+  if (!pixels.length || families < 1 || steps < 2) throw new Error('rampPalette: need pixels and families>=1, steps>=2');
+  const pts = pixels.map(([r, g, b]) => { const s = r + g + b || 1; return [r / s, g / s]; });
+  // Seed centroids across the chroma spread so initial assignment is not degenerate.
+  const order = pts.map((_, i) => i).sort((i, j) => (pts[i][0] - pts[i][1]) - (pts[j][0] - pts[j][1]));
+  const cents = [];
+  for (let f = 0; f < families; f++) { const p = pts[order[Math.min(order.length - 1, Math.floor((f + 0.5) / families * order.length))]]; cents.push([p[0], p[1]]); }
+  const assignC = new Int32Array(pts.length).fill(-1);
+  for (let iter = 0; iter < 10; iter++) {
+    let changed = false;
+    for (let i = 0; i < pts.length; i++) {
+      let bi = 0, bd = 1e9;
+      for (let f = 0; f < families; f++) { const dx = pts[i][0] - cents[f][0], dy = pts[i][1] - cents[f][1], d = dx * dx + dy * dy; if (d < bd) { bd = d; bi = f; } }
+      if (assignC[i] !== bi) { assignC[i] = bi; changed = true; }
+    }
+    if (!changed) break;
+    const sum = Array.from({ length: families }, () => [0, 0, 0]);
+    for (let i = 0; i < pts.length; i++) { const f = assignC[i]; sum[f][0] += pts[i][0]; sum[f][1] += pts[i][1]; sum[f][2]++; }
+    for (let f = 0; f < families; f++) if (sum[f][2] > 0) cents[f] = [sum[f][0] / sum[f][2], sum[f][1] / sum[f][2]];
+  }
+  const fam = Array.from({ length: families }, () => ({ lums: [], acc: Array.from({ length: steps }, () => [0, 0, 0, 0]), lmin: 0, lmax: 1 }));
+  for (let i = 0; i < pixels.length; i++) fam[assignC[i]].lums.push(luma(...pixels[i]));
+  for (const f of fam) {
+    if (f.lums.length) { const s = f.lums.slice().sort((a, b) => a - b); f.lmin = s[Math.floor(s.length * 0.03)]; f.lmax = s[Math.floor(s.length * 0.97)]; if (f.lmax - f.lmin < 1) { f.lmin -= 2; f.lmax += 2; } }
+    else { f.lmin = 0; f.lmax = 255; }
+  }
+  for (let i = 0; i < pixels.length; i++) {
+    const f = assignC[i]; const L = luma(...pixels[i]);
+    let pos = (L - fam[f].lmin) / (fam[f].lmax - fam[f].lmin); pos = Math.max(0, Math.min(1, pos));
+    const st = Math.min(steps - 1, Math.round(pos * (steps - 1)));
+    const a = fam[f].acc[st]; a[0] += pixels[i][0]; a[1] += pixels[i][1]; a[2] += pixels[i][2]; a[3]++;
+  }
+  const colors = [];
+  // Ramp factors used to synthesise a step that no pixel landed on (sparse
+  // texture): keeps every family a full shadow->rim ramp instead of a grey gap.
+  const factors = steps === 4 ? [0.55, 0.8, 1.05, 1.35] : Array.from({ length: steps }, (_, i) => 0.55 + 0.8 * (i / (steps - 1)));
+  for (const f of fam) {
+    let mr = 0, mg = 0, mb = 0, mn = 0;
+    for (let st = 0; st < steps; st++) { const a = f.acc[st]; if (a[3] > 0) { mr += a[0]; mg += a[1]; mb += a[2]; mn += a[3]; } }
+    const mean = mn > 0 ? [mr / mn, mg / mn, mb / mn] : [128, 128, 128];
+    for (let st = 0; st < steps; st++) {
+      const a = f.acc[st];
+      if (a[3] > 0) colors.push([a[0] / a[3], a[1] / a[3], a[2] / a[3]]);
+      else colors.push([mean[0] * factors[st], mean[1] * factors[st], mean[2] * factors[st]]);
+    }
+  }
+  for (let i = 0; i < colors.length; i++) colors[i] = colors[i].map((v) => Math.max(0, Math.min(255, Math.round(v))));
+  // Enforce shadow->rim ordering: sort each family's slice by luma ascending.
+  for (let f = 0; f < families; f++) {
+    const slice = colors.slice(f * steps, (f + 1) * steps);
+    const ord = slice.map((c, i) => [luma(...c), i]).sort((a, b) => a[0] - b[0]);
+    for (let i = 0; i < steps; i++) colors[f * steps + i] = slice[ord[i][1]];
+  }
+  const assign = (r, g, b) => {
+    const s = r + g + b || 1; const x = r / s, y = g / s;
+    let bf = 0, bd = 1e9;
+    for (let f = 0; f < families; f++) { const dx = x - cents[f][0], dy = y - cents[f][1], d = dx * dx + dy * dy; if (d < bd) { bd = d; bf = f; } }
+    const L = luma(r, g, b);
+    let pos = (L - fam[bf].lmin) / (fam[bf].lmax - fam[bf].lmin);
+    pos = Math.max(0, Math.min(1, pos));
+    return { family: bf, pos };
+  };
+  return { families, steps, colors, assign };
+}
+
+/**
+ * Quantises a shaded sprite to a ramp palette with 2x2 ordered dithering. Each
+ * opaque pixel maps to a family and a continuous ramp position; the fractional
+ * part splits between two adjacent steps using the Bayer matrix, so gradients
+ * read as dithered SNES-plus bands instead of hard edges. Palette chars start at
+ * '1'; '0' stays the shared outline and '.' the transparent slot.
+ */
+export function quantizeRamp(sprite, ramp) {
+  const { w, h, rgba } = sprite; const rows = [];
+  for (let y = 0; y < h; y++) {
+    let row = '';
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      if (rgba[i + 3] < 128) { row += '.'; continue; }
+      const { family, pos } = ramp.assign(rgba[i], rgba[i + 1], rgba[i + 2]);
+      const scaled = pos * (ramp.steps - 1);
+      let step = Math.floor(scaled); const frac = scaled - step;
+      if (frac > BAYER2X2[(y & 1) * 2 + (x & 1)] / 4) step++;
+      if (step >= ramp.steps) step = ramp.steps - 1; if (step < 0) step = 0;
+      row += (family * ramp.steps + step + 1).toString(36);
+    }
+    rows.push(row);
+  }
+  return rows;
 }
 
 /* ---------------- multi-tile chopping (LIV-106) ---------------- */
@@ -372,13 +493,16 @@ function chopSheet(slices, scale, bg = [10, 11, 14, 255], pad = 6) {
   return { w: W, h: H, buf };
 }
 
-export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 90, 180, 270], colors = 14, rise = 10, flat = false, renderRes = 512, tiles = null, kind = null }) {
+export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 90, 180, 270], colors = 14, rise = 10, flat = false, renderRes = 512, tiles = null, kind = null, tier = 'indexed', families = 6, steps = 4 }) {
+  const baked = tier === 'baked';
   const glb = parseGLB(glbPath);
   const tex = flat ? null : await loadBaseColor(glb, glb.json.meshes[0].primitives[0].material);
   const multiTile = !!tiles;
   const viewPix = [];
   for (const az of views) {
-    const hi = render(glb, tex, { azimuth: az * Math.PI / 180, rise, targetH: renderRes });
+    // Tier B bakes the 135-degree key (upper-left `light`) plus a rim term and a
+    // cool bounce; Tier A stays flat Lambert (LIV-109 / art-direction-target §5).
+    const hi = render(glb, tex, { azimuth: az * Math.PI / 180, rise, targetH: renderRes, rim: baked ? 0.7 : 0, bounce: baked ? 0.35 : 0 });
     // Single-tile classes box-downscale the whole render into ONE 32x32 tile.
     // Multi-tile buildings CHOP the render into a whole-tile canvas instead of
     // squishing it into a single tile (LIV-106).
@@ -386,14 +510,25 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
   }
   const all = [];
   for (const v of viewPix) for (let i = 0; i < v.px.w * v.px.h; i++) if (v.px.rgba[i * 4 + 3] > 128) all.push([v.px.rgba[i * 4], v.px.rgba[i * 4 + 1], v.px.rgba[i * 4 + 2]]);
-  const palRGB = medianCut(all, colors);
   const palette = { '0': OUTLINE, '.': null };
-  palRGB.forEach((c, i) => { palette[i.toString(16)] = hex(...c); });
+  let palRGB, ramp = null, quantizeFn;
+  if (baked) {
+    // Keep the whole palette inside the Tier B ceiling (<=32 incl. '.'/'0').
+    const fam = Math.max(1, Math.min(families, Math.floor(30 / steps)));
+    ramp = rampPalette(all, { families: fam, steps });
+    palRGB = ramp.colors;
+    palRGB.forEach((c, i) => { palette[(i + 1).toString(36)] = hex(...c); });
+    quantizeFn = (px) => quantizeRamp(px, ramp);
+  } else {
+    palRGB = medianCut(all, colors);
+    palRGB.forEach((c, i) => { palette[i.toString(16)] = hex(...c); });
+    quantizeFn = (px) => quantize(px, palRGB);
+  }
   const frames = {};
   const frameRgba = [];
   for (const v of viewPix) {
     const vw = v.px.w, vh = v.px.h;
-    const idx = outlinePass(quantize(v.px, palRGB), vw, vh);
+    const idx = outlinePass(quantizeFn(v.px), vw, vh);
     frames[`view_${v.az}`] = idx;
     const rgba = new Uint8ClampedArray(vw * vh * 4);
     for (let y = 0; y < vh; y++) for (let x = 0; x < vw; x++) {
@@ -404,12 +539,16 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
   }
   const canvas = multiTile ? tileCanvasSize(tiles) : null;
   fs.mkdirSync(outDir, { recursive: true });
+  const pipeline = baked
+    ? `${ramp.families}x${ramp.steps}-ramp palettes + 2x2 Bayer dither + baked 135deg key/rim -> 1px outline`
+    : `${palRGB.length}-colour median-cut -> 1px outline`;
   const def = {
     id, kind: kind || (multiTile ? 'building' : 'actor'),
+    ...(baked ? { renderTier: 'baked' } : {}),
     source: `${path.basename(glbPath)} (glTF-Transform ${glb.json.asset && glb.json.asset.generator})`,
     method: multiTile
-      ? `ortho-software-raster@${renderRes} -> chop-to-tile-canvas(${tiles.w}x${tiles.h}) -> ${palRGB.length}-colour median-cut -> 1px outline`
-      : `ortho-software-raster@${renderRes} -> ${size}px box-downscale -> ${palRGB.length}-colour median-cut -> 1px outline`,
+      ? `ortho-software-raster@${renderRes} -> chop-to-tile-canvas(${tiles.w}x${tiles.h}) -> ${pipeline}`
+      : `ortho-software-raster@${renderRes} -> ${size}px box-downscale -> ${pipeline}`,
     native: multiTile ? { w: tiles.w * NATIVE_TILE, h: tiles.h * NATIVE_TILE } : { w: size, h: size },
     anchor: multiTile ? { x: Math.floor((tiles.w * NATIVE_TILE) / 2), y: tiles.h * NATIVE_TILE - 2 } : { x: Math.floor(size / 2), y: size - 2 },
     palette, frames,
@@ -434,11 +573,11 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
     const s = sheet(frameRgba.map((f) => f.rgba), size, 8);
     fs.writeFileSync(path.join(outDir, `${id}_${size}px_x8.png`), encodePNG(s.w, s.h, s.buf));
   }
-  return { id, palette: palRGB, opaquePixels: all.length, textured: !!tex, tiles: multiTile ? tiles : null };
+  return { id, palette: palRGB, opaquePixels: all.length, textured: !!tex, tiles: multiTile ? tiles : null, renderTier: baked ? 'baked' : 'indexed', ramp: ramp ? { families: ramp.families, steps: ramp.steps } : null };
 }
 
 function parseArgs(argv) {
-  const a = { views: [0, 90, 180, 270], size: 32, colors: 14, rise: 10, flat: false, renderRes: 512, tiles: null, kind: null };
+  const a = { views: [0, 90, 180, 270], size: 32, colors: 14, rise: 10, flat: false, renderRes: 512, tiles: null, kind: null, tier: 'indexed', families: 6, steps: 4 };
   const rest = [];
   for (let i = 0; i < argv.length; i++) {
     const t = argv[i];
@@ -451,6 +590,9 @@ function parseArgs(argv) {
     else if (t === '--views') a.views = argv[++i].split(',').map(Number);
     else if (t === '--tiles') { const [tw, th] = argv[++i].split('x').map(Number); a.tiles = { w: tw, h: th }; }
     else if (t === '--kind') a.kind = argv[++i];
+    else if (t === '--tier') a.tier = argv[++i];
+    else if (t === '--families') a.families = +argv[++i];
+    else if (t === '--steps') a.steps = +argv[++i];
     else if (t === '--flat') a.flat = true;
     else rest.push(t);
   }
@@ -460,11 +602,11 @@ function parseArgs(argv) {
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
   const { a, rest } = parseArgs(process.argv.slice(2));
-  if (!rest.length) { console.error('usage: node tools/gltf-to-sprite.mjs <input.glb> [--id name] [--out dir] [--tiles 4x2] [--kind building] ...'); process.exit(1); }
+  if (!rest.length) { console.error('usage: node tools/gltf-to-sprite.mjs <input.glb> [--id name] [--out dir] [--tiles 4x2] [--kind building] [--tier indexed|baked] ...'); process.exit(1); }
   const glbPath = rest[0];
   const id = a.id || path.basename(glbPath).replace(/\.glb$/i, '');
   const outDir = a.out || path.join(ROOT, 'docs', 'art', '3d-poc');
-  const res = await buildAsset({ glbPath, id, outDir, size: a.size, views: a.views, colors: a.colors, rise: a.rise, flat: a.flat, renderRes: a.renderRes, tiles: a.tiles, kind: a.kind });
+  const res = await buildAsset({ glbPath, id, outDir, size: a.size, views: a.views, colors: a.colors, rise: a.rise, flat: a.flat, renderRes: a.renderRes, tiles: a.tiles, kind: a.kind, tier: a.tier, families: a.families, steps: a.steps });
   const shape = res.tiles ? `${res.tiles.w}x${res.tiles.h} tiles` : `${a.size}px`;
-  console.log(`${res.id}: ${res.opaquePixels} opaque px, ${res.palette.length}-colour palette, textured=${res.textured}, ${shape} -> ${path.relative(ROOT, outDir)}`);
+  console.log(`${res.id}: ${res.opaquePixels} opaque px, ${res.palette.length}-colour palette (${res.renderTier}), textured=${res.textured}, ${shape} -> ${path.relative(ROOT, outDir)}`);
 }

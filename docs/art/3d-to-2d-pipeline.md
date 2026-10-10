@@ -297,6 +297,38 @@ Multi-tile: add `--tiles NxM --kind building` (§3.4).
 This validates the geometry → (crop) → [downscale | chop] → palette → outline → JSON chain
 end-to-end with the real committed assets, for both single- and multi-tile classes.
 
+### Tier B "baked" output (LIV-109, Phase 1)
+
+`--tier baked` swaps the flat Tier A posterise for the [art-direction-target.md](art-direction-target.md)
+§5 Tier B read, with **no geometry-path change**:
+
+```
+orthographic render @ 135-degree key (upper-left) + inner rim-light on grazing,
+  key-facing normals + cool bounce in shadow
+  └▶ [downscale to 32 OR chop-to-tile-canvas]
+      └▶ chromaticity k-means (families) × 4 ordered luma steps = <=24 usable colours
+          + 2x2 Bayer ordered dither between adjacent steps
+          └▶ 1px outline -> sprite JSON with renderTier:"baked" (cap <=32) + preview PNG
+```
+
+The palette is authored as **explicit shadow→base→light→rim ramps per material**
+(`rampPalette`) rather than an arbitrary median-cut, so the ">=4-step ramp" rule is a
+structural property; `quantizeRamp` turns each pixel's continuous ramp position into a
+dithered pair of adjacent steps. Run: `node tools/gltf-to-sprite.mjs <glb> --tier baked [--tiles 2x3]`.
+
+Committed Phase 1 before/after proof (`docs/art/3d-poc/phase1/`, composed by
+`tools/render-tierb-proof.mjs`):
+
+- `archer_before_after.png` — Tier A `rukiya_poc` (14 colours) vs Tier B
+  `rukiya_archer_baked` (24 usable, 4-step ramps + rim).
+- `fishing_hut_before_after.png` — Tier A `fisherman_hut_2x3_indexed` vs Tier B
+  `fisherman_hut_2x3` (2×3 = 64×96 native, baked).
+
+The Tier B hut is registered as a runtime building sprite (`html/assets/sprites/buildings/fishing_hut.json`,
+`BUILDING_CATALOG`) and blitted through the existing `renderBuildingSilhouettes` +
+`footprint:[x0,y0,x1,y1]` path via `drawSpriteFrameInto` — one bitmap, no new placement model.
+
+
 ---
 
 ## 6. What each asset can/can't become + effort
