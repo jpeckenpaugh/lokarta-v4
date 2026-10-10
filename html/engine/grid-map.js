@@ -21,6 +21,8 @@ const CODE_TO_TILE_TYPE = {
   13: TILE_TYPES.BUILDING_WALL,
   14: TILE_TYPES.DOORWAY,
   15: TILE_TYPES.TOWER_ENTRANCE,
+  // LIV-100 walkable dock/jetty decking.
+  16: TILE_TYPES.DOCK,
 };
 
 export class GridMap {

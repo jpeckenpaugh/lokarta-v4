@@ -727,8 +727,19 @@
     "name": "Havenreach",
     "biome": "havenreach_town",
     "lighting": "ambient",
-    "description": "LIV-58 town palette. Buildings read from silhouette (stone body + red roof + gold trim); doors glow so they read as interactable. Root-level scene theme, outside the tower `levels` scan.",
+    "description": "LIV-100 coastal fishing-village palette. Driftwood / timber / sand / seafoam; the off-map backdrop is open water (outside.mode \"water\") so the walled town reads as a shore settlement. Scene tile palettes (WATER / SAND / BRIDGE / DOCK) let the content pass carve a harbor and shoreline. Root-level scene theme, outside the tower `levels` scan.",
     "outside": {
+      "mode": "water",
+      "water": {
+        "deep": "#0f2f38",
+        "fill": "#1b4d58",
+        "crest": "#3f8f96",
+        "foam": "#cdeee6"
+      },
+      "shoreline": {
+        "wetSand": "#9a8257",
+        "foam": "#dcefe6"
+      },
       "grass": [
         "#33552b",
         "#3a5f31",
@@ -738,7 +749,7 @@
       "grassBlade": "#4a7d3f",
       "bush": "#3d6f36",
       "bushLight": "#4f8a43",
-      "treeTrunk": "#4a3520",
+      "treeTrunk": "#6b5638",
       "treeCanopy": "#284a24",
       "treeCanopyLight": "#3a6a33"
     },
@@ -757,23 +768,48 @@
         "blade": "#4a7d3f",
         "edge": "#24401f"
       },
+      "WATER": {
+        "deep": "#0f2f38",
+        "fill": "#1b4d58",
+        "crest": "#3f8f96",
+        "foam": "#cdeee6",
+        "anim": "drift"
+      },
+      "SAND": {
+        "fill": "#c9b177",
+        "dark": "#a88f57",
+        "shell": "#e6d6a8",
+        "edge": "#8a7444"
+      },
       "PATH": {
-        "fill": "#9a8058",
-        "dark": "#7d6844",
-        "edge": "#5f4f33"
+        "fill": "#8a7250",
+        "dark": "#6b5233",
+        "edge": "#4f3d26"
+      },
+      "BRIDGE": {
+        "plank": "#7a5a34",
+        "plankDark": "#5c4226",
+        "rail": "#3f2a18"
+      },
+      "DOCK": {
+        "plank": "#8a6a42",
+        "plankDark": "#634726",
+        "post": "#4a3520",
+        "foam": "#cdeee6",
+        "edge": "#3a2a18"
       },
       "TREE": {
-        "trunk": "#4a3520",
+        "trunk": "#6b5638",
         "canopy": "#284a24",
         "canopyLight": "#3a6a33",
         "outline": "#0b0d12"
       },
       "BUILDING_WALL": {
-        "fill": "#7a6a55",
-        "shade": "#5f5242",
-        "roof": "#a8452e",
-        "roofPeak": "#7d2f1f",
-        "trim": "#d9b45a",
+        "fill": "#7d6b52",
+        "shade": "#5a4a37",
+        "roof": "#8a6a45",
+        "roofPeak": "#6b4a2a",
+        "trim": "#c9b177",
         "window": "#ffcf7a"
       },
       "DOORWAY": {

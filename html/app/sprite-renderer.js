@@ -462,6 +462,33 @@ const TILE_RENDERERS = {
     ctx.fillRect(screenX, screenY, size, 3 * u);
     ctx.fillRect(screenX, screenY + size - 3 * u, size, 3 * u);
   },
+  // Fishing-village dock/jetty decking (LIV-100): timber planks on posts with a
+  // seafoam lap on the waterward edge. Palette from the scene theme's
+  // `tiles.DOCK`; placement is a pure integer hash — no per-frame allocation.
+  [TILE_TYPES.DOCK]: (ctx, screenX, screenY, size, theme, opts = {}) => {
+    const p = sceneTilePalette(theme, 'DOCK');
+    const u = size / 32;
+    const h = tileHash(opts.x || 0, opts.y || 0);
+    ctx.fillStyle = p.plank || '#8a6a42';
+    ctx.fillRect(screenX, screenY, size, size);
+    // Plank seams across the deck.
+    ctx.fillStyle = p.plankDark || '#634726';
+    for (let i = 1; i < 4; i++) ctx.fillRect(screenX, screenY + i * 8 * u, size, HAIRLINE(u));
+    // A plank-end notch, hash-placed for texture.
+    ctx.fillRect(screenX + ((h % 5) * 5 + 3) * u, screenY, 2 * u, size);
+    // Corner posts.
+    ctx.fillStyle = p.post || '#4a3520';
+    ctx.fillRect(screenX, screenY, 3 * u, 3 * u);
+    ctx.fillRect(screenX + size - 3 * u, screenY + size - 3 * u, 3 * u, 3 * u);
+    // Seafoam lap on the waterward edge.
+    ctx.fillStyle = p.foam || '#cdeee6';
+    ctx.fillRect(screenX, screenY + size - 2 * u, size, 2 * u);
+    if (p.edge) {
+      ctx.strokeStyle = p.edge;
+      ctx.lineWidth = HAIRLINE(u);
+      ctx.strokeRect(screenX + 0.5, screenY + 0.5, size - 1, size - 1);
+    }
+  },
   [TILE_TYPES.BUILDING_WALL]: (ctx, screenX, screenY, size, theme, opts = {}) => {
     const p = sceneTilePalette(theme, 'BUILDING_WALL');
     const u = size / 32;
