@@ -155,6 +155,16 @@ changes**. `renderTier` is metadata for validation and for future authors/tools.
     existing prop convention (`prop_boat`: `{x:16,y:27}` at $1\times1$). A
     multi-tile building's anchor must fall inside its footprint rect. Exact field
     binding on the footprint entry is LIV-106's.
+12. **Perspective baseline — 3D-rendered artifacts only (LIV-128).** Any def
+    baked from a **3D source (GLB)** — the Tier B "3D-baked" class — uses the
+    [art-direction.md §12](art-direction.md) **Top-Down Oblique 3/4** baseline:
+    camera pitch **60° below horizontal (`rise: 60`)**, **parallel/orthographic**
+    projection, axis-aligned cardinal azimuths `0/90/180/270`, and an **optional
+    +45° yaw** (`45/135/225/315`) for static scene objects. Rules 1–11 above
+    (grid/scaling, palette cap, ramps, dither, 135° key light, outline/inner rim,
+    contrast, footprints) are **unchanged** by the camera — they are screen-space
+    or post-render. **2D-derived Tier B and Tier A are grandfathered** (no
+    retro-fit); pre-baseline 3D bakes are re-baked per [LIV-127](/LIV/issues/LIV-127).
 
 ### 5.1 Testable contract (Tier A + Tier B, single- and multi-tile)
 
@@ -197,7 +207,8 @@ and a naive 32px render would be mush. The bake must end in the same char-grid
 JSON:
 
 ```
-GLB → orthographic render (fixed 135° key) →
+GLB → Top-Down Oblique 3/4 orthographic render
+      (60° pitch = rise:60; parallel projection; 135° key) →
   downscale to 32/48 or 64 (actors, boss) OR native multi-tile (scene objects) →
   quantize to the tier ceiling (3D-baked: 255 opaque, art-direction.md §11) →
   apply ordered dither → outline pass → char-grid JSON

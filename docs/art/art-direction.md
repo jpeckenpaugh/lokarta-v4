@@ -598,3 +598,122 @@ The implementation is the fixed 256-code alphabet exported as `BAKED_ALPHABET`
   their caps; only the 11 3D-baked defs migrate; 1:1 and shadow are unchanged.
 
 No dark patterns or manipulative engagement mechanics are introduced.
+
+---
+
+## 12. 3D-Render Perspective Baseline — Top-Down Oblique "3/4" (LIV-128)
+
+Board direction (2026-10-10, via [LIV-126](/LIV/issues/LIV-126)): every
+**3D-rendered artifact** — i.e. any sprite/building/prop **baked from a 3D source
+(a GLB)**, the Tier B "3D-baked" class of §6/§11 — uses a single **Top-Down
+Oblique "3/4" false (parallel/orthographic) perspective** baseline. Hand-pixelled
+art and every non-3D-rendered asset are **grandfathered** (§12.5). Owner: Game
+Designer. Pipeline implementation + per-asset conformance: Tech Lead
+([LIV-127](/LIV/issues/LIV-127)).
+
+### 12.1 The baseline (normative)
+
+| Parameter | Baseline | Tool binding |
+| :--- | :--- | :--- |
+| Camera pitch | **60° below horizontal** (30° from vertical) | `rise: 60` |
+| Projection | **parallel / orthographic** — no perspective divide, no vanishing point | `render()` (`tools/gltf-to-sprite.mjs:141`) is already orthographic; unchanged |
+| Default facing azimuths | axis-aligned cardinals **0° / 90° / 180° / 270°** | `--views 0,90,180,270` |
+| Optional yaw | **+45° offset allowed** → **45° / 135° / 225° / 315°** | `--yaw 45` (new; Tech Lead) |
+| Key light | screen-space **135° upper-left** (target doc §5.5, §7) | unchanged |
+| Framing | projected-bbox fit (`fitProjected`) | unchanged |
+
+**Pitch interpretation (explicit).** "60° camera pitch" is encoded as **60° down
+from the horizon** — 0° = eye-level side view, 90° = straight top-down — which is
+exactly the tool's existing `rise` convention (its default is `rise=10`, near
+side-on; `rise` is measured from the horizontal plane, so `rise: 60` is the
+baseline). This is the reading that matches the board's "**Top-Down** Oblique 3/4"
+wording and needs no sign flip. If the board instead intended **60° from the
+vertical** (a shallower 30° elevation, `rise: 30`), the same policy holds with the
+single constant changed; we recommend the from-horizontal reading and flag the
+alternative here so the constant is a one-line change, not a re-interpretation.
+
+### 12.2 The 3/4 read (MDA)
+
+At a 60° pitch: a vertical (world-Y) edge projects at `cos 60° = 0.5`, a
+horizontal ground edge at `sin 60° ≈ 0.866`. The result is **predominantly
+top-down with an oblique face** — roofs/tops dominate while side faces stay visible
+enough to read form. This is the "false perspective" 3/4 look: parallel lines do
+not converge (orthographic), but the oblique foreshortening still gives volume.
+
+### 12.3 Optional 45° yaw
+
+An asset **may** be authored with a **+45° yaw offset** applied to all its view
+azimuths so it reads on a diagonal (isometric feel) and no two edges align exactly
+to screen N/S/E/W. Use it when:
+
+* a **scene prop / landmark / building** reads flat or ambiguous dead-on, or
+* a row of adjacent objects would otherwise all align exactly on the grid axes
+  (the board's "avoid all items aligning exactly N/S/E/W").
+
+Constraints (theme-coherence + readability lenses):
+
+* **Keep yaw consistent within a prop family / scene** so a street of buildings
+  reads as one set; do not mix 0° and 45° siblings of the same asset.
+* **Actors keep the axis-aligned cardinal set.** The runtime has a 3-direction
+  facing model (`down`/`up`/`side`, `left` = mirrored `side`, §2); a 45°-yawed
+  actor would not align with grid movement or its mirror. Yaw is for **static
+  scene objects**, not actors.
+* The **135° key light is screen-space** (target doc §5.5) and therefore **does
+  not rotate with yaw** — a yawed object keeps the same lit edge, which is what
+  keeps the cast coherent (§12.4).
+
+### 12.4 Interaction with existing rules (all unaffected by the camera change)
+
+The camera baseline changes **projected geometry only** — the pixels the render
+produces. It does **not** change any palette, outline, contrast, or lighting rule:
+
+| Rule | Verdict | Why |
+| :--- | :--- | :--- |
+| **≥3:1 rim contrast vs floor** (§3) | **Unaffected** | Evaluated per palette entry vs the floor *after* the render; independent of camera. |
+| **135° key light** (target §5.5, §7) | **Unaffected** | Authored in **screen space** (upper-left), not world space; yaw/pitch do not rotate it. |
+| **1px outline** (§2) | **Unaffected** | Tier A keeps it; 3D bakes still **drop** it (LIV-115). Camera does not affect outline. |
+| **Palette / quantization** (§11) | **Unaffected** | Post-render quantization; same cap, same encoding. |
+| **Pixelated / no-AA / dither** (§1, target §5.4) | **Unaffected** | On-grid raster output; unchanged. |
+
+**Flagged interaction — projected aspect / footprint.** Raising the pitch from the
+pre-baseline ~6–26° to **60°** roughly **halves projected height** (`cos 60°`),
+turning tall portrait objects **squatter**. Multi-tile `tiles`/`native` and the
+**aspect-matched `footprint`** derivation ([3d-to-2d-pipeline.md](3d-to-2d-pipeline.md)
+§3.1) must be **re-derived per building** after the pitch change; a formerly `2×3`
+portrait hut may become `3×2`. That re-derivation is the Tech Lead's per-asset
+conformance work ([LIV-127](/LIV/issues/LIV-127)); the doc rule is: **tile count
+follows the projected aspect at the 60° baseline**, not the pre-baseline aspect.
+
+### 12.5 Grandfathering (explicit)
+
+* **In scope:** assets rendered/baked from a 3D source (GLB) — the Tier B
+  "3D-baked" class (`renderTier:"baked"` **and** a GLB bake source); 2D-derived
+  bakes excluded.
+* **Grandfathered — no retro-fit:** all **hand-pixelled Tier A** art, all
+  **2D-derived Tier B** art, legacy 2D sprites/tiles/props, and every existing
+  non-3D asset. The baseline is a **moving-forward policy for new 3D renders**; it
+  does **not** require re-baking any 2D/hand-pixelled asset.
+* **Existing 3D bakes** produced before this rule (the pre-baseline `rise` 6–26
+  set) are **non-conforming** and are re-baked **only when next touched** or per
+  the Tech Lead's re-render list in [LIV-127](/LIV/issues/LIV-127); this doc does
+  not itself force a mass re-bake.
+
+### 12.6 Lenses cited (LIV-128)
+
+* **Readability & legibility** — one 60° 3/4 obliquity makes tops and faces read
+  consistently; the ≥3:1 rim, dropped outline, and 135° key are unchanged, so the
+  baseline sharpens form without touching the silhouette defence.
+* **Game feel / juice** — the oblique top-down read gives objects volume and a
+  grounded "3/4" presence versus the flat pre-baseline near-side view.
+* **Theme coherence** — one camera + one screen-space key tie all 3D-rendered
+  props together; optional yaw varies orientation, never light.
+* **MDA** — one camera *mechanic* produces the *aesthetic* of a coherent top-down
+  3/4 world, not a per-asset art grab-bag (§12.2).
+* **Balance levers** — the smallest lever is the **pitch constant + optional yaw
+  flag**; projection, palette, outline, and light are untouched (§12.4).
+* **Kano model** — a consistent camera is a *must-have* baseline; the optional 45°
+  yaw is a cheap *delighter* for scene variety (§12.3).
+* **Scope discipline** — opt-in by source: Tier A and all non-3D assets are
+  grandfathered; only new 3D bakes carry the baseline (§12.5).
+
+No dark patterns or manipulative engagement mechanics are introduced.

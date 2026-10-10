@@ -36,6 +36,14 @@ elevation (`--rise`)**:
 | `fishing_hut_left` | left-facing | 270 | 4×3 (128×96) | 26 | steep side, faces the road (LIV-114: stretched to 4 tiles wide) |
 | `fishing_hut_back` | backward | 180 | 2×3 (64×96) | 18 | windowed rear |
 
+> **Pre-baseline note (LIV-128).** This orientation pass predates the
+> [art-direction.md §12](art-direction.md) **Top-Down Oblique 3/4** baseline
+> (**pitch `rise:60`**, orthographic, optional `+45°` yaw). The per-variant
+> `--rise` values in the table (6–26) are the **legacy near-side-view** method and
+> are **non-conforming**; new 3D bakes follow §12 (re-render tracked by
+> [LIV-127](/LIV/issues/LIV-127)). The data-driven variant mechanism itself
+> (footprint + `defaultFrame` + `BUILDING_CATALOG`) is unchanged.
+
 Each def sets `placement.defaultFrame` to its single baked `view_<az>`, so the
 shared `spriteBuilding` renderer picks the right orientation **with no
 per-building JS branch**. Runtime defs live in

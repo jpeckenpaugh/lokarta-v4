@@ -45,7 +45,8 @@ defaults (`1.0`); the embedded metallicRoughness map carries the actual variatio
   roof, a doorway, and a ladder — i.e. a static prop/landmark, not an actor.
 
 Both being Y-up confirms standard glTF orientation; a naive renderer only needs a yaw
-spin (0°/90°/180°) plus a small pitch to produce the three facing directions.
+spin (0°/90°/180°, optional `+45°`) plus the baseline camera pitch (60° below
+horizontal = `rise:60`, art-direction.md §12) to produce the three facing directions.
 
 ---
 
@@ -81,7 +82,7 @@ single 32×32 sprite destroys detail and is **not** how buildings are authored.
 | # | Stage | Unit | Rule |
 | :- | :-- | :-- | :-- |
 | 1 | 3D source | world units (glTF, Y-up) | bbox e.g. hut `1.19 W × 1.27 D × 1.90 H` |
-| 2 | Ortho pixel render | render px | fixed azimuth/rise, `targetH` (e.g. 512); crop dead border |
+| 2 | Ortho pixel render | render px | **3D-render baseline** (art-direction.md §12): ortho, **pitch 60° below horizontal = `rise:60`**, cardinal azimuths `0/90/180/270` (optional `+45°` yaw), `targetH` (e.g. 512); crop dead border |
 | 3 | **Native tile grid** | px @ **32 px = 1 tile** | actors/props: **32×32 = 1 tile**. buildings: `N×M` tiles ⇒ native `N*32 × M*32` |
 | 4 | Display grid | screen px | `CONFIG.GRID_SIZE = 64 = 32 native × SCALE(2)` — integer nearest-neighbour upscale |
 | 5 | Placed tiles | grid cells | footprint `[x0,y0,x1,y1]` (inclusive); screen rect = `(N*64) × (M*64)` px |
@@ -253,7 +254,8 @@ Blender rigging.
 concept art (Game Designer)
    └▶ Image-to-3D  (meshy Pro, multi-view, Smart Topology ~4–8k faces)  ── actors & props
         └▶ Auto-rig + animation presets (meshy, actors only) ── idle/walk/attack/hit/death
-             └▶ orthographic render @ 0°/90°/180° × frame  ── tools/gltf-to-sprite.mjs (prototype)
+             └▶ orthographic render @ baseline (§12: pitch=rise:60; azimuths 0/90/180/270,
+                optional +45° yaw) × frame  ── tools/gltf-to-sprite.mjs (prototype)
                   └▶ crop dead transparent margin
                        ├─ single-tile (actor/prop): box-downscale → 32×32 (one tile)
                        └─ multi-tile (building/boss): chop-to-tile-canvas → (tiles_w*32)×(tiles_h*32)   [LIV-106]
@@ -271,6 +273,19 @@ concept art (Game Designer)
 | Render | **`tools/gltf-to-sprite.mjs`** (this prototype, pure JS) — or Blender `--background` ortho Workbench/EEVEE, or `three` + `headless-gl` | `tools/` (dev) | pure JS zero-native; Blender optional |
 | Image post | built-in median-cut; optional `quantize`, `sharp`/`pngquant`, `pngjs` | `tools/` (dev) | dev-only |
 | Emit/consume | existing `sprite-renderer.js` dispatch + `manifest.json` | `html/` | none new |
+
+> **Camera baseline (LIV-128).** The render stage must use the
+> [art-direction.md §12](art-direction.md) **Top-Down Oblique 3/4** baseline:
+> **pitch 60° below horizontal = `rise:60`**, **parallel/orthographic** projection,
+> cardinal azimuths `0/90/180/270`, with an **optional `+45°` yaw** for static
+> scene objects. The prototype's current defaults (`rise=10` static / `rise=8`
+> animated) and the committed bakes (variants authored at `rise` 6–26) are
+> **pre-baseline / non-conforming**; new 3D bakes must default to `rise:60` and the
+> renderer needs a `--yaw` option. Per-asset conformance + the re-render list are
+> [LIV-127](/LIV/issues/LIV-127)'s; 2D/hand-pixelled assets are grandfathered and
+> must not be re-baked. A steeper pitch compresses projected height (`cos 60°`), so
+> multi-tile `tiles`/`footprint` choices must be re-derived from the projected
+> aspect (§3.1).
 
 **Why the pure-JS rasteriser:** it needs **no native builds, no GPU, no Blender** — it runs
 under the same `node --test` / Node 22 CI the repo already has, so committed sprite PNGs
@@ -303,8 +318,8 @@ end-to-end with the real committed assets, for both single- and multi-tile class
 §5 Tier B read, with **no geometry-path change**:
 
 ```
-orthographic render @ 135-degree key (upper-left) + inner rim-light on grazing,
-  key-facing normals + cool bounce in shadow
+orthographic render @ baseline pitch 60° (rise:60) + 135-degree key (upper-left)
+  + inner rim-light on grazing, key-facing normals + cool bounce in shadow
   └▶ [downscale to 32 OR chop-to-tile-canvas]
       └▶ chromaticity k-means (families) × ordered luma steps (<=24 at the 32px era)
           + 2x2 Bayer ordered dither between adjacent steps
