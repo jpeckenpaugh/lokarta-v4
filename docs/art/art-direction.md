@@ -188,13 +188,15 @@ longhouse / fishers-house / net GLBs in `lokarta-private`. The bake **must hit t
 tier's native size** (§6.2.1): a 64-native actor at `scale = 1` is what removes the
 $2\times2$ source blocks the board flagged.
 
-**Camera baseline ([LIV-126](/LIV/issues/LIV-126) / [LIV-127](/LIV/issues/LIV-127)).**
-Every 3D-rendered artifact uses a **Top-Down Oblique "3/4" orthographic** projection
-at a **60° camera pitch measured from the horizon** (`rise=60`), optionally rotated
-**~45° yaw** for an isometric read. Hand-pixelled / 2D-derived art is grandfathered.
-Full model, per-asset conformance table, and the re-render plan:
-[3d-camera-baseline.md](3d-camera-baseline.md). This does not change any runtime
-contract; it constrains the 3D bake camera only.
+**Camera baseline ([LIV-126](/LIV/issues/LIV-126) / [LIV-127](/LIV/issues/LIV-127) /
+[LIV-130](/LIV/issues/LIV-130)).**
+Every 3D-rendered artifact uses a **Top-Down Oblique "3/4" orthographic** projection.
+**Buildings/props** use a **60° camera pitch measured from the horizon** (`rise=60`),
+optionally rotated **~45° yaw** for an isometric read; **3D actors are the exception
+and stay shallower than 60°** to keep the walk-cycle side read (§12.1). Hand-pixelled
+/ 2D-derived art is grandfathered. Full model, per-asset conformance table, and the
+re-render plan: [3d-camera-baseline.md](3d-camera-baseline.md). This does not change
+any runtime contract; it constrains the 3D bake camera only.
 
 ### 6.4 Authoring artifacts & tests (implementation = [LIV-121](/LIV/issues/LIV-121))
 
@@ -611,38 +613,59 @@ No dark patterns or manipulative engagement mechanics are introduced.
 
 ## 12. 3D-Render Perspective Baseline — Top-Down Oblique "3/4" (LIV-128)
 
-Board direction (2026-10-10, via [LIV-126](/LIV/issues/LIV-126)): every
-**3D-rendered artifact** — i.e. any sprite/building/prop **baked from a 3D source
-(a GLB)**, the Tier B "3D-baked" class of §6/§11 — uses a single **Top-Down
-Oblique "3/4" false (parallel/orthographic) perspective** baseline. Hand-pixelled
+Board direction (2026-10-10, via [LIV-126](/LIV/issues/LIV-126), plan rev 1;
+encoded here by [LIV-130](/LIV/issues/LIV-130)): every **3D-rendered artifact** —
+i.e. any sprite/building/prop **baked from a 3D source (a GLB)**, the Tier B
+"3D-baked" class of §6/§11 — uses a **Top-Down Oblique "3/4" false
+(parallel/orthographic) perspective** baseline. **Buildings and props** take the
+full **60°-from-horizon** pitch; **character/actor sprites are the one exception and
+stay shallower than 60°** (§12.1) to preserve the walk-cycle side read. Hand-pixelled
 art and every non-3D-rendered asset are **grandfathered** (§12.5). Owner: Game
 Designer. Pipeline implementation + per-asset conformance: Tech Lead
-([LIV-127](/LIV/issues/LIV-127)).
+([LIV-127](/LIV/issues/LIV-127)); camera analysis: [3d-camera-baseline.md](3d-camera-baseline.md).
 
 ### 12.1 The baseline (normative)
 
 | Parameter | Baseline | Tool binding |
 | :--- | :--- | :--- |
-| Camera pitch | **60° below horizontal** (30° from vertical) | `rise: 60` |
+| Camera pitch — buildings/props | **60° from the horizon** (30° from vertical) | `rise: 60` |
+| Camera pitch — actors | **shallower than 60°** (actor exception, §12.1) | `rise: <60` (exact value pending a separate actor look) |
 | Projection | **parallel / orthographic** — no perspective divide, no vanishing point | `render()` (`tools/gltf-to-sprite.mjs:141`) is already orthographic; unchanged |
 | Default facing azimuths | axis-aligned cardinals **0° / 90° / 180° / 270°** | `--views 0,90,180,270` |
 | Optional yaw | **+45° offset allowed** → **45° / 135° / 225° / 315°** | `--yaw 45` (new; Tech Lead) |
 | Key light | screen-space **135° upper-left** (target doc §5.5, §7) | unchanged |
 | Framing | projected-bbox fit (`fitProjected`) | unchanged |
 
-**Pitch interpretation (explicit).** "60° camera pitch" is encoded as **60° down
-from the horizon** — 0° = eye-level side view, 90° = straight top-down — which is
-exactly the tool's existing `rise` convention (its default is `rise=10`, near
-side-on; `rise` is measured from the horizontal plane, so `rise: 60` is the
-baseline). This is the reading that matches the board's "**Top-Down** Oblique 3/4"
-wording and needs no sign flip. If the board instead intended **60° from the
-vertical** (a shallower 30° elevation, `rise: 30`), the same policy holds with the
-single constant changed; we recommend the from-horizontal reading and flag the
-alternative here so the constant is a one-line change, not a re-interpretation.
+**Pitch reference (explicit, locked).** "60° camera pitch" is encoded as **60° down
+from the horizon** — 0° = eye-level side view, 90° = straight top-down. This is
+exactly the tool's existing `rise` convention: `rise` is measured **from the
+horizon** (from the horizontal plane; the old default `rise=10` was near side-on, so
+`rise: 60` is the baseline). The board **accepted the from-horizon reading in
+[LIV-126](/LIV/issues/LIV-126) plan rev 1** ([LIV-130](/LIV/issues/LIV-130)); it is
+**not** 60° from the vertical. Every doc that names the camera `rise` convention
+states **"from the horizon"**. Technical reference:
+[3d-camera-baseline.md](3d-camera-baseline.md) §2, §5 (R1).
+
+**Actor exception (normative).** Character/actor sprites — the 3D-rendered actor
+class (`renderTier:"baked"` **and** `baked3d`/a GLB `source`, e.g. the rigged
+`vocations/*` actors, §6/§12.5) — are the **one exception**: they stay **shallower
+than 60°** for now, to preserve the **walk-cycle side read**. At a full 60° top-down
+the runtime's three-direction facing model (`down`/`up`/`side`, §2) loses the
+side-profile silhouette and stride readability the walk cycle depends on. Rationale
+(**readability & legibility** + **game feel / juice** lenses): the actor is the
+highest-screen-time asset, and the player must parse facing and gait from a shallow
+side read within a beat, so a shallower actor camera wins over camera uniformity. A
+**separate actor look is pending** (a follow-up shall fix the exact actor `rise` and
+re-lock the walk cycle); until then 3D actors are **non-conforming to the 60° baseline
+by design**, not by omission, and any conformance check must evaluate them against the
+eventual actor-look constant, **not** `rise === 60`. Buildings and props take the full
+60° (§12.1 table). Non-3D-rendered actors are grandfathered under §12.5 and
+unaffected.
 
 ### 12.2 The 3/4 read (MDA)
 
-At a 60° pitch: a vertical (world-Y) edge projects at `cos 60° = 0.5`, a
+At a 60° pitch (the buildings/props baseline; actors shallower, §12.1): a vertical
+(world-Y) edge projects at `cos 60° = 0.5`, a
 horizontal ground edge at `sin 60° ≈ 0.866`. The result is **predominantly
 top-down with an oblique face** — roofs/tops dominate while side faces stay visible
 enough to read form. This is the "false perspective" 3/4 look: parallel lines do
@@ -662,10 +685,11 @@ Constraints (theme-coherence + readability lenses):
 
 * **Keep yaw consistent within a prop family / scene** so a street of buildings
   reads as one set; do not mix 0° and 45° siblings of the same asset.
-* **Actors keep the axis-aligned cardinal set.** The runtime has a 3-direction
-  facing model (`down`/`up`/`side`, `left` = mirrored `side`, §2); a 45°-yawed
-  actor would not align with grid movement or its mirror. Yaw is for **static
-  scene objects**, not actors.
+* **Actors keep the axis-aligned cardinal set and stay shallower than 60°.** The
+  runtime has a 3-direction facing model (`down`/`up`/`side`, `left` = mirrored
+  `side`, §2); a 45°-yawed actor would not align with grid movement or its mirror,
+  and the 60° pitch is superseded by the actor exception (§12.1). Yaw is for
+  **static scene objects**, not actors.
 * The **135° key light is screen-space** (target doc §5.5) and therefore **does
   not rotate with yaw** — a yawed object keeps the same lit edge, which is what
   keeps the cast coherent (§12.4).
@@ -690,13 +714,17 @@ turning tall portrait objects **squatter**. Multi-tile `tiles`/`native` and the
 §3.1) must be **re-derived per building** after the pitch change; a formerly `2×3`
 portrait hut may become `3×2`. That re-derivation is the Tech Lead's per-asset
 conformance work ([LIV-127](/LIV/issues/LIV-127)); the doc rule is: **tile count
-follows the projected aspect at the 60° baseline**, not the pre-baseline aspect.
+follows the projected aspect at the 60° scene-object baseline**, not the pre-baseline
+aspect. Actors are single-tile and take the shallower actor exception (§12.1), so the
+footprint re-derivation does not apply to them.
 
 ### 12.5 Grandfathering (explicit)
 
 * **In scope:** assets rendered/baked from a 3D source (GLB) — the Tier B
   "3D-baked" class (`renderTier:"baked"` **and** a GLB bake source); 2D-derived
-  bakes excluded.
+  bakes excluded. **Buildings/props** conform at `rise:60`; **3D actors** are in
+  scope but carry the shallower actor exception (§12.1) and conform to the pending
+  actor-look constant instead.
 * **Grandfathered — no retro-fit:** all **hand-pixelled Tier A** art, all
   **2D-derived Tier B** art, legacy 2D sprites/tiles/props, and every existing
   non-3D asset. The baseline is a **moving-forward policy for new 3D renders**; it
@@ -708,9 +736,12 @@ follows the projected aspect at the 60° baseline**, not the pre-baseline aspect
 
 ### 12.6 Lenses cited (LIV-128)
 
-* **Readability & legibility** — one 60° 3/4 obliquity makes tops and faces read
-  consistently; the ≥3:1 rim, dropped outline, and 135° key are unchanged, so the
-  baseline sharpens form without touching the silhouette defence.
+* **Readability & legibility** — one 60° 3/4 obliquity makes building/prop tops and
+  faces read consistently; the ≥3:1 rim, dropped outline, and 135° key are unchanged,
+  so the baseline sharpens form without touching the silhouette defence. The
+  **actor exception** (§12.1) keeps the walk-cycle side read that a 60° top-down would
+  flatten — legibility of *motion* at the highest-screen-time asset wins over camera
+  uniformity.
 * **Game feel / juice** — the oblique top-down read gives objects volume and a
   grounded "3/4" presence versus the flat pre-baseline near-side view.
 * **Theme coherence** — one camera + one screen-space key tie all 3D-rendered

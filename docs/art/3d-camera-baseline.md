@@ -6,6 +6,15 @@ the opt-in `--yaw` arg plus the new 60° default documented below, and no commit
 sprite def was regenerated. Findings are restated here and posted on
 [LIV-127](/LIV/issues/LIV-127).
 
+> **Resolution ([LIV-130](/LIV/issues/LIV-130), 2026-10-10).** The board accepted
+> this analysis in [LIV-126](/LIV/issues/LIV-126) plan rev 1, and the contract in
+> [art-direction.md §12](art-direction.md) now encodes it. Two open questions below
+> are closed: **Q1** — the 60° reference is **from the horizon** (`rise=60`);
+> **Q3** — **actors are the exception and stay shallower than 60°** to preserve the
+> walk-cycle side read (§12.1), so this doc's actor row in §6 (which lists the actor
+> at `rise:60`) is superseded for actors only: buildings/props take `rise:60`, actors
+> follow the pending actor look. This doc remains the technical reference.
+
 ---
 
 ## 1. Board policy (restated)
@@ -217,7 +226,7 @@ committed production bytes and footprints.
 | :--- | :--- | :--- | :--- |
 | Buildings | 8 (`fishing_hut*` ×5, `fishers_house*` ×2, `longhouse`) | Re-run `bake-fisher-assets.mjs` at `rise:60` (add `yaw` per item if the 45° read is wanted); re-confirm `tiles`; regenerate grid/chop proofs + previews | ~1–2 h automated; ~0.5 d footprint/test re-tune |
 | Props | 2 nets | Same, plus re-decide 2×1 / 1×2 under the new aspect | ~0.25 d |
-| Actor | `rukiya_archer_rigged` → `vocations/archer` | Re-run `bake-rigged-archer.mjs` at `rise:60` + `integrate-actor-bake.mjs`; re-lock motion/orientation (LIV-111) | ~0.5 d |
+| Actor | `rukiya_archer_rigged` → `vocations/archer` | **Actor exception (§12.1): stay shallower than 60°** — re-bake `bake-rigged-archer.mjs` only when the pending actor look fixes its `rise`, then `integrate-actor-bake.mjs`; re-lock motion/orientation (LIV-111) | ~0.5 d (after the actor look) |
 | Tests/proofs | `liv109/111/113/114/115/121/123/125`, `sprite-assets` | Update any pinned aspect/tile/byte expectations; regenerate proof PNGs | ~0.5 d |
 | **Total** | 11 defs | | **~1.5–2.5 eng-days** |
 
@@ -240,15 +249,18 @@ than relying on the new default) so the camera is visible in the code.
 
 ## 8. Open questions / ambiguities
 
-1. **60° reference axis.** From the horizon (`rise=60`, recommended) or from the
-   vertical (`rise=30`)? Everything else follows this choice.
+1. **60° reference axis — RESOLVED (from the horizon).** From the horizon
+   (`rise=60`, **accepted** [LIV-126](/LIV/issues/LIV-126) / [LIV-130](/LIV/issues/LIV-130))
+   or from the vertical (`rise=30`)? The board chose **from the horizon**; art-direction.md
+   §12.1 locks it.
 2. **45° yaw form.** Per-asset offset on the existing 4-view defs
    (`--yaw 45`, recommended — keeps `view_0/90/180/270` naming and the runtime
    facing model) or a whole new `45/135/225/315` view set? A full rotated set
    would need new `placement.defaultFrame` values and re-tested facings.
-3. **Actors at 60°?** The policy says "objects"; a 60° top-down on the rigged
-   archer/NPCs loses the side-profile read that walk cycles rely on. Confirm
-   whether actors stay shallower or also go to 60°.
+3. **Actors at 60° — RESOLVED (shallower exception).** The board accepted the
+   **actor exception**: 3D-rendered actors stay **shallower than 60°** to keep the
+   walk-cycle side read; a separate actor look is pending (art-direction.md §12.1).
+   Buildings/props still take 60°.
 4. **Longhouse footprint.** Re-derive `tiles` from the new aspect (≈12×8) or keep
    12×4 with lateral margin? Needs a content decision before re-bake.
 5. **Camera metadata (R3).** Add `camera` to the sprite schema so conformance is
@@ -267,4 +279,8 @@ than relying on the new default) so the camera is visible in the code.
 - Re-render the **11 3D-rendered defs** in an approved follow-up, re-deriving
   tiles/footprints from the new projected aspect (longhouse + nets need the most
   attention) — **~1.5–2.5 eng-days**.
-- Record the camera in emitted defs (R3) and update wrappers to pin `rise:60`.
+- **Except actors:** the 3D actor(s) stay **shallower than 60°** per the accepted
+  actor exception (art-direction.md §12.1); the archer actor re-bake waits on the
+  pending actor look, only buildings/props go to `rise:60` in the re-render pass.
+- Record the camera in emitted defs (R3) and update wrappers to pin `rise:60`
+  (scene objects).

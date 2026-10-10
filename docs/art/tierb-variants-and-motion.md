@@ -38,9 +38,10 @@ elevation (`--rise`)**:
 
 > **Pre-baseline note (LIV-128).** This orientation pass predates the
 > [art-direction.md §12](art-direction.md) **Top-Down Oblique 3/4** baseline
-> (**pitch `rise:60`**, orthographic, optional `+45°` yaw). The per-variant
+> (**buildings/props pitch `rise:60`**, orthographic, optional `+45°` yaw; actors are
+> the shallower exception, §12.1). The per-variant
 > `--rise` values in the table (6–26) are the **legacy near-side-view** method and
-> are **non-conforming**; new 3D bakes follow §12 (re-render tracked by
+> are **non-conforming**; new 3D building/prop bakes follow §12 (re-render tracked by
 > [LIV-127](/LIV/issues/LIV-127)). The data-driven variant mechanism itself
 > (footprint + `defaultFrame` + `BUILDING_CATALOG`) is unchanged.
 
