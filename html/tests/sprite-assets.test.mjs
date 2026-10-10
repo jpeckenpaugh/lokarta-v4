@@ -711,17 +711,20 @@ test('Tier B sprite contract (LIV-108)', async t => {
     }
   });
 
-  await t.test('35. multi-tile defs: whole-tile native, ≤128×128, footprint span == tile span', () => {
+  await t.test('35. multi-tile defs: whole-tile native, ≤512×512, footprint span == tile span', () => {
     const { errors, count } = validateCommittedMultiTileDefs();
     assert.equal(errors.length, 0, `committed multi-tile defs: ${errors.join('; ')}`);
     assert.ok(count >= 2, `expected the committed 2×3 and 4×2 PoC defs, found ${count}`);
 
     // A 4×2 (128×64) building with a matching footprint validates cleanly.
     assert.deepEqual(validateMultiTileDef(mtDef()).errors, []);
+    // A large landmark (LIV-113 longhouse: 12×4 = 384×128) now validates too;
+    // the per-axis ceiling was generalised from 4 tiles to 16 (512px).
+    assert.deepEqual(validateMultiTileDef(mtDef({ tiles: { w: 12, h: 4 } })).errors, [], '12×4 landmark validates');
     // native not a multiple of 32 (also != tiles*32).
     assert.ok(hasErr(mtDef({ native: { w: 100, h: 64 } }), /multiple of 32/), 'non-tile-multiple native rejected');
-    // native wider than the 128px ceiling.
-    assert.ok(hasErr(mtDef({ native: { w: 160, h: 32 }, tiles: { w: 5, h: 1 } }), /exceeds 128/), '>128px native rejected');
+    // native wider than the 512px ceiling.
+    assert.ok(hasErr(mtDef({ native: { w: 544, h: 32 }, tiles: { w: 17, h: 1 } }), /exceeds 512/), '>512px native rejected');
     // footprint span disagrees with the canvas tile span.
     assert.ok(hasErr(mtDef({ placement: { mode: 'multi-tile-blit', footprint: [0, 0, 1, 1] } }), /footprint span/), 'footprint mismatch rejected');
     // A non-multi-tile def is not silently accepted by the multi-tile guard.

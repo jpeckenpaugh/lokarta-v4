@@ -1289,18 +1289,21 @@ export class SpriteRenderer {
 
   /**
    * Draws a room prop (furniture or floor decor) at a tile, using the authored
-   * `idle` frame resolved from `PROP_CATALOG[prop.propId]`. Furniture uses the
-   * same tile-origin blit as chests (the authored art is bottom-aligned); decor
-   * is authored at the tile origin. Falls back to a procedural rim-lit block so
-   * the prop set can land incrementally (D4 §6.2/§6.4).
+   * frame resolved from `PROP_CATALOG[prop.propId]`. The frame is data-driven:
+   * a scene prop may declare `frame` (e.g. a multi-facing fisher's net picks
+   * `view_90`), defaulting to the flat `idle` art every existing prop uses.
+   * Furniture uses the same tile-origin blit as chests (the authored art is
+   * bottom-aligned); decor is authored at the tile origin. Falls back to a
+   * procedural rim-lit block so the prop set can land incrementally (D4 §6.2/§6.4).
    * @param {CanvasRenderingContext2D} ctx
-   * @param {{propId?:string, layer?:string, class?:string}} prop
+   * @param {{propId?:string, layer?:string, class?:string, frame?:string}} prop
    * @returns {boolean}
    */
   static drawProp(ctx, prop, screenX, screenY, size = CONFIG.GRID_SIZE) {
     if (!prop) return false;
     const def = prop.propId ? PROP_CATALOG[prop.propId] : null;
-    if (drawPropFrame(ctx, def, 'idle', screenX, screenY, size)) return true;
+    const frameId = prop.frame || 'idle';
+    if (drawPropFrame(ctx, def, frameId, screenX, screenY, size)) return true;
 
     const u = size / 32;
     const decor = prop.layer === 'decor' || (def && def.class) === 'decor';

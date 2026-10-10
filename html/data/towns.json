@@ -73,37 +73,37 @@
       ],
       "buildings": [
         {
-          "id": "top_forward_hut_west",
+          "id": "top_fishers_house_west",
           "name": "Fish Market",
           "footprint": [
             2,
             2,
-            3,
+            4,
             4
           ],
-          "silhouette": "fishing_hut"
+          "silhouette": "fishers_house"
         },
         {
-          "id": "top_forward_hut_center",
-          "name": "The Tidehall",
-          "footprint": [
-            9,
-            1,
-            11,
-            4
-          ],
-          "silhouette": "fishing_hut_large"
-        },
-        {
-          "id": "top_forward_hut_east",
+          "id": "top_longhouse_center",
           "name": "The Longhouse",
           "footprint": [
-            19,
-            2,
-            20,
+            6,
+            1,
+            17,
             4
           ],
-          "silhouette": "fishing_hut"
+          "silhouette": "longhouse"
+        },
+        {
+          "id": "top_fishers_house_east",
+          "name": "The Tidehall",
+          "footprint": [
+            19,
+            1,
+            21,
+            4
+          ],
+          "silhouette": "fishers_house_large"
         },
         {
           "id": "left_right_facing_hut",
@@ -225,6 +225,42 @@
           "propId": "prop_buoy",
           "x": 15,
           "y": 21
+        },
+        {
+          "propId": "prop_fishers_net",
+          "x": 5,
+          "y": 5,
+          "frame": "view_0"
+        },
+        {
+          "propId": "prop_fishers_net",
+          "x": 10,
+          "y": 5,
+          "frame": "view_0"
+        },
+        {
+          "propId": "prop_fishers_net",
+          "x": 15,
+          "y": 5,
+          "frame": "view_180"
+        },
+        {
+          "propId": "prop_fishers_net",
+          "x": 18,
+          "y": 5,
+          "frame": "view_90"
+        },
+        {
+          "propId": "prop_fishers_net",
+          "x": 1,
+          "y": 12,
+          "frame": "view_270"
+        },
+        {
+          "propId": "prop_fishers_net",
+          "x": 2,
+          "y": 19,
+          "frame": "view_90"
         }
       ]
     }

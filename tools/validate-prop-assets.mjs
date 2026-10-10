@@ -77,7 +77,11 @@ export function validatePropAssets({ spritesDir = SPRITES_DIR } = {}) {
       for (const row of rows) if (row.length !== w) errors.push(`${id}/${fid}: row width ${row.length} != ${w}`);
     }
     const entries = Object.entries(def.palette);
-    if (entries.length > 16) errors.push(`${id}: palette ${entries.length} > 16`);
+    // Tier-aware palette ceiling, matching the sprite-def contract: Tier B
+    // "baked" props cap at 32, Tier A stays at 16 (LIV-113 bakes the fisher's
+    // net, which needs the wider ramp palette).
+    const paletteCap = def.renderTier === 'baked' ? 32 : 16;
+    if (entries.length > paletteCap) errors.push(`${id}: palette ${entries.length} > ${paletteCap} (renderTier ${def.renderTier || 'indexed'})`);
     for (const [k, v] of entries) {
       if (k.length !== 1) errors.push(`${id}: palette key "${k}"`);
       if (v !== null && !/^#[0-9a-f]{6}$/i.test(v)) errors.push(`${id}: palette ${k}=${v}`);

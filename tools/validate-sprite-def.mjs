@@ -12,7 +12,7 @@
  *   - frame geometry equals `native`
  *   - single-character palette keys, valid `#rrggbb` (`.` may be `null`)
  *   - multi-tile objects declare `{ tiles, anchor, placement }`; `native`
- *     equals `tiles * 32`, both dims are multiples of 32 and <=128, and the
+ *     equals `tiles * 32`, both dims are multiples of 32 and <=512, and the
  *     `placement.footprint` tile span equals the `tiles` span.
  *
  * Exported so `html/tests/sprite-assets.test.mjs` runs the same checks natively.
@@ -28,8 +28,14 @@ export const ROOT = path.resolve(HERE, '..');
 
 /** Atomic tile: 32x32 native px == ONE tile (art-direction.md §1). */
 export const NATIVE_TILE = 32;
-/** Allowed multi-tile footprint per axis: W, H in {1,2,3,4} -> up to 128x128. */
-export const MULTI_TILE_MAX_TILES = 4;
+/**
+ * Allowed multi-tile footprint per axis. LIV-113 generalised the ceiling from
+ * 4 (128px) to 16 (512px) so a large landmark such as the Havenreach longhouse
+ * (12x4 tiles) fits ONE blitted bitmap through the existing footprint path. The
+ * cap stays per-axis (not total area) so a def can be long in one dimension —
+ * e.g. 12 tiles wide — while still rejecting accidental giant canvases.
+ */
+export const MULTI_TILE_MAX_TILES = 16;
 export const MULTI_TILE_MAX_PX = NATIVE_TILE * MULTI_TILE_MAX_TILES;
 export const RENDER_TIERS = ['indexed', 'baked'];
 export const DEFAULT_RENDER_TIER = 'indexed';

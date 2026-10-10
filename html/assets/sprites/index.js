@@ -36,6 +36,9 @@ import buildingFishingHutBack from './buildings/fishing_hut_back.json' with { ty
 import buildingFishingHutRight from './buildings/fishing_hut_right.json' with { type: 'json' };
 import buildingFishingHutLeft from './buildings/fishing_hut_left.json' with { type: 'json' };
 import buildingFishingHutLarge from './buildings/fishing_hut_large.json' with { type: 'json' };
+import buildingLonghouse from './buildings/longhouse.json' with { type: 'json' };
+import buildingFishersHouse from './buildings/fishers_house.json' with { type: 'json' };
+import buildingFishersHouseLarge from './buildings/fishers_house_large.json' with { type: 'json' };
 
 export const SPRITE_MANIFEST = manifest;
 export const SPRITE_CATALOG = {
@@ -76,4 +79,9 @@ export const BUILDING_CATALOG = {
   fishing_hut_right: buildingFishingHutRight,
   fishing_hut_left: buildingFishingHutLeft,
   fishing_hut_large: buildingFishingHutLarge,
+  // LIV-113 fisher assets: the central longhouse landmark + two fishers-house
+  // size variants, all baked Tier B from the provided GLBs. Same footprint path.
+  longhouse: buildingLonghouse,
+  fishers_house: buildingFishersHouse,
+  fishers_house_large: buildingFishersHouseLarge,
 };

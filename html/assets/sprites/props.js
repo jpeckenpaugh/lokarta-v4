@@ -29,6 +29,7 @@ import propSarcophagus from './props/prop_sarcophagus.json' with { type: 'json' 
 import propAltar from './props/prop_altar.json' with { type: 'json' };
 import propThrone from './props/prop_throne.json' with { type: 'json' };
 import propNet from './props/prop_net.json' with { type: 'json' };
+import propFishersNet from './props/prop_fishers_net.json' with { type: 'json' };
 import propDryingRack from './props/prop_drying_rack.json' with { type: 'json' };
 import propFishBarrel from './props/prop_fish_barrel.json' with { type: 'json' };
 import propBoat from './props/prop_boat.json' with { type: 'json' };
@@ -62,6 +63,10 @@ export const PROP_CATALOG = {
   // LIV-100 fishing-village props. Flat `idle` frame map, same pipeline;
   // placement comes from the scene catalogs (towns.json/islands.json `props[]`).
   prop_net: propNet,
+  // LIV-113: the fisher's net hung between two posts, baked Tier B from the
+  // provided GLB. Authored with four facings (view_0/90/180/270); a scene prop
+  // selects one via `frame`, defaulting to the flat `idle` art otherwise.
+  prop_fishers_net: propFishersNet,
   prop_drying_rack: propDryingRack,
   prop_fish_barrel: propFishBarrel,
   prop_boat: propBoat,
@@ -72,7 +77,7 @@ export const PROP_CATALOG = {
 
 /** Furniture/decor ids grouped by `kind`, for data-driven placement lookups. */
 export const PROP_IDS_BY_KIND = {
-  prop: ['prop_table', 'prop_crate', 'prop_barrel', 'prop_brazier', 'prop_candelabra', 'prop_bookshelf', 'prop_sarcophagus', 'prop_altar', 'prop_throne', 'prop_net', 'prop_drying_rack', 'prop_fish_barrel', 'prop_boat', 'prop_buoy', 'prop_smoke_plume'],
+  prop: ['prop_table', 'prop_crate', 'prop_barrel', 'prop_brazier', 'prop_candelabra', 'prop_bookshelf', 'prop_sarcophagus', 'prop_altar', 'prop_throne', 'prop_net', 'prop_fishers_net', 'prop_drying_rack', 'prop_fish_barrel', 'prop_boat', 'prop_buoy', 'prop_smoke_plume'],
   decor: ['decor_rug'],
 };
 

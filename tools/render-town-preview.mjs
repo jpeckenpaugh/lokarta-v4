@@ -148,7 +148,8 @@ export function renderTownPreview(sceneId = DEFAULT_TOWN_ID) {
     const w = (x1 - x0 + 1) * CELL * SCALE; const h = (y1 - y0 + 1) * CELL * SCALE;
     const def = BUILDING_CATALOG[b.silhouette] || BUILDING_CATALOG[b.id];
     if (def && def.native && def.frames) {
-      const pix = spriteFrame(BUILDING_CATALOG, b.silhouette || b.id, 'view_0');
+      const frameId = (def.placement && def.placement.defaultFrame) || 'view_0';
+      const pix = spriteFrame(BUILDING_CATALOG, b.silhouette || b.id, frameId);
       const scale = w / def.native.w;
       if (pix && Number.isInteger(scale) && scale >= 1) { blit(buf, W, H, pix, px, py, scale); continue; }
     }
@@ -157,9 +158,10 @@ export function renderTownPreview(sceneId = DEFAULT_TOWN_ID) {
     if (b.door) rect(b.door.x * CELL * SCALE, b.door.y * CELL * SCALE, CELL * SCALE, CELL * SCALE, hexToRgba(theme.tiles.DOORWAY?.glow || '#ffd48a'));
   }
 
-  // 3. Authored props (sprite blit; falls back to a solid marker).
+  // 3. Authored props (sprite blit; falls back to a solid marker). A prop may
+  //    select a facing frame via `frame` (the fisher's net ships four views).
   for (const p of scene.props || []) {
-    const pix = spriteFrame(PROP_CATALOG, p.propId, 'idle');
+    const pix = spriteFrame(PROP_CATALOG, p.propId, p.frame || 'idle');
     const ox = p.x * CELL * SCALE;
     const oy = p.y * CELL * SCALE;
     if (pix) sprite(pix, ox, oy);
