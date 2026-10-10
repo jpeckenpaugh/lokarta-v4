@@ -61,12 +61,26 @@ export const ANIM_FRAME_MS = {
   death: 120,
 };
 
-/** Ordered authored frame-dir candidates when a def lacks the ideal direction. */
+/**
+ * Ordered authored frame-dir candidates when a def lacks the ideal direction.
+ *
+ * LIV-148: the chains must be **symmetric between the left and right halves** and
+ * ordered by nearest 45-degree angular distance, so a def that authors fewer than
+ * the five yaw views (the legacy 3-dir `down/up/side` actors) resolves a turn
+ * through the same authored frame on both sides. The old right-half chains
+ * (`up_right: ['up_side','up','side']`, `down_right: ['down_side','down','side']`)
+ * collapsed the diagonals to the **cardinal** (`up`/`down`) while the mirrored
+ * left-half chains collapsed to the **profile** (`side`), so an `up`->`down` turn
+ * (which the 180 tie always sends clockwise) held on the profile and then snapped
+ * to the opposite cardinal — reading as a mid-turn flip/skip. Listing the profile
+ * before the far cardinal for both halves makes every turn monotonic and
+ * mirror-consistent.
+ */
 const DIR8_FALLBACK = {
   down: ['down'],
-  down_right: ['down_side', 'down', 'side'],
+  down_right: ['down_side', 'side', 'down'],
   right: ['side', 'down'],
-  up_right: ['up_side', 'up', 'side'],
+  up_right: ['up_side', 'side', 'up'],
   up: ['up', 'down'],
   up_left: ['up_side', 'side', 'up'],
   left: ['side', 'down'],
@@ -109,6 +123,12 @@ export const TURN_STEP_MS_FALLBACK = 50;
  * (never mutates it), writes only `anim` scalars — allocation-free for the
  * per-frame hot path.
  *
+ * LIV-148: the rotation **direction is committed for the life of a turn**. The
+ * signed shortest arc is chosen once when a new logical target appears and the
+ * drawn facing is then advanced along that one sign until it reaches the target,
+ * so a turn can never reverse or skip mid-way (a fresh target re-commits). This
+ * is what keeps a 180-degree `up`->`down` reversal on a single, natural arc.
+ *
  * @param {object} actor  Entity with a logical `facing`.
  * @param {number} dtMs   Frame delta in milliseconds.
  * @param {number} [stepMs]  Milliseconds per 45-degree step (catalog-driven).
@@ -117,20 +137,32 @@ export const TURN_STEP_MS_FALLBACK = 50;
 export function advanceTurn(actor, dtMs, stepMs = TURN_STEP_MS_FALLBACK) {
   const anim = ensureAnim(actor);
   const target = dirFromFacing(actor.facing || 'down');
-  const delta = dir8Delta(anim.dir, target);
-  if (delta === 0) {
+  if (anim.dir === target) {
     anim.turnAccumMs = 0;
+    anim.turnSign = 0;
+    anim.turnTarget = target;
     return anim;
+  }
+  // Commit (or re-commit on a new target) the single rotation direction for this
+  // turn. `dir8Delta` resolves the exact 180-degree tie deterministically, so the
+  // committed sign is stable and the arc can never flip partway through.
+  if (anim.turnTarget !== target || !anim.turnSign) {
+    anim.turnTarget = target;
+    anim.turnSign = Math.sign(dir8Delta(anim.dir, target)) || 1;
   }
   const ms = Math.max(1, Number(stepMs) || TURN_STEP_MS_FALLBACK);
   anim.turnAccumMs = (anim.turnAccumMs || 0) + (Number(dtMs) || 0);
   let steps = Math.floor(anim.turnAccumMs / ms);
   if (steps <= 0) return anim;
-  if (steps > Math.abs(delta)) steps = Math.abs(delta);
+  // Never overshoot: the remaining distance measured along the committed sign.
+  const remaining = dir8Delta(anim.dir, target);
+  const along = anim.turnSign > 0 ? remaining : -remaining;
+  if (steps > along) steps = along;
+  if (steps <= 0) { anim.turnAccumMs = 0; return anim; }
   anim.turnAccumMs -= steps * ms;
-  anim.dir = rotateDir8(anim.dir, Math.sign(delta) * steps);
+  anim.dir = rotateDir8(anim.dir, anim.turnSign * steps);
   anim.flipX = isMirroredDir(anim.dir);
-  if (dir8Delta(anim.dir, target) === 0) anim.turnAccumMs = 0;
+  if (anim.dir === target) { anim.turnAccumMs = 0; anim.turnSign = 0; }
   return anim;
 }
 
@@ -145,6 +177,8 @@ export function createAnimState(facing = 'down') {
     flipX: isMirroredDir(dir),
     lockedUntilMs: 0,
     turnAccumMs: 0,
+    turnSign: 0,
+    turnTarget: dir,
   };
 }
 
