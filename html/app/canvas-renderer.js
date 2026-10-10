@@ -3,7 +3,8 @@
  */
 
 import { CONFIG, LightingSystem, TILE_TYPES, ReviveSystem, resolveTelegraphColor } from '../engine/index.js';
-import { SpriteRenderer, themeForFloor, sceneTheme } from './sprite-renderer.js';
+import { SpriteRenderer, themeForFloor, sceneTheme, drawSpriteFrameInto } from './sprite-renderer.js';
+import { BUILDING_CATALOG } from '../assets/sprites/index.js';
 import { UI_CATALOG, PARTY_AI_CATALOG } from '../data/index.js';
 import { resolveEasing, prefersReducedMotion } from './swap-feedback.js';
 
@@ -309,6 +310,17 @@ const BUILDING_SILHOUETTE_RENDERERS = {
       ctx.stroke();
     }
     ctx.restore();
+  },
+  // Tier B sprite-backed silhouette (LIV-109): blits a committed multi-tile
+  // building sprite (native == tiles*32) into the building's footprint at the
+  // engine's integer SCALE. The footprint rect already equals tiles * GRID_SIZE
+  // (GRID_SIZE == 32 native px at 2x), so this needs no new placement model and
+  // no per-tile slicing — one bitmap, exactly like actor/prop sprites. A missing
+  // def/frame is a no-op so a partial catalog can never black the scene.
+  fishing_hut(ctx, building, left, top, width, height) {
+    const def = BUILDING_CATALOG[building.silhouette] || BUILDING_CATALOG[building.id] || BUILDING_CATALOG.fishing_hut;
+    if (!def) return;
+    drawSpriteFrameInto(ctx, def, 'view_0', left, top, width, height);
   },
 };
 

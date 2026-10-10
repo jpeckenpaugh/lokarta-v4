@@ -247,6 +247,36 @@ function drawPropFrame(ctx, def, frameId, dx, dy, size) {
 }
 
 /**
+ * Blits one authored frame into an arbitrary destination rect using the engine's
+ * single integer SCALE (LIV-109). This is the sprite-backed building-silhouette
+ * path: a multi-tile building sprite (native == tiles*32) fills the footprint
+ * rect `dw x dh`, which is already `tiles * GRID_SIZE` because GRID_SIZE is the
+ * 32px native tile at the shared 2x scale. No new placement model and no
+ * per-tile slicing — one blitted bitmap, exactly like actor/prop sprites.
+ * Returns false when the def/frame is missing or the destination is not a
+ * uniform integer multiple of the native size (caller falls back).
+ */
+export function drawSpriteFrameInto(ctx, def, frameId, dx, dy, dw, dh) {
+  if (!def || !def.frames || !def.frames[frameId] || !def.palette) return false;
+  const nw = def.native?.w || SPRITE_NATIVE;
+  const nh = def.native?.h || SPRITE_NATIVE;
+  const sx = dw / nw, sy = dh / nh;
+  if (!Number.isFinite(sx) || sx <= 0 || Math.abs(sx - Math.round(sx)) > 1e-6) return false;
+  if (Math.abs(sy - Math.round(sx)) > 1e-6) return false;
+  const scale = Math.round(sx);
+  const canvas = getFrameCanvas(def, frameId, scale, false, null);
+  if (canvas && typeof ctx.drawImage === 'function') {
+    if ('imageSmoothingEnabled' in ctx) ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(canvas, dx, dy);
+    return true;
+  }
+  const pixels = renderFramePixels(def, frameId, scale, false, null);
+  if (!pixels || typeof ctx.fillRect !== 'function') return false;
+  drawPixels(ctx, pixels, dx, dy, scale);
+  return true;
+}
+
+/**
  * Per-tile palette lookup for the overworld scene tiles. Scene themes carry a
  * `tiles` map keyed by tile-type name (tile_themes.json `island_dawnreach` /
  * `town_havenreach`). Missing entries fall back to a neutral `{}` so a partial

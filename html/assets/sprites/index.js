@@ -31,9 +31,9 @@ import npcYoungFisherIlo from './npc/npc_young_fisher_ilo.json' with { type: 'js
 import npcChildKes from './npc/npc_child_kes.json' with { type: 'json' };
 import npcVillagerMOdon from './npc/npc_villager_m_odon.json' with { type: 'json' };
 import npcVillagerFLena from './npc/npc_villager_f_lena.json' with { type: 'json' };
+import buildingFishingHut from './buildings/fishing_hut.json' with { type: 'json' };
 
 export const SPRITE_MANIFEST = manifest;
-
 export const SPRITE_CATALOG = {
   magician,
   archer,
@@ -62,3 +62,10 @@ export const SPRITE_CATALOG = {
 // Prop/tile art (keys, chests, gated doors) lives in a separate catalog so it
 // does not participate in the actor animation contract. See props.js.
 export { PROP_CATALOG, PROP_MANIFEST, PROP_IDS_BY_TIER, PROP_IDS_BY_KIND } from './props.js';
+
+// Tier B (LIV-109) multi-tile building sprites, keyed by the `silhouette` value
+// a town building declares. Blitted through the existing footprint path
+// (renderBuildingSilhouettes) — no separate placement model or actor animation.
+export const BUILDING_CATALOG = {
+  fishing_hut: buildingFishingHut,
+};
