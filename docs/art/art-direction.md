@@ -71,7 +71,8 @@ it is a *building/landmark* that rides the footprint mechanism above.
   * `attack`: 3 directions (3 frames each)
   * `hit`: 3 directions (1 frame each)
   * `death`: 4 frames (`death_0`..`death_3`) non-directional (Boss `abyssal_overlord` has 6 frames: `death_0`..`death_5`).
-* **Outline & Shading:** Standard $1\text{ px}$ silhouette outline (`#0b0d12`) with $\le 16$-color indexed palettes and flat pixel ramps. A new opt-in **Tier B "baked"** class (≤32 colors, 4-step ramps, ordered dither, baked key light) is specified in [art-direction-target.md](art-direction-target.md) for heroes, bosses, and signature NPCs/props; it keeps this outline, the pixelated rule, and the ≥3:1 rim bar.
+* **Outline & Shading:** Standard $1\text{ px}$ silhouette outline (`#0b0d12`) with $\le 16$-color indexed palettes and flat pixel ramps. A new opt-in **Tier B "baked"** class (≤32 colors, 4-step ramps, ordered dither, baked key light) is specified in [art-direction-target.md](art-direction-target.md) for heroes, bosses, and signature NPCs/props; it keeps the pixelated rule and the ≥3:1 rim bar.
+  * **Tier B outline exception (LIV-115, round 2.2):** 3D-baked (Tier B) renders **drop the $1\text{ px}$ outline** — the board read the `#0b0d12` ring as a "pencil trace", so baked colours now end naturally at the silhouette. The bake emits `outline:false` and the renderer honours it (sprite + building + prop paths). **Tier A flat sprites keep the outline unchanged.** Rim-light/ramp shading stays: it is form, not an outline.
 
 ---
 

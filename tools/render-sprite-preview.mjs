@@ -122,7 +122,9 @@ function scalePixels(pix, scale) {
 }
 function frameTile(def, frameId, scale) {
   const pix = parseFrame(def.frames[frameId], def.palette);
-  return scalePixels(applyOutline(pix, def.palette['0'] || '#0b0d12'), scale);
+  // LIV-115 (Fix 1): a baked def opt-out (`outline:false`) matches the runtime.
+  const outlined = def.outline === false ? pix : applyOutline(pix, def.palette['0'] || '#0b0d12');
+  return scalePixels(outlined, scale);
 }
 function compose(tiles, cols, pad = 4, bg = [10, 11, 14, 255]) {
   const cw = Math.max(...tiles.map(t => t.w)) + pad;

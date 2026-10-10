@@ -58,6 +58,13 @@ export const IDLE_PHASE = 0;
  * bake raises it to keep the silhouette's lit edge readable against the floor. */
 export const ARCHER_RIM = 1.1;
 
+/* LIV-115 (Fix 2): the archer bake read "night/low light" against the flat
+ * Tier A vocations (mean luma ~40 vs 79-128). Raise the ambient/fill and apply a
+ * normalized exposure gain so the baked archer sits in the same tonal range as
+ * the flat art (mean ~85) while keeping the 135-degree key + ramp form. */
+export const ARCHER_AMBIENT = 0.62;
+export const ARCHER_EXPOSURE = 1.28;
+
 /* ---- small quaternion helpers for skeletal posing ---- */
 const qmul = (a, b) => [
   a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
@@ -150,6 +157,7 @@ export async function bakeRiggedArcher() {
     glbPath, id: 'rukiya_archer_rigged', outDir: path.dirname(ARTIFACT),
     clip: 'Walking', size: 32, rise: 8, tier: 'baked',
     families: 6, steps: 4, poseList, renderRes: 512, write: false, rim: ARCHER_RIM,
+    ambient: ARCHER_AMBIENT, exposure: ARCHER_EXPOSURE, outline: false,
   });
   fs.writeFileSync(ARTIFACT, JSON.stringify(res.def, null, 2) + '\n');
   return res;

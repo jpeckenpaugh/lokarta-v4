@@ -233,7 +233,11 @@ export function resolvePropId(item) {
  */
 function drawPropFrame(ctx, def, frameId, dx, dy, size) {
   if (!def || !def.frames || !def.frames[frameId] || !def.palette) return false;
-  const scale = Math.max(1, Math.floor(size / (def.native?.w || SPRITE_NATIVE)));
+  // LIV-115 (Fix 4): derive the blit scale from the ATOMIC tile (32 native px),
+  // not the def's width. A multi-tile prop (e.g. a 2x1 net = 64 native px) then
+  // blits at the engine SCALE across its whole canvas instead of collapsing to
+  // one tile; single-tile props are unchanged (64 / 32 == 2).
+  const scale = Math.max(1, Math.floor(size / SPRITE_NATIVE));
   const canvas = getFrameCanvas(def, frameId, scale, false, null);
   if (canvas && typeof ctx.drawImage === 'function') {
     if ('imageSmoothingEnabled' in ctx) ctx.imageSmoothingEnabled = false;
@@ -1128,7 +1132,10 @@ function renderFramePixels(def, frameId, scale, flipX, tint) {
   if (!rows) return null;
   const palette = tint ? applyTintToPalette(def.palette, tint) : def.palette;
   const pix = parseFrame(rows, palette);
-  const outlined = applyOutline(pix, def.palette['0'] || OUTLINE_COLOR);
+  // LIV-115 (Fix 1): a 3D-baked (Tier B) def opts out of the outline pass
+  // (`outline:false`, emitted by the bake). Its colours end naturally at the
+  // silhouette; Tier A flat sprites keep the 1px outline unchanged.
+  const outlined = def.outline === false ? pix : applyOutline(pix, def.palette['0'] || OUTLINE_COLOR);
   return scalePixels(outlined, scale, flipX);
 }
 

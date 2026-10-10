@@ -111,3 +111,35 @@ distinct; facings differ; 25-frame runtime contract holds). Proof:
 `docs/art/3d-poc/phase3/archer_rig.png`; the live archer renders it in Havenreach
 via **New Game → Archer**.
 
+---
+
+## 4. Round 2.2 fixes (LIV-115)
+
+Four board-approved corrections to the Tier B bakes; all via
+`tools/gltf-to-sprite.mjs`, no new placement model, no meshy spend.
+
+1. **No black outline on Tier B.** The bake now emits `outline:false` for every
+   `--tier baked` def (`--no-outline` forces it; `--outline` restores), and the
+   runtime renderer (`renderFramePixels`), the town/tierb proof renderers and the
+   archer integration all honour it. Colours end at the silhouette; the 1px
+   `#0b0d12` outline is now **Tier A only**. Amended in
+   [art-direction.md](art-direction.md) §2.
+2. **Archer lighting.** The rigged-archer bake raises ambient/fill
+   (`ARCHER_AMBIENT = 0.62`) and applies a normalized exposure gain
+   (`ARCHER_EXPOSURE = 1.28`), lifting the mean luma from ~40 to ~85 so the
+   archer sits in the same tonal band as the flat Tier A vocations (79–128). The
+   135° key + rim ramp is unchanged.
+3. **Fit-all / "zoom to all" for side huts.** `chopToTileCanvas` takes a `margin`
+   (native px) that reserves space on **every edge before** the `stretchX`
+   horizontal fill, so the full projected silhouette can never touch/truncate at
+   the canvas border. `fishing_hut_left` / `fishing_hut_right` are re-baked at
+   4×3 with `--margin 3`.
+4. **2-tile nets by orientation.** The net is baked by viewing axis: face-on views
+   (`view_0` / `view_180`) are **2×1** (`prop_fishers_net`, 64×32) and edge-on
+   views (`view_90` / `view_270`) are **1×2** (`prop_fishers_net_vertical`,
+   32×64). `drawPropFrame` derives its blit scale from the atomic 32px tile, so a
+   multi-tile prop spans its whole canvas (128px wide / tall at the engine 2×
+   scale). Both orientations are re-placed around Havenreach (`towns.json`).
+
+Locked by `html/tests/liv115-tierb-round22.test.mjs`.
+

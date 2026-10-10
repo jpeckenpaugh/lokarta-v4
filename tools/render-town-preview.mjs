@@ -100,7 +100,9 @@ function spriteFrame(catalog, id, frameId) {
   if (!def) return null;
   const frame = def.frames[frameId] || Object.values(def.frames)[0];
   if (!frame) return null;
-  return applyOutline(parseFrame(frame, def.palette), def.palette['0'] || '#0b0d12');
+  const pix = parseFrame(frame, def.palette);
+  // LIV-115 (Fix 1): honour the Tier B outline opt-out in the proof render too.
+  return def.outline === false ? pix : applyOutline(pix, def.palette['0'] || '#0b0d12');
 }
 
 export function renderTownPreview(sceneId = DEFAULT_TOWN_ID) {

@@ -90,7 +90,8 @@ function scalePixels(pix, scale) {
 }
 function frameTile(def, frameId, scale) {
   const pix = parseFrame(def.frames[frameId], def.palette);
-  return scalePixels(applyOutline(pix, def.palette['0'] || '#0b0d12'), scale);
+  const outlined = def.outline === false ? pix : applyOutline(pix, def.palette['0'] || '#0b0d12');
+  return scalePixels(outlined, scale);
 }
 function readDef(file) { return JSON.parse(fs.readFileSync(path.join(POC_DIR, file), 'utf8')); }
 

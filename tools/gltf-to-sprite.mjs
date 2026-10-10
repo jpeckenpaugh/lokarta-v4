@@ -376,7 +376,7 @@ export function jointPositionByName(glb, name, world) {
  * mirrored side view. Kept separate from `render` so static bakes stay
  * byte-identical.
  */
-export function renderWorld({ pos, nrm, uv, idx, count, tex, proj, ambient = 0.30, light = [-0.45, 0.72, 0.53], rim = 0, bounce = 0, mirrorX = false }) {
+export function renderWorld({ pos, nrm, uv, idx, count, tex, proj, ambient = 0.30, exposure = 1, light = [-0.45, 0.72, 0.53], rim = 0, bounce = 0, mirrorX = false }) {
   const Wpx = proj.w, Hpx = proj.h;
   const rgba = new Float32Array(Wpx * Hpx * 4); const depth = new Float32Array(Wpx * Hpx).fill(-1e9);
   const { cx, cy, cz, scale, ca, sa, cr, sr } = proj;
@@ -415,7 +415,10 @@ export function renderWorld({ pos, nrm, uv, idx, count, tex, proj, ambient = 0.3
       let cre = 200, cgr = 190, cbl = 180;
       if (tex && uv) { const uu = w0 * uv.data[p0 * 2] + w1 * uv.data[p1 * 2] + w2 * uv.data[p2 * 2]; const vv = w0 * uv.data[p0 * 2 + 1] + w1 * uv.data[p1 * 2 + 1] + w2 * uv.data[p2 * 2 + 1]; const col = sampleBilinear(tex, uu, vv); cre = col[0]; cgr = col[1]; cbl = col[2]; }
       if (bounce > 0) { const k = (1 - diff) * bounce; cre = cre * (1 - k) + 38 * k; cgr = cgr * (1 - k) + 54 * k; cbl = cbl * (1 - k) + 96 * k; }
-      const di4 = di * 4; rgba[di4] = Math.min(255, cre * shade); rgba[di4 + 1] = Math.min(255, cgr * shade); rgba[di4 + 2] = Math.min(255, cbl * shade); rgba[di4 + 3] = 255; depth[di] = z;
+      // LIV-115 (Fix 2): a normalized exposure gain lifts a baked actor into the
+      // same tonal range as the flat Tier A art without changing the ramp form.
+      const sh = shade * exposure;
+      const di4 = di * 4; rgba[di4] = Math.min(255, cre * sh); rgba[di4 + 1] = Math.min(255, cgr * sh); rgba[di4 + 2] = Math.min(255, cbl * sh); rgba[di4 + 3] = 255; depth[di] = z;
     }
   }
   for (let k = 0; k < tn; k += 3) tri(getI(k), getI(k + 1), getI(k + 2));
@@ -642,20 +645,26 @@ export function tileCanvasSize(tiles) {
  * Returns `{ w, h, rgba, fit, offset, tiles }` where `fit` is the fitted render
  * box and `offset` its top-left placement inside the tile canvas.
  */
-export function chopToTileCanvas(sprite, tiles, { align = 'bottom', anchor = 'center', stretchX = false } = {}) {
+export function chopToTileCanvas(sprite, tiles, { align = 'bottom', anchor = 'center', stretchX = false, margin = 0 } = {}) {
   const { w: cw, h: ch } = tileCanvasSize(tiles);
-  const fitScale = Math.min(cw / sprite.w, ch / sprite.h);
-  let fw = Math.max(1, Math.min(cw, Math.round(sprite.w * fitScale)));
-  let fh = Math.max(1, Math.min(ch, Math.round(sprite.h * fitScale)));
+  // LIV-115 (Fix 3) "zoom to all": reserve `margin` native px on EVERY edge
+  // BEFORE any horizontal stretch, so the full projected silhouette (all poses)
+  // is framed inside the multi-tile canvas and can never be truncated by camera
+  // framing. `margin` is 0 by default, so every existing chop is unchanged.
+  const m = Math.max(0, Math.min(margin, Math.floor(Math.min(cw, ch) / 2) - 1));
+  const availW = cw - 2 * m, availH = ch - 2 * m;
+  const fitScale = Math.min(availW / sprite.w, availH / sprite.h);
+  let fw = Math.max(1, Math.min(availW, Math.round(sprite.w * fitScale)));
+  let fh = Math.max(1, Math.min(availH, Math.round(sprite.h * fitScale)));
   // LIV-114: side-facing huts are asked to "stretch the width" to fill a wider
   // tile canvas (4 tiles) while keeping the contained height. That is a
-  // horizontal-only scale: X fills the canvas width, Y stays the contain fit.
-  // Only opted-in bakes set `stretchX`; every other multi-tile bake is unchanged.
-  if (stretchX) { fw = cw; }
+  // horizontal-only scale: X fills the canvas width (inside the margin box), Y
+  // stays the contain fit. Only opted-in bakes set `stretchX`.
+  if (stretchX) { fw = availW; }
   const fitted = fw === sprite.w && fh === sprite.h ? sprite : downscale(sprite, fw, fh);
   const out = new Float32Array(cw * ch * 4);
-  const ox = anchor === 'center' ? Math.round((cw - fw) / 2) : anchor === 'right' ? cw - fw : 0;
-  const oy = align === 'bottom' ? ch - fh : align === 'center' ? Math.round((ch - fh) / 2) : 0;
+  const ox = m + (anchor === 'center' ? Math.round((availW - fw) / 2) : anchor === 'right' ? availW - fw : 0);
+  const oy = align === 'bottom' ? ch - m - fh : align === 'center' ? m + Math.round((availH - fh) / 2) : m;
   for (let y = 0; y < fh; y++) {
     const src = y * fw * 4;
     const dst = ((oy + y) * cw + ox) * 4;
@@ -765,7 +774,7 @@ function chopSheet(slices, scale, bg = [10, 11, 14, 255], pad = 6) {
   return { w: W, h: H, buf };
 }
 
-export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 90, 180, 270], colors = 14, rise = 10, flat = false, renderRes = 512, tiles = null, kind = null, tier = 'indexed', families = 6, steps = 4, stretchX = false }) {
+export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 90, 180, 270], colors = 14, rise = 10, flat = false, renderRes = 512, tiles = null, kind = null, tier = 'indexed', families = 6, steps = 4, stretchX = false, margin = 0, outline = tier !== 'baked' }) {
   const baked = tier === 'baked';
   const glb = parseGLB(glbPath);
   const tex = flat ? null : await loadBaseColor(glb, glb.json.meshes[0].primitives[0].material);
@@ -778,7 +787,7 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
     // Single-tile classes box-downscale the whole render into ONE 32x32 tile.
     // Multi-tile buildings CHOP the render into a whole-tile canvas instead of
     // squishing it into a single tile (LIV-106).
-    viewPix.push({ az, px: multiTile ? chopToTileCanvas(cropToContent(hi), tiles, { stretchX }) : downscale(hi, size, size) });
+    viewPix.push({ az, px: multiTile ? chopToTileCanvas(cropToContent(hi), tiles, { stretchX, margin }) : downscale(hi, size, size) });
   }
   const all = [];
   for (const v of viewPix) for (let i = 0; i < v.px.w * v.px.h; i++) if (v.px.rgba[i * 4 + 3] > 128) all.push([v.px.rgba[i * 4], v.px.rgba[i * 4 + 1], v.px.rgba[i * 4 + 2]]);
@@ -800,7 +809,7 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
   const frameRgba = [];
   for (const v of viewPix) {
     const vw = v.px.w, vh = v.px.h;
-    const idx = outlinePass(quantizeFn(v.px), vw, vh);
+    const idx = outline ? outlinePass(quantizeFn(v.px), vw, vh) : quantizeFn(v.px);
     frames[`view_${v.az}`] = idx;
     const rgba = new Uint8ClampedArray(vw * vh * 4);
     for (let y = 0; y < vh; y++) for (let x = 0; x < vw; x++) {
@@ -811,15 +820,17 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
   }
   const canvas = multiTile ? tileCanvasSize(tiles) : null;
   fs.mkdirSync(outDir, { recursive: true });
+  const outlineNote = outline ? '1px outline' : 'no outline (Tier B)';
   const pipeline = baked
-    ? `${ramp.families}x${ramp.steps}-ramp palettes + 2x2 Bayer dither + baked 135deg key/rim -> 1px outline`
-    : `${palRGB.length}-colour median-cut -> 1px outline`;
+    ? `${ramp.families}x${ramp.steps}-ramp palettes + 2x2 Bayer dither + baked 135deg key/rim -> ${outlineNote}`
+    : `${palRGB.length}-colour median-cut -> ${outlineNote}`;
   const def = {
     id, kind: kind || (multiTile ? 'building' : 'actor'),
     ...(baked ? { renderTier: 'baked' } : {}),
+    ...(outline ? {} : { outline: false }),
     source: `${path.basename(glbPath)} (glTF-Transform ${glb.json.asset && glb.json.asset.generator})`,
     method: multiTile
-      ? `ortho-software-raster@${renderRes} -> chop-to-tile-canvas(${tiles.w}x${tiles.h}${stretchX ? ', stretchX' : ''}) -> ${pipeline}`
+      ? `ortho-software-raster@${renderRes} -> chop-to-tile-canvas(${tiles.w}x${tiles.h}${stretchX ? ', stretchX' : ''}${margin ? `, margin ${margin}` : ''}) -> ${pipeline}`
       : `ortho-software-raster@${renderRes} -> ${size}px box-downscale -> ${pipeline}`,
     native: multiTile ? { w: tiles.w * NATIVE_TILE, h: tiles.h * NATIVE_TILE } : { w: size, h: size },
     anchor: multiTile ? { x: Math.floor((tiles.w * NATIVE_TILE) / 2), y: tiles.h * NATIVE_TILE - 2 } : { x: Math.floor(size / 2), y: size - 2 },
@@ -859,6 +870,7 @@ export async function buildAnimatedAsset({
   glbPath, id, outDir, clip = null, size = 32, views = [0, 90, 180, 270], rise = 8,
   flat = false, renderRes = 512, tier = 'baked', families = 6, steps = 4,
   times = null, frameCount = 8, poseList = null, write = true, rim = null,
+  ambient = 0.30, exposure = 1, outline = tier !== 'baked',
 }) {
   const baked = tier === 'baked';
   const glb = parseGLB(glbPath);
@@ -900,7 +912,7 @@ export async function buildAnimatedAsset({
       ca: Math.cos(p.az * Math.PI / 180), sa: Math.sin(p.az * Math.PI / 180),
       cr: Math.cos(riseRad), sr: Math.sin(riseRad),
     };
-    const hi = renderWorld({ pos: poses[i].pos, nrm: poses[i].nrm, uv, idx, count, tex, proj, rim: baked ? (rim ?? 0.7) : 0, bounce: baked ? 0.35 : 0 });
+    const hi = renderWorld({ pos: poses[i].pos, nrm: poses[i].nrm, uv, idx, count, tex, proj, ambient, exposure, rim: baked ? (rim ?? 0.7) : 0, bounce: baked ? 0.35 : 0 });
     return { key: p.key, az: p.az, i, px: downscale(hi, size, size) };
   });
   const all = [];
@@ -922,7 +934,7 @@ export async function buildAnimatedAsset({
   const frameRgba = [];
   for (const v of viewPix) {
     const vw = v.px.w, vh = v.px.h;
-    const rec = outlinePass(quantizeFn(v.px), vw, vh);
+    const rec = outline ? outlinePass(quantizeFn(v.px), vw, vh) : quantizeFn(v.px);
     frames[v.key] = rec;
     const rgba = new Uint8ClampedArray(vw * vh * 4);
     for (let y = 0; y < vh; y++) for (let x = 0; x < vw; x++) {
@@ -931,12 +943,14 @@ export async function buildAnimatedAsset({
     }
     frameRgba.push({ w: vw, h: vh, rgba: new Float32Array(rgba) });
   }
+  const outlineNote = outline ? '1px outline' : 'no outline (Tier B)';
   const pipeline = baked
-    ? `${ramp.families}x${ramp.steps}-ramp palettes + 2x2 Bayer dither + baked 135deg key/rim -> 1px outline`
-    : `${palRGB.length}-colour median-cut -> 1px outline`;
+    ? `${ramp.families}x${ramp.steps}-ramp palettes + 2x2 Bayer dither + baked 135deg key/rim -> ${outlineNote}`
+    : `${palRGB.length}-colour median-cut -> ${outlineNote}`;
   const def = {
     id, kind: 'actor',
     ...(baked ? { renderTier: 'baked' } : {}),
+    ...(outline ? {} : { outline: false }),
     source: `${path.basename(glbPath)} (glTF-Transform ${j.asset && j.asset.generator})`,
     method: `skinned-skeleton-sample(clip=${anim ? anim.name : 'rest'}, ${sampleTimes.length} frames) -> ortho-software-raster@${renderRes} -> ${size}px box-downscale -> ${pipeline}`,
     clip: anim ? anim.name : null,
@@ -956,7 +970,7 @@ export async function buildAnimatedAsset({
 }
 
 function parseArgs(argv) {
-  const a = { views: [0, 90, 180, 270], size: 32, colors: 14, rise: 10, flat: false, renderRes: 512, tiles: null, kind: null, tier: 'indexed', families: 6, steps: 4 };
+  const a = { views: [0, 90, 180, 270], size: 32, colors: 14, rise: 10, flat: false, renderRes: 512, tiles: null, kind: null, tier: 'indexed', families: 6, steps: 4, margin: 0, outline: undefined, ambient: undefined, exposure: undefined };
   const rest = [];
   for (let i = 0; i < argv.length; i++) {
     const t = argv[i];
@@ -976,6 +990,11 @@ function parseArgs(argv) {
     else if (t === '--anim-frames') a.animFrames = +argv[++i];
     else if (t === '--times') a.times = argv[++i].split(',').map(Number);
     else if (t === '--stretch-x') a.stretchX = true;
+    else if (t === '--margin') a.margin = +argv[++i];
+    else if (t === '--ambient') a.ambient = +argv[++i];
+    else if (t === '--exposure') a.exposure = +argv[++i];
+    else if (t === '--no-outline') a.outline = false;
+    else if (t === '--outline') a.outline = true;
     else if (t === '--flat') a.flat = true;
     else rest.push(t);
   }
@@ -990,11 +1009,11 @@ if (isMain) {
   const id = a.id || path.basename(glbPath).replace(/\.glb$/i, '');
   const outDir = a.out || path.join(ROOT, 'docs', 'art', '3d-poc');
   if (a.anim) {
-    const res = await buildAnimatedAsset({ glbPath, id, outDir, clip: a.anim, size: a.size, views: a.views, rise: a.rise, flat: a.flat, renderRes: a.renderRes, tier: a.tier, families: a.families, steps: a.steps, times: a.times, frameCount: a.animFrames || 8 });
+    const res = await buildAnimatedAsset({ glbPath, id, outDir, clip: a.anim, size: a.size, views: a.views, rise: a.rise, flat: a.flat, renderRes: a.renderRes, tier: a.tier, families: a.families, steps: a.steps, times: a.times, frameCount: a.animFrames || 8, ...(a.outline === undefined ? {} : { outline: a.outline }), ...(a.ambient === undefined ? {} : { ambient: a.ambient }), ...(a.exposure === undefined ? {} : { exposure: a.exposure }) });
     console.log(`${res.id}: ${res.frames} skinned frames, ${res.palette.length}-colour palette (${res.renderTier}), clip=${a.anim}, ${a.views.length} views x ${res.sampleTimes.length} phases -> ${path.relative(ROOT, outDir)}`);
     process.exit(0);
   }
-  const res = await buildAsset({ glbPath, id, outDir, size: a.size, views: a.views, colors: a.colors, rise: a.rise, flat: a.flat, renderRes: a.renderRes, tiles: a.tiles, kind: a.kind, tier: a.tier, families: a.families, steps: a.steps, stretchX: a.stretchX });
+  const res = await buildAsset({ glbPath, id, outDir, size: a.size, views: a.views, colors: a.colors, rise: a.rise, flat: a.flat, renderRes: a.renderRes, tiles: a.tiles, kind: a.kind, tier: a.tier, families: a.families, steps: a.steps, stretchX: a.stretchX, margin: a.margin, ...(a.outline === undefined ? {} : { outline: a.outline }) });
   const shape = res.tiles ? `${res.tiles.w}x${res.tiles.h} tiles` : `${a.size}px`;
   console.log(`${res.id}: ${res.opaquePixels} opaque px, ${res.palette.length}-colour palette (${res.renderTier}), textured=${res.textured}, ${shape} -> ${path.relative(ROOT, outDir)}`);
 }

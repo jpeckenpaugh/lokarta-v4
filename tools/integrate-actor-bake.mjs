@@ -58,6 +58,9 @@ export function buildArcherBaked() {
     id: 'archer',
     kind: 'vocation',
     renderTier: art.renderTier || 'baked',
+    // LIV-115 (Fix 1): propagate the bake's Tier B outline opt-out so the runtime
+    // renderer ends colours at the silhouette instead of re-adding a 1px outline.
+    ...(art.outline === false ? { outline: false } : {}),
     native: { ...art.native },
     anchor: { ...art.anchor },
     palette: { ...art.palette },
