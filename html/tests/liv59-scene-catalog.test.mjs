@@ -91,11 +91,18 @@ test('LIV-59 scene & quest catalogs', async (t) => {
 
   await t.test('npcs.json references real scenes, dialogues, and behaviors', () => {
     assert.ok(Array.isArray(NPCS_CATALOG.npcs));
-    const aiTypes = new Set(['stationary', 'wander']);
+    const aiTypes = new Set(['stationary', 'wander', 'follow']);
     for (const npc of NPCS_CATALOG.npcs) {
       assert.ok(npc.id && npc.name, 'npc fields');
       assert.ok(getSceneDefinition(npc.sceneId), `${npc.id} sceneId`);
       assert.ok(aiTypes.has(npc.aiType), `${npc.id} aiType must be a neutral dispatch key`);
+      if (npc.aiType === 'follow') {
+        // LIV-150: a follower must name a real NPC to trail in its own scene.
+        assert.ok(npc.followTargetId, `${npc.id} followTargetId`);
+        const target = getNpcDefinition(npc.followTargetId);
+        assert.ok(target, `${npc.id} followTargetId resolves`);
+        assert.equal(target.sceneId, npc.sceneId, `${npc.id} follows within its own scene`);
+      }
       assert.ok(typeof npc.spriteId === 'string' && npc.spriteId.length > 0, `${npc.id} spriteId`);
       assert.ok(Number.isInteger(npc.x) && Number.isInteger(npc.y), `${npc.id} coords`);
       if (npc.interact && npc.interact.dialogueId) {

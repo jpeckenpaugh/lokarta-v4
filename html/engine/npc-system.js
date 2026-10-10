@@ -3,10 +3,12 @@
  *
  * Runtime entities for the town/overworld NPCs authored in `html/data/npcs.json`
  * (LIV-58). NPCs are neutral (no combat faction, never targeted by attacks).
- * Their behaviour is a two-entry dispatch table keyed by the catalog `aiType`:
+ * Their behaviour is a dispatch table keyed by the catalog `aiType`:
  *   - `stationary` — holds its tile, turns in place periodically (LIV-149), and
  *     turns to face the player when adjacent.
  *   - `wander`     — ambles one tile at a time within `wanderRadius` of home.
+ *   - `follow`     — trails the NPC named by `followTargetId` (LIV-150), holding
+ *                    `followDistance` tiles of gap and pathing around walls/actors.
  *
  * The module is pure: no DOM, no canvas, no storage. The renderer draws each NPC
  * through the existing `drawActor` pipeline using its own 3D-baked `npcSpriteId`
@@ -18,6 +20,7 @@
 import { listNpcDefinitions } from '../data/index.js';
 import { UI_CATALOG } from '../data/index.js';
 import { rotateDir8, facingToward } from './facing.js';
+import { EntityAI } from './entity-ai.js';
 
 /** Orthogonal step table (right/left/down/up) — reused, never allocated per step. */
 const STEP_DX = Int8Array.from([1, -1, 0, 0]);
@@ -39,6 +42,20 @@ const NPC_IDLE_TURN_CHANCE = Math.min(0.95, Math.max(0, Number(UI_CATALOG?.islan
  * town reads as alive.
  */
 const NPC_STATIONARY_TURN_COOLDOWN_MIN = Math.max(0.5, Number(UI_CATALOG?.island?.npcStationaryTurnCooldownSec) || 3);
+
+/**
+ * Default trailing gap in tiles for a `follow` NPC (LIV-150), resolved from the
+ * scene copy (`>= 1`). A follower stops and watches its leader once this close so
+ * it never stacks on top of them. Per-NPC `followDistance` overrides it.
+ */
+const FOLLOW_DISTANCE_DEFAULT = Math.max(1, Number(UI_CATALOG?.island?.npcFollowDistance) || 3);
+
+/**
+ * Seconds between follower steps (LIV-150), resolved from the scene copy
+ * (`>= 0.1`). One tile per cadence keeps the follower's pace natural instead of
+ * gliding at full render speed; deterministic (no RNG), unlike `wander`.
+ */
+const FOLLOW_STEP_SEC = Math.max(0.1, Number(UI_CATALOG?.island?.npcFollowStepSec) || 0.45);
 
 /** Builds a runtime NPC entity from a catalog/npc descriptor. */
 export function makeNpcRuntime(def) {
@@ -69,6 +86,12 @@ export function makeNpcRuntime(def) {
     renderScale: def.renderScale ?? null,
     aiType: def.aiType || 'stationary',
     wanderRadius: Math.max(0, Number(def.wanderRadius) || 0),
+    // LIV-150: a `follow` NPC trails the runtime entity whose catalog id matches
+    // `followTargetId`; the gap is authored per NPC (falls back to the copy
+    // default). Generic passthrough — the handler resolves the target by id at
+    // runtime, so no per-name branch lives in the engine.
+    followTargetId: def.followTargetId || null,
+    followDistance: Math.max(1, Number(def.followDistance) || FOLLOW_DISTANCE_DEFAULT),
     blocks: def.blocks !== false,
     interact: def.interact ? { ...def.interact } : null,
     defaultDialogueId: def.defaultDialogueId || def.interact?.dialogueId || null,
@@ -78,6 +101,7 @@ export function makeNpcRuntime(def) {
     // LIV-149: stagger the first in-place glance so a row of stationary NPCs
     // does not turn in lockstep on scene load. The handler reschedules each tick.
     _idleTurnCooldownSec: Math.random() * NPC_STATIONARY_TURN_COOLDOWN_MIN,
+    _followCooldownSec: 0,
   };
 }
 
@@ -105,6 +129,21 @@ export function npcAt(npcs, x, y) {
 }
 
 /**
+ * Linear scan for the runtime NPC whose catalog id matches `id`. Allocation-free
+ * and only hit on a follower's step cadence (never per-frame), so the O(n) scan
+ * over the handful of town NPCs is cheaper than maintaining a per-tick id map.
+ * @returns {object|null}
+ */
+function findNpcById(npcs, id) {
+  if (!id || !Array.isArray(npcs)) return null;
+  for (let i = 0; i < npcs.length; i++) {
+    const n = npcs[i];
+    if (n && n.npcId === id) return n;
+  }
+  return null;
+}
+
+/**
  * Advances every NPC by `deltaSec`. `occupied` is an integer-hash set of tiles
  * blocked by the player, monsters, and other NPCs; NPCs never step onto it.
  * Allocation-light: no arrays/objects per NPC per tick.
@@ -122,9 +161,16 @@ export function updateNpcs(npcs, gridMap, deltaSec, occupied = null) {
     const npc = npcs[i];
     if (!npc) continue;
     const handler = NEUTRAL_AI_HANDLERS[npc.aiType] || NEUTRAL_AI_HANDLERS.stationary;
-    if (handler(npc, gridMap, deltaSec, occupied, width)) moved += 1;
+    if (handler(npc, gridMap, deltaSec, occupied, width, npcs)) moved += 1;
   }
   return moved;
+}
+
+/** True when `(x, y)` is a walkable tile not claimed by another actor. */
+function followerTileFree(gridMap, occupied, width, x, y) {
+  if (!gridMap.isWalkable(x, y)) return false;
+  if (occupied && occupied.has(y * width + x)) return false;
+  return true;
 }
 
 /**
@@ -184,6 +230,77 @@ export const NEUTRAL_AI_HANDLERS = {
       return true;
     }
     return false;
+  },
+  // LIV-150: a `follow` NPC trails the entity named by `followTargetId`. It holds
+  // `followDistance` tiles of gap (Manhattan), pathing one tile per cadence toward
+  // the leader on the shared A* planner, then turning to face each step. It never
+  // steps onto an occupied tile, so it cannot stack on the leader, the player,
+  // monsters, or another NPC, and cannot clip a wall. Deterministic (no RNG), so
+  // it is directly testable.
+  follow: (npc, gridMap, deltaSec, occupied, width, npcs) => {
+    const target = findNpcById(npcs, npc.followTargetId);
+    if (!target) return false;
+
+    const gap = Math.abs(target.x - npc.x) + Math.abs(target.y - npc.y);
+    if (gap <= npc.followDistance) {
+      // Close enough: hold the line and watch the leader, like a companion.
+      npc.facing = facingToward(npc.x, npc.y, target.x, target.y);
+      return false;
+    }
+
+    npc._followCooldownSec = (npc._followCooldownSec || 0) - (Number(deltaSec) || 0);
+    if (npc._followCooldownSec > 0) return false;
+    npc._followCooldownSec = FOLLOW_STEP_SEC;
+
+    const fromX = npc.x;
+    const fromY = npc.y;
+    let nextX = -1;
+    let nextY = -1;
+
+    // Preferred path: one A* step on the shared binary-MinHeap planner. NPCs are
+    // soft blockers (the leader included as the goal), `excludeId` keeps the
+    // follower off its own tile.
+    const step = EntityAI.findNextStepAStar(
+      { x: fromX, y: fromY },
+      { x: target.x, y: target.y },
+      gridMap,
+      npcs,
+      npc.id,
+    );
+    // A* allows entering the goal tile, so reject the leader's own tile here to
+    // guarantee the follower never stacks; also reject tiles claimed by other
+    // actors (player/monsters/allies) that A* does not know about.
+    if (step
+      && !(step.x === target.x && step.y === target.y)
+      && followerTileFree(gridMap, occupied, width, step.x, step.y)) {
+      nextX = step.x;
+      nextY = step.y;
+    } else {
+      // Fallback: greedy dominant-axis step (still walkability + occupancy gated).
+      const adx = Math.abs(target.x - fromX);
+      const ady = Math.abs(target.y - fromY);
+      const ax = Math.sign(target.x - fromX);
+      const ay = Math.sign(target.y - fromY);
+      const tryXFirst = adx >= ady;
+      const c1x = tryXFirst ? ax : 0;
+      const c1y = tryXFirst ? 0 : ay;
+      const c2x = tryXFirst ? 0 : ax;
+      const c2y = tryXFirst ? ay : 0;
+      if ((c1x || c1y) && followerTileFree(gridMap, occupied, width, fromX + c1x, fromY + c1y)) {
+        nextX = fromX + c1x;
+        nextY = fromY + c1y;
+      } else if ((c2x || c2y) && followerTileFree(gridMap, occupied, width, fromX + c2x, fromY + c2y)) {
+        nextX = fromX + c2x;
+        nextY = fromY + c2y;
+      }
+    }
+
+    if (nextX < 0) return false;
+    npc.facing = facingToward(fromX, fromY, nextX, nextY);
+    npc.x = nextX;
+    npc.y = nextY;
+    if (occupied) occupied.add(nextY * width + nextX);
+    return true;
   },
 };
 
