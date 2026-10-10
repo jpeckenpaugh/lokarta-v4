@@ -116,12 +116,15 @@ function makePaintCtx() {
 }
 
 test('LIV-68 island water surroundings', async (t) => {
-  await t.test('island theme declares water; town keeps grass', () => {
+  await t.test('island and coastal town both declare water', () => {
     const island = sceneTheme(getIslandDefinition(DEFAULT_ISLAND_ID).theme);
     assert.equal(island.outside.mode, 'water');
     assert.ok(island.outside.water && island.outside.water.fill, 'island authors a water palette');
+    // LIV-100: the town is now a coastal fishing village, so its off-map
+    // backdrop is open water rather than grass.
     const town = sceneTheme(getTownDefinition(DEFAULT_TOWN_ID).theme);
-    assert.notEqual(town.outside.mode, 'water', 'town backdrop stays grass');
+    assert.equal(town.outside.mode, 'water', 'town backdrop is coastal water');
+    assert.ok(town.outside.water && town.outside.water.fill, 'town authors a water palette');
   });
 
   await t.test('off-map island tiles paint water and never the island grass palette', () => {
@@ -138,12 +141,16 @@ test('LIV-68 island water surroundings', async (t) => {
     }
   });
 
-  await t.test('town off-map tiles still paint grass (no regression)', () => {
+  await t.test('town off-map tiles paint water (coastal backdrop)', () => {
     const theme = sceneTheme(getTownDefinition(DEFAULT_TOWN_ID).theme);
     const ctx = makePaintCtx();
     SpriteRenderer.drawOutside(ctx, 0, 0, 32, -3, -3, theme);
     const styles = new Set(ctx.fills.map((f) => f.style));
-    assert.ok(theme.outside.grass.some((g) => styles.has(g.toLowerCase())), 'town grass painted');
+    assert.ok(styles.has(theme.outside.water.deep.toLowerCase()), 'town deep water painted');
+    assert.ok(styles.has(theme.outside.water.fill.toLowerCase()), 'town water swell painted');
+    for (const g of theme.outside.grass) {
+      assert.ok(!styles.has(g.toLowerCase()), `town grass ${g} must not render beyond the shore`);
+    }
   });
 
   await t.test('a full island camera frame draws off-map water beyond the border', () => {

@@ -82,21 +82,16 @@ test('LIV-74 town/tower exterior grass uses the low-frequency field', async (t) 
     assert.equal(new Set(ramp).size, ramp.length, 'town grass shades must be distinct');
   });
 
-  await t.test('town ground fill is picked by grassShadeIndex, not the tile hash', () => {
-    const ramp = town.outside.grass;
+  await t.test('town backdrop is coastal water, not the grass field', () => {
+    // LIV-100: the town re-themed to a coastal fishing village, so its off-map
+    // backdrop is deep water. The grass field now only drives tower exteriors
+    // (and the town GRASS tile / tree base, checked separately below).
+    const water = town.outside.water;
     for (let y = 0; y < 20; y++) {
       for (let x = 0; x < 20; x++) {
-        assert.equal(
-          groundFill(town, x, y),
-          ramp[grassShadeIndex(x, y, ramp.length)],
-          `town fill at ${x},${y} must come from the noise field`
-        );
+        assert.equal(groundFill(town, x, y), water.deep, `town backdrop at ${x},${y} must be deep water`);
       }
     }
-  });
-
-  await t.test('town exterior is low-frequency and free of a parity checkerboard', () => {
-    assertNoCheckerboard(groundGrid(town, 30, 30), 30, 30);
   });
 
   await t.test('tower exterior is low-frequency and free of a parity checkerboard', () => {
