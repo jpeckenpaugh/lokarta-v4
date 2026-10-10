@@ -986,7 +986,7 @@ export async function buildAnimatedAsset({
   glbPath, id, outDir, clip = null, size = 32, views = [0, 90, 180, 270], rise = DEFAULT_CAMERA_RISE,
   flat = false, renderRes = 512, tier = 'baked', families = 5, steps = 15,
   times = null, frameCount = 8, poseList = null, write = true, rim = null,
-  ambient = 0.30, exposure = 1, outline = tier !== 'baked',
+  ambient = 0.30, exposure = 1, outline = tier !== 'baked', recolor = null,
 }) {
   const baked = tier === 'baked';
   const glb = parseGLB(glbPath);
@@ -1031,6 +1031,23 @@ export async function buildAnimatedAsset({
     const hi = renderWorld({ pos: poses[i].pos, nrm: poses[i].nrm, uv, idx, count, tex, proj, ambient, exposure, rim: baked ? (rim ?? 0.7) : 0, bounce: baked ? 0.35 : 0 });
     return { key: p.key, az: p.az, i, px: downscale(hi, size, size) };
   });
+  // LIV-134: optional per-actor palette recolor. Maps each baked pixel's Rec.601
+  // luma onto a per-NPC colour ramp so meshes reused across cast members wear a
+  // distinct palette (the identity carrier where two NPCs share a silhouette).
+  // Runs before palette collection/quantization so the emitted palette is the
+  // recoloured one; deterministic and opt-in (null keeps every legacy bake
+  // byte-identical).
+  if (typeof recolor === 'function') {
+    for (const v of viewPix) {
+      const px = v.px, n = px.w * px.h;
+      for (let i = 0; i < n; i++) {
+        const o = i * 4;
+        if (px.rgba[o + 3] <= 0) continue;
+        const c = recolor(px.rgba[o], px.rgba[o + 1], px.rgba[o + 2]);
+        px.rgba[o] = c[0]; px.rgba[o + 1] = c[1]; px.rgba[o + 2] = c[2];
+      }
+    }
+  }
   const all = [];
   for (const v of viewPix) for (let i = 0; i < v.px.w * v.px.h; i++) if (v.px.rgba[i * 4 + 3] > 128) all.push([v.px.rgba[i * 4], v.px.rgba[i * 4 + 1], v.px.rgba[i * 4 + 2]]);
   const palette = baked ? { '.': null } : { '0': OUTLINE, '.': null };

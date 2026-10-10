@@ -1,9 +1,23 @@
 {
   "id": "npc_child_kes",
-  "kind": "npc",
+  "kind": "actor",
   "renderTier": "baked",
   "baked3d": true,
   "outline": false,
+  "source": "child_white_hair_optimized.glb (glTF-Transform glTF-Transform v4.5.1)",
+  "method": "skinned-skeleton-sample(clip=Running, 9 frames) -> ortho-software-raster@512 -> 64px box-downscale -> 204-colour direct median-cut (<=255) + baked 135deg key/rim -> no outline (Tier B)",
+  "camera": {
+    "projection": "orthographic",
+    "rise": 8,
+    "yaw": 0,
+    "views": [
+      0,
+      90,
+      180,
+      270
+    ]
+  },
+  "clip": "Running",
   "native": {
     "w": 64,
     "h": 64
@@ -222,37 +236,6 @@
     "Ÿ": "#eeceb5",
     "Ź": "#efcfb6",
     "ź": "#f0d0b8"
-  },
-  "animations": {
-    "idle": {
-      "down": [
-        "idle_down"
-      ],
-      "up": [
-        "idle_up"
-      ],
-      "side": [
-        "idle_side"
-      ],
-      "frameMs": null,
-      "advanceOn": "timer"
-    },
-    "walk": {
-      "down": [
-        "walk_down_0",
-        "walk_down_1"
-      ],
-      "up": [
-        "walk_up_0",
-        "walk_up_1"
-      ],
-      "side": [
-        "walk_side_0",
-        "walk_side_1"
-      ],
-      "frameMs": null,
-      "advanceOn": "step"
-    }
   },
   "frames": {
     "idle_down": [

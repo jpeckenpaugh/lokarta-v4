@@ -194,7 +194,9 @@ export function validateSpriteDef(def, { label = def && def.id } = {}) {
 
 /** Boolean/class helper: is a def a rigged/actor 3D bake (the §12.1 exception)? */
 export function isActorDef(def) {
-  return !!def && (def.kind === 'actor' || def.kind === 'vocation');
+  // LIV-134 extends the actor exception (art-direction.md §12.1) from the player
+  // actors/vocations to the baked neutral NPC + creature actor classes.
+  return !!def && (def.kind === 'actor' || def.kind === 'vocation' || def.kind === 'npc' || def.kind === 'monster');
 }
 
 /**

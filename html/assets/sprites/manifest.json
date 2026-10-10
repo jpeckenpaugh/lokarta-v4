@@ -11,19 +11,19 @@
     "shadow_cultist": { "kind": "monster", "file": "./monsters/shadow_cultist.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
     "elite_cultist": { "kind": "monster", "file": "./monsters/elite_cultist.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
     "abyssal_overlord": { "kind": "monster", "file": "./monsters/abyssal_overlord.json", "native": { "w": 48, "h": 48 }, "anchor": { "x": 24, "y": 46 } },
-    "npc_elder_rowan_vane": { "kind": "npc", "file": "./npc/npc_elder_rowan_vane.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
-    "npc_captain_halden": { "kind": "npc", "file": "./npc/npc_captain_halden.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
-    "npc_wick": { "kind": "npc", "file": "./npc/npc_wick.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
-    "npc_high_dawnkeeper_aurel": { "kind": "npc", "file": "./npc/npc_high_dawnkeeper_aurel.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
-    "npc_mara": { "kind": "npc", "file": "./npc/npc_mara.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
-    "npc_innkeep_bessa": { "kind": "npc", "file": "./npc/npc_innkeep_bessa.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
-    "npc_old_sailor_doran": { "kind": "npc", "file": "./npc/npc_old_sailor_doran.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
-    "npc_pilgrims_apprentice_tam": { "kind": "npc", "file": "./npc/npc_pilgrims_apprentice_tam.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
-    "npc_deckhand_brann": { "kind": "npc", "file": "./npc/npc_deckhand_brann.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
-    "npc_young_fisher_ilo": { "kind": "npc", "file": "./npc/npc_young_fisher_ilo.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
-    "npc_child_kes": { "kind": "npc", "file": "./npc/npc_child_kes.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
-    "npc_villager_m_odon": { "kind": "npc", "file": "./npc/npc_villager_m_odon.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
-    "npc_villager_f_lena": { "kind": "npc", "file": "./npc/npc_villager_f_lena.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } }
+    "npc_elder_rowan_vane": { "kind": "npc", "file": "./npc/npc_elder_rowan_vane.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
+    "npc_captain_halden": { "kind": "npc", "file": "./npc/npc_captain_halden.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
+    "npc_wick": { "kind": "npc", "file": "./npc/npc_wick.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
+    "npc_high_dawnkeeper_aurel": { "kind": "npc", "file": "./npc/npc_high_dawnkeeper_aurel.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
+    "npc_mara": { "kind": "npc", "file": "./npc/npc_mara.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
+    "npc_innkeep_bessa": { "kind": "npc", "file": "./npc/npc_innkeep_bessa.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
+    "npc_old_sailor_doran": { "kind": "npc", "file": "./npc/npc_old_sailor_doran.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
+    "npc_pilgrims_apprentice_tam": { "kind": "npc", "file": "./npc/npc_pilgrims_apprentice_tam.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
+    "npc_deckhand_brann": { "kind": "npc", "file": "./npc/npc_deckhand_brann.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
+    "npc_young_fisher_ilo": { "kind": "npc", "file": "./npc/npc_young_fisher_ilo.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
+    "npc_child_kes": { "kind": "npc", "file": "./npc/npc_child_kes.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
+    "npc_villager_m_odon": { "kind": "npc", "file": "./npc/npc_villager_m_odon.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
+    "npc_villager_f_lena": { "kind": "npc", "file": "./npc/npc_villager_f_lena.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } }
   },
   "props": {
     "key_copper": { "kind": "item", "tier": "copper", "file": "./items/key_copper.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 26 }, "frames": ["icon"] },
@@ -52,6 +52,10 @@
     "prop_boat": { "kind": "prop", "class": "free", "file": "./props/prop_boat.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 27 }, "frames": ["idle"] },
     "prop_buoy": { "kind": "prop", "class": "free", "file": "./props/prop_buoy.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 29 }, "frames": ["idle"] },
     "prop_smoke_plume": { "kind": "prop", "class": "free", "file": "./props/prop_smoke_plume.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 }, "frames": ["idle"] },
+    "prop_wooden_barrel": { "kind": "prop", "class": "free", "file": "./props/prop_wooden_barrel.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 }, "frames": ["idle", "view_0"] },
+    "prop_rock_pile": { "kind": "prop", "class": "free", "file": "./props/prop_rock_pile.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 }, "frames": ["idle", "view_0"] },
+    "prop_palm_tree": { "kind": "prop", "class": "free", "file": "./props/prop_palm_tree.json", "native": { "w": 64, "h": 128 }, "anchor": { "x": 32, "y": 126 }, "frames": ["idle", "view_0"] },
+    "prop_wooden_dock": { "kind": "decor", "class": "decor", "file": "./props/prop_wooden_dock.json", "native": { "w": 192, "h": 64 }, "anchor": { "x": 96, "y": 62 }, "frames": ["idle", "view_0"] },
     "decor_rug": { "kind": "decor", "class": "decor", "file": "./decor/decor_rug.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 0, "y": 0 }, "frames": ["idle"] }
   }
 }

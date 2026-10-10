@@ -36,6 +36,13 @@ import propFishBarrel from './props/prop_fish_barrel.json' with { type: 'json' }
 import propBoat from './props/prop_boat.json' with { type: 'json' };
 import propBuoy from './props/prop_buoy.json' with { type: 'json' };
 import propSmokePlume from './props/prop_smoke_plume.json' with { type: 'json' };
+// LIV-134: 3D-baked Havenreach props (dock/barrel/rocks/palms) from
+// docs/art/3d-sprite-mapping.md §5. Same sprite-def pipeline; placement comes
+// from the scene catalog (`towns.json` `props[]`).
+import propWoodenBarrel from './props/prop_wooden_barrel.json' with { type: 'json' };
+import propRockPile from './props/prop_rock_pile.json' with { type: 'json' };
+import propPalmTree from './props/prop_palm_tree.json' with { type: 'json' };
+import propWoodenDock from './props/prop_wooden_dock.json' with { type: 'json' };
 import decorRug from './decor/decor_rug.json' with { type: 'json' };
 
 export const PROP_MANIFEST = manifest.props;
@@ -74,13 +81,17 @@ export const PROP_CATALOG = {
   prop_boat: propBoat,
   prop_buoy: propBuoy,
   prop_smoke_plume: propSmokePlume,
+  prop_wooden_barrel: propWoodenBarrel,
+  prop_rock_pile: propRockPile,
+  prop_palm_tree: propPalmTree,
+  prop_wooden_dock: propWoodenDock,
   decor_rug: decorRug,
 };
 
 /** Furniture/decor ids grouped by `kind`, for data-driven placement lookups. */
 export const PROP_IDS_BY_KIND = {
-  prop: ['prop_table', 'prop_crate', 'prop_barrel', 'prop_brazier', 'prop_candelabra', 'prop_bookshelf', 'prop_sarcophagus', 'prop_altar', 'prop_throne', 'prop_net', 'prop_fishers_net', 'prop_fishers_net_vertical', 'prop_drying_rack', 'prop_fish_barrel', 'prop_boat', 'prop_buoy', 'prop_smoke_plume'],
-  decor: ['decor_rug'],
+  prop: ['prop_table', 'prop_crate', 'prop_barrel', 'prop_brazier', 'prop_candelabra', 'prop_bookshelf', 'prop_sarcophagus', 'prop_altar', 'prop_throne', 'prop_net', 'prop_fishers_net', 'prop_fishers_net_vertical', 'prop_drying_rack', 'prop_fish_barrel', 'prop_boat', 'prop_buoy', 'prop_smoke_plume', 'prop_wooden_barrel', 'prop_rock_pile', 'prop_palm_tree'],
+  decor: ['decor_rug', 'prop_wooden_dock'],
 };
 
 /** Tier -> prop id, for data-driven key/chest/door resolution. */
