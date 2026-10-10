@@ -191,6 +191,16 @@ function isLivingEntry(entry) {
   return Boolean(entry) && !isDownedEntry(entry);
 }
 
+/**
+ * Painter's-order comparator for the shared actor pass (LIV-142). A larger
+ * screen Y is nearer the camera and must draw last, so a character in front
+ * occludes the one behind it. Module-level + pure so the per-frame sort
+ * allocates nothing.
+ */
+function byActorDrawOrder(a, b) {
+  return a._drawY - b._drawY;
+}
+
 /** True when a DOOR or GATED_DOOR tile sits within `radius` of (x, y). */
 function isNearDoor(gridMap, x, y, radius) {
   for (let dy = -radius; dy <= radius; dy++) {
@@ -344,6 +354,9 @@ export class CanvasRenderer {
     // by the app) and the in-flight camera glide state. Both start idle.
     this.swapFeedback = null;
     this.cameraGlide = null;
+    // Reused actor draw list (LIV-142): the shared painter's-order pass sorts
+    // monsters + NPCs + party + player by camera distance without allocating.
+    this._actorDrawList = [];
   }
 
   /** Per-frame clock for camera-glide timing (overridable in tests). */
@@ -628,100 +641,126 @@ export class CanvasRenderer {
       );
     }
 
-    // 5. Monsters Layer (distance-dimmed so silhouettes survive the fog edge)
+    // 5. Actors Layer — monsters + NPCs + party + player in ONE painter's-order
+    //    pass (LIV-142). Humanoid sprites render larger than their tile (72x96),
+    //    so a character nearer the camera must overlap the one behind it: the
+    //    actor with the greater screen Y draws last. This replaces the old fixed
+    //    monster -> npc -> party -> player stacking, where the player was always
+    //    on top regardless of position. The reused list + module-level comparator
+    //    keep the per-frame path allocation-free.
     const playerRadius = Math.max(1, LightingSystem.computePlayerRadius(player));
-    for (const monster of monsters) {
-      if (monster.visible && monster.hp > 0) {
-        const screenX = tweenTileX(monster) * CONFIG.GRID_SIZE - this.cameraX;
-        const screenY = tweenTileY(monster) * CONFIG.GRID_SIZE - this.cameraY;
-        const isBoss = monster.isBoss === true;
-        const d = Math.hypot(monster.x - player.x, monster.y - player.y) / playerRadius;
-        monster._dim = isBoss ? 1 : Math.max(0.65, Math.min(1, 1 - 0.35 * d));
-        SpriteRenderer.drawMonster(ctx, monster, screenX, screenY);
-
-        // Enemy HP bar only when damaged, selected, or a boss (D1 §3.1).
-        const damaged = monster.hp < monster.max_hp;
-        const selected = selectedMonsterId === monster.id;
-        if (isBoss || damaged || selected) {
-          this.drawActorBars(ctx, monster, screenX, screenY, false, isBoss ? ENTITY_BARS.bossWidth : ENTITY_BARS.width);
-        }
-
-        if (selectedMonsterId === monster.id) {
-          ctx.strokeStyle = '#ef4444';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(
-            screenX + CONFIG.GRID_SIZE / 2,
-            screenY + CONFIG.GRID_SIZE / 2,
-            CONFIG.GRID_SIZE / 2 + 3,
-            0,
-            Math.PI * 2
-          );
-          ctx.stroke();
-        }
-      }
-    }
-
-    // 5a. Neutral NPCs Layer (LIV-60 P2): drawn through the shared actor
-    //     pipeline with the catalog `renderTheme` tint so no bespoke art is
-    //     required. Scene-only, so a tower floor draws nothing here.
+    const playerScreenX = tweenTileX(player) * CONFIG.GRID_SIZE - this.cameraX;
+    const playerScreenY = tweenTileY(player) * CONFIG.GRID_SIZE - this.cameraY;
     const npcs = this.npcs;
-    if (Array.isArray(npcs) && npcs.length > 0) {
+    const order = this._actorDrawList;
+    order.length = 0;
+
+    for (const monster of monsters) {
+      if (!(monster && monster.visible && monster.hp > 0)) continue;
+      monster._drawKind = 'monster';
+      monster._drawY = tweenTileY(monster);
+      order.push(monster);
+    }
+    if (Array.isArray(npcs)) {
       for (const npc of npcs) {
         if (!npc) continue;
-        const npcScreenX = tweenTileX(npc) * CONFIG.GRID_SIZE - this.cameraX;
-        const npcScreenY = tweenTileY(npc) * CONFIG.GRID_SIZE - this.cameraY;
-        if (npcScreenX < -CONFIG.GRID_SIZE || npcScreenY < -CONFIG.GRID_SIZE
-          || npcScreenX > width || npcScreenY > height) continue;
-        SpriteRenderer.drawActor(ctx, npc, npcScreenX, npcScreenY, {
-          size: CONFIG.GRID_SIZE,
-          tint: npc.renderTheme || undefined,
-        });
-        // Quest marker (LIV-55 P5): `available` (!) / `turnin` (?). Only marked
-        // NPCs draw, so the hot path stays allocation-free for everyone else.
-        if (npc.questMarker) {
-          this.drawQuestMarker(
-            ctx,
-            npc.questMarker,
-            npcScreenX + CONFIG.GRID_SIZE / 2,
-            npcScreenY - 4
-          );
-        }
+        npc._drawKind = 'npc';
+        npc._drawY = tweenTileY(npc);
+        order.push(npc);
       }
     }
-
-    // 5b. Party Allies Layer (LIV-13/WS4): every non-active member draws with
-    //     the shared player sprite pipeline (vocation sprite + animation). A
-    //     downed body (LIV-45) stays on the board, greyed + darkened, with no
-    //     light and no HP bar — it is a rescue target, not a combatant. The live
-    //     active member is the top-level player drawn below, so its stale
-    //     `party` mirror is skipped (matched by memberId).
     if (Array.isArray(party) && party.length > 1) {
       for (const member of party) {
         if (!member) continue;
+        // The live active member is the top-level player, so its stale `party`
+        // mirror is skipped (matched by memberId).
         if (member.memberId && member.memberId === player.activeMemberId) continue;
-        const memberScreenX = tweenTileX(member) * CONFIG.GRID_SIZE - this.cameraX;
-        const memberScreenY = tweenTileY(member) * CONFIG.GRID_SIZE - this.cameraY;
-        if (isDownedEntry(member)) {
-          SpriteRenderer.drawPlayer(ctx, member, memberScreenX, memberScreenY, CONFIG.GRID_SIZE, DOWNED_DRAW_OPTS);
-        } else {
-          SpriteRenderer.drawPlayer(ctx, member, memberScreenX, memberScreenY);
-          this.drawActorBars(ctx, member, memberScreenX, memberScreenY, true);
+        member._drawKind = 'party';
+        member._drawY = tweenTileY(member);
+        order.push(member);
+      }
+    }
+    player._drawKind = 'player';
+    player._drawY = tweenTileY(player);
+    order.push(player);
+    order.sort(byActorDrawOrder);
+
+    for (const actor of order) {
+      const screenX = tweenTileX(actor) * CONFIG.GRID_SIZE - this.cameraX;
+      const screenY = tweenTileY(actor) * CONFIG.GRID_SIZE - this.cameraY;
+      switch (actor._drawKind) {
+        case 'monster': {
+          // Distance-dimmed so silhouettes survive the fog edge.
+          const isBoss = actor.isBoss === true;
+          const d = Math.hypot(actor.x - player.x, actor.y - player.y) / playerRadius;
+          actor._dim = isBoss ? 1 : Math.max(0.65, Math.min(1, 1 - 0.35 * d));
+          const geo = SpriteRenderer.drawMonster(ctx, actor, screenX, screenY);
+
+          // Enemy HP bar only when damaged, selected, or a boss (D1 §3.1).
+          const damaged = actor.hp < actor.max_hp;
+          const selected = selectedMonsterId === actor.id;
+          if (isBoss || damaged || selected) {
+            this.drawActorBars(ctx, actor, screenX, screenY, false, isBoss ? ENTITY_BARS.bossWidth : ENTITY_BARS.width, geo && geo.dy);
+          }
+          if (selected) {
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(
+              screenX + CONFIG.GRID_SIZE / 2,
+              screenY + CONFIG.GRID_SIZE / 2,
+              CONFIG.GRID_SIZE / 2 + 3,
+              0,
+              Math.PI * 2
+            );
+            ctx.stroke();
+          }
+          break;
+        }
+        case 'npc': {
+          // Scene-only, culled off-screen; the shared actor pipeline carries the
+          // catalog `renderTheme` tint so no bespoke art is required (LIV-60 P2).
+          if (screenX < -CONFIG.GRID_SIZE || screenY < -CONFIG.GRID_SIZE
+            || screenX > width || screenY > height) break;
+          const geo = SpriteRenderer.drawActor(ctx, actor, screenX, screenY, {
+            size: CONFIG.GRID_SIZE,
+            tint: actor.renderTheme || undefined,
+          });
+          // Quest marker (LIV-55 P5): `available` (!) / `turnin` (?). Anchored
+          // above the sprite box so it clears the taller LIV-142 humanoid render.
+          if (actor.questMarker) {
+            this.drawQuestMarker(
+              ctx,
+              actor.questMarker,
+              screenX + CONFIG.GRID_SIZE / 2,
+              (geo ? geo.dy : screenY) - 4
+            );
+          }
+          break;
+        }
+        case 'party': {
+          // 5b. Party Allies Layer (LIV-13/WS4): a downed body (LIV-45) stays on
+          // the board, greyed + darkened, with no light and no HP bar — it is a
+          // rescue target, not a combatant.
+          if (isDownedEntry(actor)) {
+            SpriteRenderer.drawPlayer(ctx, actor, screenX, screenY, CONFIG.GRID_SIZE, DOWNED_DRAW_OPTS);
+          } else {
+            const geo = SpriteRenderer.drawPlayer(ctx, actor, screenX, screenY);
+            this.drawActorBars(ctx, actor, screenX, screenY, true, ENTITY_BARS.width, geo && geo.dy);
+          }
+          break;
+        }
+        case 'player': {
+          const geo = SpriteRenderer.drawPlayer(ctx, actor, screenX, screenY);
+          this.drawActorBars(ctx, actor, screenX, screenY, true, ENTITY_BARS.width, geo && geo.dy);
+          break;
         }
       }
     }
 
-    // 6. Player Layer (drawn at its tweened fractional position, LIV-139)
-    const playerScreenX = tweenTileX(player) * CONFIG.GRID_SIZE - this.cameraX;
-    const playerScreenY = tweenTileY(player) * CONFIG.GRID_SIZE - this.cameraY;
-    SpriteRenderer.drawPlayer(ctx, player, playerScreenX, playerScreenY);
-
-    // Small health + mana bars above the player.
-    this.drawActorBars(ctx, player, playerScreenX, playerScreenY, true);
-
-    // 6b. Player status VFX: Shock Shield silver barrier and Luminous
-    //     Prayer healing orbs. Drawn after the player + light mask so both read
-    //     clearly over the existing lighting.
+    // 6b. Player status VFX: Shock Shield silver barrier and Luminous Prayer
+    //     healing orbs. Drawn after the actor pass so both read clearly over the
+    //     lighting and any actor in front.
     this.renderPlayerVfx(ctx, player, playerScreenX, playerScreenY);
 
     // 6b-2. Interaction prompt (LIV-60 P2): a small label above the NPC / world
@@ -808,8 +847,11 @@ export class CanvasRenderer {
    * @param {object} actor - actor with hp/max_hp (and mana/max_mana for player)
    * @param {number} screenX @param {number} screenY
    * @param {boolean} withMana - draw the mana bar too (player only)
+   * @param {number} [barWidth]
+   * @param {number} [spriteTopY] - top of the drawn sprite box; anchors the bars
+   *   above the taller LIV-142 humanoid render. Defaults to the tile top.
    */
-  drawActorBars(ctx, actor, screenX, screenY, withMana, barWidth = ENTITY_BARS.width) {
+  drawActorBars(ctx, actor, screenX, screenY, withMana, barWidth = ENTITY_BARS.width, spriteTopY) {
     if (!actor || !Number.isFinite(actor.max_hp) || actor.max_hp <= 0) return;
     const size = CONFIG.GRID_SIZE;
     const w = barWidth;
@@ -817,7 +859,8 @@ export class CanvasRenderer {
     const outline = ENTITY_BARS.outline;
     const gap = ENTITY_BARS.gap;
     const x = Math.round(screenX + (size - w) / 2);
-    let y = Math.round(screenY - ENTITY_BARS.offset);
+    const topY = Number.isFinite(spriteTopY) ? spriteTopY : screenY;
+    let y = Math.round(topY - ENTITY_BARS.offset);
 
     const hpPct = Math.max(0, Math.min(1, actor.hp / actor.max_hp));
     const hpColor = hpPct <= ENTITY_BARS.lowHpPct ? ENTITY_BARS.hpLow : ENTITY_BARS.hp;

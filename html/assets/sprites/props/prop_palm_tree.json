@@ -945,6 +945,7 @@
   },
   "placement": {
     "mode": "multi-tile-blit",
+    "align": "bottom-center",
     "footprint": [
       0,
       0,

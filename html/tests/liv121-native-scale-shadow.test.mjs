@@ -74,12 +74,16 @@ test('LIV-121 native-aware scale', async (t) => {
     assert.equal(atomicNative(null), 32, 'safe default');
   });
 
-  await t.test('3. drawActor renders an N64 sprite 1:1 and an N32 sprite x2 at the default tile', () => {
+  await t.test('3. drawActor renders a baked humanoid in the 72x96 box and an N32 sprite x2', () => {
     const ctxA = makeFakeCtx();
     const geoA = SpriteRenderer.drawActor(ctxA, { spriteId: 'archer', anim: { state: 'idle', dir: 'down' } }, 0, 0, { size: 64 });
     assert.ok(geoA, 'archer draws');
     assert.equal(geoA.scale, 1, 'N64 archer is 1:1');
-    assert.equal(geoA.w, 64, 'N64 archer canvas is exactly one 64 px tile');
+    // LIV-142: a 3D-baked humanoid renders at 72x96, centre-bottom on its tile.
+    assert.equal(geoA.w, 72, 'archer box is 72 px wide');
+    assert.equal(geoA.h, 96, 'archer box is 96 px tall');
+    assert.equal(geoA.dy, 0 + 64 - 96, 'archer box is bottom-aligned to the tile');
+    assert.equal(geoA.dx, 0 + Math.round((64 - 72) / 2), 'archer box is horizontally centred');
 
     const ctxM = makeFakeCtx();
     const geoM = SpriteRenderer.drawActor(ctxM, { vocation: 'magician', anim: { state: 'idle', dir: 'down' } }, 0, 0, { size: 64 });

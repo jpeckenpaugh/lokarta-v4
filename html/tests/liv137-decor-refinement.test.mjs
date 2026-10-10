@@ -151,13 +151,18 @@ test('LIV-137 decor refinement', async (t) => {
     assert.equal(report.towerReachable, true);
   });
 
-  await t.test('5. the island TREE theme suppresses the legacy 2D canopy', () => {
+  await t.test('5. the island TREE theme suppresses the legacy 2D canopy and uses the shared GRASS ground', () => {
     const theme = sceneTheme('island_dawnreach');
     assert.equal(theme.tiles.TREE.art, 'prop', 'TREE art is prop-backed');
+    const grassCtx = fakeCtx();
+    SpriteRenderer.drawTile(grassCtx, TILE_TYPES.GRASS, 0, 0, 64, { theme, x: 3, y: 4 });
     const ctx = fakeCtx();
     SpriteRenderer.drawTile(ctx, TILE_TYPES.TREE, 0, 0, 64, { theme, x: 3, y: 4 });
-    // The grass base is drawn, but the 2D trunk/canopy colours are not.
+    // LIV-142: the TREE ground is the SAME GRASS art as the surrounding
+    // overworld — no bespoke `outside.grass` fill under the scattered props.
+    assert.deepEqual(ctx.styles, grassCtx.styles, 'TREE ground delegates to the GRASS tile');
     assert.ok(ctx.styles.length >= 1, 'grass base drawn');
+    assert.ok(!ctx.styles.includes(theme.outside.grassBlade), 'no bespoke outside grass');
     assert.ok(!ctx.styles.includes(theme.tiles.TREE.canopy), 'canopy suppressed');
     assert.ok(!ctx.styles.includes(theme.tiles.TREE.trunk), 'trunk suppressed');
   });

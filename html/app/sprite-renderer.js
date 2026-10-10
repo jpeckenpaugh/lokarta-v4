@@ -70,6 +70,35 @@ export function atomicNative(def) {
   return nw;
 }
 
+/**
+ * Default display box for 3D-baked humanoid actors (LIV-142), expressed in px at
+ * the default 64 px tile. A baked actor renders LARGER than its tile — 72x96 —
+ * and is centre-bottom aligned, so a character nearer the camera overlaps
+ * (occludes) the one behind it instead of sitting strictly side-by-side. A def
+ * may override the box with `renderBox: { w, h }`; hand-authored (non-3D) actors
+ * are untouched and keep their integer tile scale.
+ */
+export const HUMANOID_RENDER_BOX = Object.freeze({ w: 72, h: 96 });
+
+/** Reference tile the humanoid box is authored against (the default GRID_SIZE). */
+const HUMANOID_BOX_REF_TILE = 64;
+
+/**
+ * Resolves an actor def's display box, or null when it keeps the tile scale.
+ * Only 3D-baked single-tile actor defs (vocations, NPCs, opponents) opt in.
+ * @returns {{w:number,h:number}|null}
+ */
+export function actorRenderBox(def, size = CONFIG.GRID_SIZE) {
+  if (!def || def.baked3d !== true || def.tiles) return null;
+  const rb = def.renderBox;
+  const bw = rb && Number(rb.w) > 0 ? Number(rb.w) : HUMANOID_RENDER_BOX.w;
+  const bh = rb && Number(rb.h) > 0 ? Number(rb.h) : HUMANOID_RENDER_BOX.h;
+  return {
+    w: Math.round((size * bw) / HUMANOID_BOX_REF_TILE),
+    h: Math.round((size * bh) / HUMANOID_BOX_REF_TILE),
+  };
+}
+
 /** Chest tier fallback tints (used only when the authored prop is missing). */
 const TIER_TINTS = {
   copper: { light: '#e8a86a', dark: '#7a4a1e' },
@@ -299,6 +328,27 @@ function drawPropFrame(ctx, def, frameId, dx, dy, size) {
 }
 
 /**
+ * Resolves a prop frame's top-left blit origin in screen space from its
+ * data-authored `placement.align` (LIV-142). `"bottom-center"` places the
+ * sprite's bottom-centre on the placement square — the correct anchor for
+ * multi-tile upright props (palms, rock piles) whose artwork extends above the
+ * tile it stands on. The default keeps the legacy footprint top-left so
+ * wide/floor pieces (nets, dock) are unchanged. Falls back safely for defs
+ * without placement metadata.
+ */
+export function propBlitOrigin(def, screenX, screenY, size = CONFIG.GRID_SIZE) {
+  const align = def && def.placement && def.placement.align;
+  if (align !== 'bottom-center') return { dx: screenX, dy: screenY };
+  const scale = SpriteRenderer.scaleForSize(size, atomicNative(def));
+  const nw = ((def.native && def.native.w) || SPRITE_NATIVE) * scale;
+  const nh = ((def.native && def.native.h) || SPRITE_NATIVE) * scale;
+  return {
+    dx: Math.round(screenX + (size - nw) / 2),
+    dy: Math.round(screenY + size - nh),
+  };
+}
+
+/**
  * Blits one authored frame into an arbitrary destination rect using the engine's
  * single integer SCALE (LIV-109). This is the sprite-backed building-silhouette
  * path: a multi-tile building sprite (native == tiles*32) fills the footprint
@@ -520,12 +570,11 @@ const TILE_RENDERERS = {
     const p = sceneTilePalette(theme, 'TREE');
     const outside = (theme && theme.outside) || DEFAULT_OUTSIDE;
     const u = size / 32;
-    // Same low-frequency grass field as the outside fill (LIV-74), so a tree
-    // stands on naturally rolling greens rather than a hashed checkerboard.
-    const grassRamp = outside.grass && outside.grass.length ? outside.grass : DEFAULT_OUTSIDE.grass;
-    const base = grassRamp[grassShadeIndex(opts.x || 0, opts.y || 0, grassRamp.length)];
-    ctx.fillStyle = base;
-    ctx.fillRect(screenX, screenY, size, size);
+    // LIV-142: a tree/prop tile stands on the SAME grass art as the surrounding
+    // overworld (the LIV-71 shade ramp), never a bespoke `outside.grass` fill.
+    // Delegating to the GRASS renderer keeps the two in lockstep for every theme,
+    // so a prop-backed palm/rock sits directly on the shared gradient grass.
+    TILE_RENDERERS[TILE_TYPES.GRASS](ctx, screenX, screenY, size, theme, opts);
     // LIV-137: a scene theme may declare the TREE tile's art is prop-backed
     // (`tiles.TREE.art === "prop"`). The 2D canopy is then suppressed and a
     // 3D-baked palm/rock prop is scattered on top by the scene composer, so the
@@ -1432,7 +1481,8 @@ export class SpriteRenderer {
     if (!prop) return false;
     const def = prop.propId ? PROP_CATALOG[prop.propId] : null;
     const frameId = prop.frame || 'idle';
-    if (drawPropFrame(ctx, def, frameId, screenX, screenY, size)) return true;
+    const { dx, dy } = propBlitOrigin(def, screenX, screenY, size);
+    if (drawPropFrame(ctx, def, frameId, dx, dy, size)) return true;
 
     const u = size / 32;
     const decor = prop.layer === 'decor' || (def && def.class) === 'decor';
@@ -1465,8 +1515,12 @@ export class SpriteRenderer {
     const { state, dir, frameId } = resolveSpriteFrame(def, anim);
     if (!frameId) return null;
 
-    const nw = def.native.w * scale;
-    const nh = def.native.h * scale;
+    // LIV-142: a 3D-baked humanoid renders in a larger-than-tile box (72x96 at
+    // the default tile), centre-bottom aligned to its tile. `null` keeps the
+    // legacy tile-scale geometry for hand-authored actors.
+    const box = actorRenderBox(def, size);
+    const nw = box ? box.w : def.native.w * scale;
+    const nh = box ? box.h : def.native.h * scale;
     const dx = Math.round(screenX + (size - nw) / 2);
     const dy = screenY + size - nh;
 
@@ -1516,7 +1570,9 @@ export class SpriteRenderer {
         const offY = Math.round(style.offset.y * offNative);
         ctx.globalAlpha = Math.max(0, Math.min(1, spriteAlpha * style.alpha));
         if ('imageSmoothingEnabled' in ctx) ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(shadow, drawX + offX, drawY + offY);
+        // A larger-than-tile actor box scales the shadow mask to the same box.
+        if (box) ctx.drawImage(shadow, drawX + offX, drawY + offY, nw, nh);
+        else ctx.drawImage(shadow, drawX + offX, drawY + offY);
         ctx.globalAlpha = spriteAlpha;
       }
     }
@@ -1538,7 +1594,8 @@ export class SpriteRenderer {
     const canvas = getFrameCanvas(def, frameId, scale, flip, tint);
     if (canvas && typeof ctx.drawImage === 'function') {
       if ('imageSmoothingEnabled' in ctx) ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(canvas, drawX, drawY);
+      if (box) ctx.drawImage(canvas, drawX, drawY, nw, nh);
+      else ctx.drawImage(canvas, drawX, drawY);
     } else {
       const pixels = renderFramePixels(def, frameId, scale, flip, tint);
       if (!pixels) { ctx.restore(); return null; }
@@ -1624,6 +1681,7 @@ export class SpriteRenderer {
       ctx.stroke();
       ctx.restore();
     }
+    return geo;
   }
 
   static drawMonster(ctx, monster, screenX, screenY, size = CONFIG.GRID_SIZE) {
@@ -1649,7 +1707,7 @@ export class SpriteRenderer {
     }
 
     if (visual && visual.crown) {
-      drawMonsterCrown(ctx, cx, screenY + 7 * u, u, visual.crown);
+      drawMonsterCrown(ctx, cx, (geo ? geo.dy : screenY) + 7 * u, u, visual.crown);
     }
 
     // Health Bar — anchored above the sprite box when a sprite is present.
@@ -1666,6 +1724,7 @@ export class SpriteRenderer {
       ctx.fillStyle = '#ef4444';
       ctx.fillRect(barX, barY, barW * pct, barH);
     }
+    return geo;
   }
 
   static drawFacingEyes(ctx, headX, headY, facing, eyeColor = '#44ccff', u = 1) {
