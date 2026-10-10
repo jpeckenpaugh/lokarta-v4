@@ -18,7 +18,12 @@
     "npc_mara": { "kind": "npc", "file": "./npc/npc_mara.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
     "npc_innkeep_bessa": { "kind": "npc", "file": "./npc/npc_innkeep_bessa.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
     "npc_old_sailor_doran": { "kind": "npc", "file": "./npc/npc_old_sailor_doran.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
-    "npc_pilgrims_apprentice_tam": { "kind": "npc", "file": "./npc/npc_pilgrims_apprentice_tam.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } }
+    "npc_pilgrims_apprentice_tam": { "kind": "npc", "file": "./npc/npc_pilgrims_apprentice_tam.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
+    "npc_deckhand_brann": { "kind": "npc", "file": "./npc/npc_deckhand_brann.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
+    "npc_young_fisher_ilo": { "kind": "npc", "file": "./npc/npc_young_fisher_ilo.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
+    "npc_child_kes": { "kind": "npc", "file": "./npc/npc_child_kes.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
+    "npc_villager_m_odon": { "kind": "npc", "file": "./npc/npc_villager_m_odon.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
+    "npc_villager_f_lena": { "kind": "npc", "file": "./npc/npc_villager_f_lena.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } }
   },
   "props": {
     "key_copper": { "kind": "item", "tier": "copper", "file": "./items/key_copper.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 26 }, "frames": ["icon"] },

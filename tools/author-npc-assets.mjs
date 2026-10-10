@@ -148,6 +148,34 @@ const NPC_SPECS = [
     ramp: ['#160d0a', '#241713', '#2f4a26', '#3f6a33', '#4a7a3c', '#6b4e2e', '#653716', '#8a4f2b', '#a5653c', '#b08a4a', '#e8dcc0', '#f0e6d0'],
     prop: [...rect(5, 2, 12, 12, P), ...rect(6, 3, 11, 11, Q), ...rect(7, 16, 22, 24, P)],
   },
+  // LIV-101 ambient Shore cast: five wander-only villagers. Each gets a
+  // region-specific signature prop so its idle_down silhouette is unique
+  // (spec §2 rule); bodies recolour the matching vocation so shading carries.
+  {
+    npcSpriteId: 'npc_deckhand_brann', base: 'fighter', facing: 'down',
+    ramp: ['#160d0a', '#241713', '#2b3247', '#33415c', '#47536e', '#5b6880', '#7a879c', '#a0acc0', '#b3763c', '#c98f68', '#d99a5b', '#f0e6d0'],
+    prop: [...line(6, 9, 11, 26, P), ...rect(4, 6, 10, 9, Q), ...rect(5, 7, 9, 8, P), ...line(25, 12, 25, 20, P)],
+  },
+  {
+    npcSpriteId: 'npc_young_fisher_ilo', base: 'archer', facing: 'right',
+    ramp: ['#0a2a2c', '#123a3c', '#1d4a4c', '#2f6f73', '#3f8a8c', '#94623a', '#b9824f', '#d19c66', '#c98f68', '#eab778', '#e8dcc0', '#ffffff'],
+    prop: [...line(8, 29, 27, 6, P), ...rect(26, 3, 28, 6, Q), ...line(27, 6, 27, 13, Q)],
+  },
+  {
+    npcSpriteId: 'npc_child_kes', base: 'magician', facing: 'down',
+    ramp: ['#241410', '#3a2414', '#653716', '#8a4f2b', '#a5653c', '#b3763c', '#d99a5b', '#eab778', '#f0d0b8', '#fbe6d6', '#e8dcc0', '#ffffff'],
+    prop: [...rect(20, 21, 27, 28, P), ...rect(21, 20, 26, 21, Q), ...rect(22, 3, 25, 6, Q)],
+  },
+  {
+    npcSpriteId: 'npc_villager_m_odon', base: 'fighter', facing: 'right',
+    ramp: ['#160d0a', '#241713', '#2f4a26', '#3f6a33', '#4a7a3c', '#6b4e2e', '#8a4f2b', '#a5653c', '#b9824f', '#d19c66', '#c98f68', '#e8dcc0'],
+    prop: [...line(25, 6, 25, 29, P), ...rect(22, 4, 28, 7, Q), ...rect(4, 17, 11, 26, P), ...rect(5, 15, 10, 17, Q)],
+  },
+  {
+    npcSpriteId: 'npc_villager_f_lena', base: 'paladin', facing: 'left',
+    ramp: ['#2a160f', '#3a1c10', '#4d2715', '#5a3220', '#6b3a22', '#834d30', '#9a5b2a', '#b04a3a', '#b3763c', '#c98f68', '#d99a5b', '#f5e6cf'],
+    prop: [...rect(3, 14, 10, 21, P), ...rect(4, 13, 9, 14, Q), ...rect(11, 9, 13, 13, Q), ...rect(6, 8, 10, 12, P)],
+  },
 ];
 
 /* ---------------- portrait template (spec §3) ---------------- */

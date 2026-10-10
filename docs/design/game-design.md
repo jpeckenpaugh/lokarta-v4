@@ -1005,43 +1005,61 @@ Tide Gate (reach for what exists first). Deeper rules live in `islands.json`:
 `groundItems` (the Q2 `beacon_lens` pickup at the Wreck), and `interactables` (the
 shrine rite).
 
-### 10.3 Havenreach town (24×24, `towns.json`)
+### 10.3 Havenreach town — the fishing village (24×24, `towns.json`)
 
 A walkable scene entered and exited from its **south gate** (LIV-69 feedback #5, no
 town flip) — matching the island's south-gate approach in both directions. A visible
 **`BUILDING_WALL` perimeter** rings the town with a single south `DOORWAY` opening
 (feedback #6), so the boundary reads as a wall from inside instead of open grass.
+**LIV-101** re-skins the interior as a **Shore People fishing village**: the off-map
+backdrop is open water (`outside.mode: "water"`, LIV-100), and the south edge is carved
+into a **harbor** — a `WATER` basin (`~`) flanked by a `SAND` beach (`:`) and a `DOCK`
+quay (`_`) that runs to the gate. Fishing props (nets, drying racks, fish barrels, a
+boat, buoys, a smokehouse plume) dress the shore; the water sits on the map edge so
+walkability is untouched.
+
 Buildings are `BUILDING_WALL` footprints with a `DOORWAY` tile that opens either an
 existing DOM panel (byte-identical Shop/Temple, LIV-55 D4/D5) or a dialogue panel.
 `interaction.type` is a dispatch key (`shop | temple | dialogue`), never a
-per-building branch.
+per-building branch. The **Longhouse** opts into the per-building `silhouette:
+"ark_hull"` hook (LIV-100) for its inverted-keel roof-ridge.
 
 | Building | Footprint | Door | Opens | NPC |
 | :--- | :--- | :--- | :--- | :--- |
-| Merchant's Stall | `3–7, 3–6` | `(5,7)` | existing shop UI | Mara the Tinker |
-| Temple of the Dawn | `9–15, 2–6` | `(12,7)` | existing temple UI | High Dawnkeeper Aurel |
-| Elder's Hall | `17–21, 3–6` | `(19,7)` | dialogue | Elder Rowan Vane |
-| Beacon-wright's Workshop | `18–22, 9–12` | `(18,11)` | dialogue | Wick the Lamplighter |
-| Tidewatch Barracks | `1–5, 9–12` | `(5,11)` | dialogue (combat) | Captain Halden |
-| Wayfarer's Rest | `17–21, 15–19` | `(19,15)` | rest / dialogue | Innkeep Bessa |
+| Fish Market | `3–7, 3–6` | `(5,7)` | existing shop UI | Mara the Fishmonger |
+| The Tidehall | `9–15, 2–6` | `(12,7)` | existing temple UI (heal) | Tidekeeper Aurel |
+| The Longhouse (Ark Hull) | `17–21, 3–6` | `(19,7)` | dialogue | The Weigher |
+| Boatwright's Shed | `18–22, 9–12` | `(18,11)` | dialogue | Wick the Boatwright |
+| Watchtower | `1–5, 9–12` | `(5,11)` | dialogue (combat) | Captain Halden |
+| The Wayfarer's Rest | `17–21, 15–19` | `(19,15)` | rest / dialogue | Innkeep Bessa |
 
-Town spawn `(12,21)`; the south gate `(12,23)` returns to the island just **south**
-of the town footprint at `(24,44)`. A center square (decor props) sits at `y11–13`.
+Town spawn `(12,21)` on the quay; the south gate `(12,23)` returns to the island just
+**south** of the town footprint at `(24,44)`. Water is the only solid added by the
+re-skin and it borders the map edge, so every building door, the spawn, the return spot,
+and the portal stay reachable (`sceneAccessReport`, no soft-locks).
 
-**NPC roster (8 named, `npcs.json`).** Positions are town tiles; each carries
-`spriteId` (a vocation actor), a `renderTheme` tint, `aiType` (`stationary|wander`),
-`blocks`, `svgCode` (committed OpenMoji), and `interact` (`dialogue`/`shop`/`temple`).
+**NPC roster (13 authored, `npcs.json`).** The 8 named cast keep their catalog **ids**
+so `quests.json` `giverNpcId`/`turnInNpcId` wiring is untouched; **LIV-101** re-frames
+their display names/titles/dialogue to the fishing village and adds **5 wander-only
+Shore folk**. Each NPC carries `npcSpriteId` (own 32×32 sprite), a `renderTheme` tint
+fallback, `aiType` (`stationary|wander`), `blocks`, `svgCode` (committed OpenMoji), a
+three-expression `portraits` map, and `interact` (`dialogue`/`shop`/`temple`).
 
-| NPC | Tile | Role |
+| NPC (id) | Tile | Role |
 | :--- | :--- | :--- |
-| **Elder Rowan Vane** | `(19,8)` | Story hub; gives Q3, names the Spire unlock |
-| **Captain Halden** | `(6,11)` | Combat tutorial; gives/turns in Q1 |
-| **Wick the Lamplighter** | `(17,11)` | Gives/turns in Q2; the Dawn Lantern |
-| **High Dawnkeeper Aurel** | `(12,8)` | Temple heal/lore ("the Dawn returns you, free") |
-| **Mara the Tinker** | `(5,8)` | Vendor (existing shop) |
-| **Innkeep Bessa** | `(19,14)` | Optional free rest + control tips (cozy delighter) |
-| **Old Sailor Doran** | `(11,12)` | Flavor; foreshadows three more lights (Islands 2–4) |
-| **Pilgrim's Apprentice Tam** | `(13,12)` | Diegetic quest journal; restates the current objective |
+| **The Weigher** (`elder_rowan_vane`) | `(19,8)` | Story hub; gives Q3, names the Spire unlock |
+| **Captain Halden** (`captain_halden`) | `(6,11)` | Combat tutorial; gives/turns in Q1 |
+| **Wick the Boatwright** (`wick`) | `(17,11)` | Gives/turns in Q2; the Dawn Lantern |
+| **Tidekeeper Aurel** (`high_dawnkeeper_aurel`) | `(12,8)` | Tidehall heal/lore ("the Tide returns you, free") |
+| **Mara the Fishmonger** (`mara`) | `(5,8)` | Vendor (existing shop) |
+| **Innkeep Bessa** (`innkeep_bessa`) | `(19,14)` | Optional free rest + control tips (cozy delighter) |
+| **Old Doran** (`old_sailor_doran`) | `(11,12)` | Flavor; foreshadows three more lights (Islands 2–4) |
+| **Young Tam** (`pilgrims_apprentice_tam`) | `(13,12)` | Diegetic quest journal; restates the current objective |
+| **Brann the Deckhand** (`deckhand_brann`) | `(4,20)` | Ambient Shore folk — wander-only flavor |
+| **Ilo the Young Fisher** (`young_fisher_ilo`) | `(10,20)` | Ambient Shore folk — wander-only flavor |
+| **Kes** (`child_kes`) | `(14,20)` | Ambient Shore folk — wander-only flavor |
+| **Odon** (`villager_m_odon`) | `(8,13)` | Ambient Shore folk — wander-only flavor |
+| **Lena** (`villager_f_lena`) | `(16,14)` | Ambient Shore folk — wander-only flavor |
 
 NPC behavior is data-driven (`engine/npc-system.js`): each entry declares `aiType` (`stationary|wander`), `blocks`, and an `interact` dispatch key (`dialogue | shop | temple`) — never a per-NPC branch. Walking into a blocking NPC opens its dialogue (**bump-to-talk**, LIV-63/66); the text renders in a bubble anchored above the speaker with keyboard beat advance (LIV-67). World objects flagged `autoTrigger` (the Drowned Shrine) fire on first approach (LIV-71).
 
@@ -1209,6 +1227,35 @@ records the canon and the shipped data contract.
 | Personality | `dialogues.json` gains per-stage `expression` plus a top-level `ambience.npcs[id]` hook: 1–2 idle quips + a `scheduleLines.night` line (consumed by I2/[LIV-85](/LIV/issues/LIV-85)), and widened cross-references between NPCs. |
 | Tests | `data-catalogs` asserts unique `npcSpriteId`s, a complete 3-expression `portraits` map, valid stage expressions, a resolvable fallback expression per NPC dialogue, and per-NPC ambience. |
 | Scope posture | First art batch may cover the 4 quest-critical NPCs (Halden, Wick, Aurel, Vane); the rest stay fallback-safe. Atlas + renderer are the Tech Lead child issue. |
+
+*Lenses cited: readability & legibility (silhouette-first identity), theme
+coherence (town as the human face of the isle), Kano (delighter that also fixes
+a readability defect), MDA (authored data → inhabited world), balance levers
+(one prop per silhouette, no new systems). No dark patterns.*
+
+### 10.13 Fishing-village re-theme (LIV-99 → LIV-101)
+
+Board request ([LIV-99](/LIV/issues/LIV-99)): re-skin the walkable town into a
+**Shore People fishing village** per the concept doc `05-fishers-village`, without
+touching gameplay. Delivered in two content phases on top of the LIV-100 engine
+foundation.
+
+| Phase | Owner | Delivered |
+| :--- | :--- | :--- |
+| Engine/rendering (LIV-100) | Tech Lead | `outside.mode:"water"` coastal theme; `DOCK` tile (code 16, walkable); scene props pipeline wired; six fishing props; per-building `silhouette` dispatch (`ark_hull`) |
+| Content/NPC/copy (LIV-101) | Game Designer | Harbor map (water/sand/quay), 6 buildings re-named, 13-NPC cast + 5 ambient sprites/portraits, fishing dialogue/quest/UI/biome copy, docs |
+| Docs/tests/preview gate (LIV-102) | Tech Lead | Preview render + board verification |
+
+**Design intent.** The town is a working shore settlement built around the rhythms of
+the tide and the catch: an open-water horizon behind a palisade, a harbor and quay at
+the south gate, nets and drying racks on the beach, a smokehouse plume over the
+boatwright's shed, and a human cast that reads as fishers, dealers, and children on
+the shore. *Lenses: core loop & fantasy (a Pilgrim who came in on the tide), theme
+coherence (harbor → longhouse → tidehall carry one identity), readability (silhouette-
+first NPCs, distinct props), Kano (the inhabitant text is a delighter, not a gate),
+MDA (authored data → inhabited world).* **Scope discipline:** the beacon/Pilgrim canon,
+the Q1→Q2→Q3 chain, and every interaction contract are preserved; the Rukiya/Shore-
+trials narrative and a fishing mechanic stay out of scope as separate follow-ups.
 
 *Lenses cited: readability & legibility (silhouette-first identity), theme
 coherence (town as the human face of the isle), Kano (delighter that also fixes

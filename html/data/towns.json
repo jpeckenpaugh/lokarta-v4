@@ -15,7 +15,10 @@
         ".": "GRASS",
         "=": "PATH",
         "W": "BUILDING_WALL",
-        "D": "DOORWAY"
+        "D": "DOORWAY",
+        "~": "WATER",
+        ":": "SAND",
+        "_": "DOCK"
       },
       "map": [
         "WWWWWWWWWWWWWWWWWWWWWWWW",
@@ -38,9 +41,9 @@
         "W...........=....WWWWW.W",
         "W...........=....WWWWW.W",
         "W...........=....WWWWW.W",
-        "W...........=..........W",
-        "W...........=..........W",
-        "W...........=..........W",
+        "W::::::::::_=_:::::::::W",
+        "W~~~~~~~~~~___~~~~~~~~~W",
+        "W~~~~~~~~~~___~~~~~~~~~W",
         "WWWWWWWWWWWWDWWWWWWWWWWW"
       ],
       "spawn": {
@@ -71,7 +74,7 @@
       "buildings": [
         {
           "id": "merchant_stall",
-          "name": "Merchant's Stall",
+          "name": "Fish Market",
           "footprint": [
             3,
             3,
@@ -89,7 +92,7 @@
         },
         {
           "id": "temple_of_the_dawn",
-          "name": "Temple of the Dawn",
+          "name": "The Tidehall",
           "footprint": [
             9,
             2,
@@ -107,7 +110,7 @@
         },
         {
           "id": "elders_hall",
-          "name": "Elder's Hall",
+          "name": "The Longhouse",
           "footprint": [
             17,
             3,
@@ -122,11 +125,12 @@
             "type": "dialogue",
             "dialogueId": "elder_rowan_vane"
           },
-          "npcId": "elder_rowan_vane"
+          "npcId": "elder_rowan_vane",
+          "silhouette": "ark_hull"
         },
         {
           "id": "beaconwrights_workshop",
-          "name": "Beacon-wright's Workshop",
+          "name": "Boatwright's Shed",
           "footprint": [
             18,
             9,
@@ -145,7 +149,7 @@
         },
         {
           "id": "tidewatch_barracks",
-          "name": "Tidewatch Barracks",
+          "name": "Watchtower",
           "footprint": [
             1,
             9,
@@ -164,7 +168,7 @@
         },
         {
           "id": "wayfarers_rest",
-          "name": "Wayfarer's Rest",
+          "name": "The Wayfarer's Rest",
           "footprint": [
             17,
             15,
@@ -186,16 +190,21 @@
         {
           "propId": "prop_brazier",
           "x": 11,
-          "y": 11
+          "y": 13
         },
         {
           "propId": "prop_brazier",
           "x": 13,
-          "y": 11
+          "y": 13
         },
         {
           "propId": "prop_barrel",
           "x": 3,
+          "y": 8
+        },
+        {
+          "propId": "prop_fish_barrel",
+          "x": 6,
           "y": 8
         },
         {
@@ -204,9 +213,54 @@
           "y": 8
         },
         {
+          "propId": "prop_fish_barrel",
+          "x": 19,
+          "y": 8
+        },
+        {
           "propId": "prop_table",
           "x": 18,
           "y": 17
+        },
+        {
+          "propId": "prop_smoke_plume",
+          "x": 20,
+          "y": 9
+        },
+        {
+          "propId": "prop_net",
+          "x": 3,
+          "y": 20
+        },
+        {
+          "propId": "prop_drying_rack",
+          "x": 6,
+          "y": 20
+        },
+        {
+          "propId": "prop_drying_rack",
+          "x": 8,
+          "y": 20
+        },
+        {
+          "propId": "prop_boat",
+          "x": 6,
+          "y": 21
+        },
+        {
+          "propId": "prop_buoy",
+          "x": 9,
+          "y": 21
+        },
+        {
+          "propId": "prop_boat",
+          "x": 17,
+          "y": 21
+        },
+        {
+          "propId": "prop_buoy",
+          "x": 15,
+          "y": 21
         }
       ]
     }

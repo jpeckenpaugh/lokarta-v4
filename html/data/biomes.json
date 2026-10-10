@@ -69,7 +69,7 @@
     "name": "Havenreach",
     "lightColor": "#ffcf7a",
     "ambient": true,
-    "description": "LIV-58: the town scene's biome (ambient daylight, town palette).",
+    "description": "LIV-101: the fishing-village town biome (ambient daylight, coastal palette). Gulls cry over the day bed; three positional emitters carry the boat-hammer at the boatwright's shed and the market bell at the Fish Market.",
     "ambience": {
       "bedId": "amb_town_day",
       "nightBedId": "amb_town_night",

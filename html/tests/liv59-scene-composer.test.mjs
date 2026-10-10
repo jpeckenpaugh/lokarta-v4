@@ -18,6 +18,7 @@ import {
   DEFAULT_TOWN_ID,
   getIslandDefinition,
   getTownDefinition,
+  listNpcDefinitions,
 } from '../data/index.js';
 
 // LIV-59 P0: scene composer — catalog tilemaps (char rows + legend) become the
@@ -114,7 +115,9 @@ test('LIV-59 scene composer', async (t) => {
     const scene = composeSceneById(DEFAULT_TOWN_ID);
     assert.equal(scene.sceneKind, 'town');
     assert.equal(scene.lighting, 'ambient');
-    assert.equal(scene.npcs.length, def ? 8 : scene.npcs.length);
+    // LIV-101: the town roster carries the 8 named cast + 5 ambient Shore folk.
+    assert.ok(scene.npcs.length >= 8, 'town keeps the full named cast');
+    assert.equal(scene.npcs.length, listNpcDefinitions(DEFAULT_TOWN_ID).length, 'every scene NPC is emitted');
     const shop = scene.interactables.find((i) => i.interaction && i.interaction.type === 'shop');
     const temple = scene.interactables.find((i) => i.interaction && i.interaction.type === 'temple');
     assert.ok(shop, 'town exposes a shop building interaction');

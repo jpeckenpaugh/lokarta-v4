@@ -5,7 +5,7 @@
     {
       "id": "rats_in_the_gutter",
       "name": "Rats in the Gutter",
-      "summary": "Captain Halden wants the town apron cleared of drowned crawlers, and their crowned leader put down.",
+      "summary": "Captain Halden wants the quay cleared of drowned crawlers, and their crowned leader put down.",
       "giverNpcId": "captain_halden",
       "turnInNpcId": "captain_halden",
       "prerequisites": [],
@@ -55,7 +55,7 @@
     {
       "id": "the_lantern_wreck",
       "name": "The Lantern Wreck",
-      "summary": "Wick the Lamplighter needs the beacon's cracked lens recovered from the Wreck of the Lantern on the west shore.",
+      "summary": "Wick the Boatwright needs the beacon's cracked lens recovered from the Wreck of the Lantern on the west shore.",
       "giverNpcId": "wick",
       "turnInNpcId": "wick",
       "prerequisites": ["rats_in_the_gutter"],
@@ -109,7 +109,7 @@
     {
       "id": "rite_of_the_beacon",
       "name": "Rite of the Beacon",
-      "summary": "Elder Rowan Vane will name the Pilgrim Keeper of the Tide, but only after the beacon is kindled at the Drowned Shrine.",
+      "summary": "The Weigher will name the Pilgrim Keeper of the Tide, but only after the beacon is kindled at the Drowned Shrine.",
       "giverNpcId": "elder_rowan_vane",
       "turnInNpcId": "elder_rowan_vane",
       "prerequisites": ["the_lantern_wreck"],

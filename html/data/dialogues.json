@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "LIV-58 Island 1 dialogue trees. Pure data; the dialogue UI evaluates each dialogue's `stages` in order and plays the first whose `when` matches, else the stage flagged `fallback`. Conditions: questId + status (inactive|active|complete|turned_in), optional flag, optional levelMin. Actions are a dispatch table (accept_quest|turn_in_quest|open_shop|open_temple|rest) — no per-NPC JS. {name}, {quest}, {item} placeholders substitute display names, never catalog ids. Turn-in actions are only offered when the quest's objectives are satisfied (quest-system.canTurnIn). LIV-81 adds an optional `expression` (neutral|warm|urgent) per stage, selected against the NPC's `portraits` map by the dialogue UI; a stage without one reads as `neutral`. The top-level `ambience` block (LIV-81) carries per-NPC idle quips and schedule-varied lines; it is consumed by the schedule/bustle system (LIV-85), not by stage selection.",
+  "description": "LIV-101 fishing-village dialogue trees (Dawnreach Isle town, `town_havenreach`). Pure data; the dialogue UI evaluates each dialogue's `stages` in order and plays the first whose `when` matches, else the stage flagged `fallback`. Conditions: questId + status (inactive|active|complete|turned_in), optional flag, optional levelMin. Actions are a dispatch table (accept_quest|turn_in_quest|open_shop|open_temple|rest) — no per-NPC JS. {name}, {quest}, {item} placeholders substitute display names, never catalog ids. Turn-in actions are only offered when the quest's objectives are satisfied (quest-system.canTurnIn). LIV-81 adds an optional `expression` (neutral|warm|urgent) per stage, selected against the NPC's `portraits` map by the dialogue UI; a stage without one reads as `neutral`. The top-level `ambience` block (LIV-81) carries per-NPC idle quips and schedule-varied lines; it is consumed by the schedule/bustle system (LIV-85), not by stage selection. LIV-101 re-frames the town as a Shore People fishing village while preserving the beacon/Pilgrim canon and all quest wiring.",
   "ui": {
     "defaultSpeakerLabel": "—",
     "acceptLabel": "Accept",
@@ -76,8 +76,8 @@
           "when": { "questId": "rats_in_the_gutter", "status": "turned_in" },
           "expression": "warm",
           "lines": [
-            "Clean work, Pilgrim. The watch can breathe again.",
-            "The Wreck? Ask Wick at the workshop — the lamplighter has been fretting over that lens all season."
+            "Clean work, Pilgrim. The watch can breathe again, and the quay can go back to fish and nets.",
+            "The Wreck? Ask Wick at the boatwright's shed — he has been fretting over that lens all season."
           ],
           "actions": []
         },
@@ -98,7 +98,7 @@
           "when": { "questId": "rats_in_the_gutter", "status": "active" },
           "expression": "urgent",
           "lines": [
-            "Rats in the gutter, Pilgrim. Six of the tide-crawlers, at least, and their crowned leader besides.",
+            "Rats in the gutters, Pilgrim. Six of the tide-crawlers at least, and their crowned leader besides.",
             "Prove your arm before you climb. Nobody reaches the Spire on good intentions."
           ],
           "actions": []
@@ -108,8 +108,8 @@
           "when": {},
           "expression": "neutral",
           "lines": [
-            "You'll be the one they rowed ashore. The Elder will have words with you — but first, prove you can hold a line.",
-            "Rats in the gutter, Pilgrim. Kill six drowned crawlers at the town apron and the west field, and bring down the Gutter King that leads them."
+            "You'll be the one they rowed ashore, then. The Weigher will have words with you — but first, prove you can hold a line.",
+            "Rats in the gutter, Pilgrim. Kill six drowned crawlers on the quay and the west shingle, and bring down the Gutter King that leads them."
           ],
           "actions": [
             { "type": "accept_quest", "questId": "rats_in_the_gutter" }
@@ -120,7 +120,7 @@
 
     "wick": {
       "npcId": "wick",
-      "speaker": "Wick the Lamplighter",
+      "speaker": "Wick the Boatwright",
       "fallback": "offer",
       "stages": [
         {
@@ -128,8 +128,8 @@
           "when": { "questId": "rats_in_the_gutter", "status": "inactive" },
           "expression": "neutral",
           "lines": [
-            "The lens? Aye — it's out on the Wreck, west along the shore. But the Elder won't hear of pilgrims wandering off before Captain Halden vouches for them.",
-            "Go see the Captain in the barracks first."
+            "The lens? Aye — it's out on the Wreck, west along the shore. But the Weigher won't hear of pilgrims wandering off before Captain Halden vouches for them.",
+            "Go see the Captain at the watchtower first."
           ],
           "actions": []
         },
@@ -138,8 +138,8 @@
           "when": { "questId": "the_lantern_wreck", "status": "turned_in" },
           "expression": "warm",
           "lines": [
-            "The lens sits true again. I can hear the glass hum.",
-            "Now the Elder's rite. Take the lantern to the Drowned Shrine and kindle the old fire — that's what will move the Tide Gate."
+            "The lens sits true again. I can hear the glass hum above the tar and sawdust.",
+            "Now the Weigher's rite. Take the lantern to the Drowned Shrine and kindle the old fire — that's what will move the Tide Gate."
           ],
           "actions": []
         },
@@ -182,7 +182,7 @@
 
     "elder_rowan_vane": {
       "npcId": "elder_rowan_vane",
-      "speaker": "Elder Rowan Vane",
+      "speaker": "The Weigher",
       "fallback": "arrival",
       "stages": [
         {
@@ -200,7 +200,7 @@
           "when": { "questId": "rite_of_the_beacon", "status": "complete" },
           "expression": "warm",
           "lines": [
-            "You carry the fire. I can feel it from here — the Drowned Dark pulls back a step.",
+            "You carry the fire. I can feel it from the Longhouse door — the Drowned Dark pulls back a step.",
             "Kneel, Pilgrim. By the old rite of the reach, I name you Keeper of the Tide, and the gate will know you."
           ],
           "actions": [
@@ -234,7 +234,7 @@
           "when": {},
           "expression": "neutral",
           "lines": [
-            "So the sea gave you back. Good.",
+            "So the sea gave you back. Good — the scales were heavier for it.",
             "The Tide Gate was not built to keep you out. It was built to wait for someone who could carry the light. Come back when you have it."
           ],
           "actions": []
@@ -244,7 +244,7 @@
 
     "high_dawnkeeper_aurel": {
       "npcId": "high_dawnkeeper_aurel",
-      "speaker": "High Dawnkeeper Aurel",
+      "speaker": "Tidekeeper Aurel",
       "fallback": "lore",
       "stages": [
         {
@@ -252,7 +252,7 @@
           "when": { "flag": "beaconLit" },
           "expression": "warm",
           "lines": [
-            "The beacon is kindled — I can feel it warm the stone, even from here.",
+            "The beacon is kindled — I can feel it warm the slatted floor, even from here.",
             "Rest. The Dawn will mend you, and the Spire will take everything else."
           ],
           "actions": [ { "type": "open_temple", "templeId": "temple_of_the_dawn" } ]
@@ -263,7 +263,7 @@
           "expression": "urgent",
           "lines": [
             "Three nights the beacon has been dark, and three nights the boats have not come back. The Drowned Dark is patient.",
-            "Elder Vane keeps the rite; I keep the fire. Between us the reach holds — but only if the light comes home. A body should not be a toll. Rest here and be whole."
+            "The Weigher keeps the rite; I keep the fire. Between us the reach holds — but only if the light comes home. A body should not be a toll. Rest here and be whole."
           ],
           "actions": [ { "type": "open_temple", "templeId": "temple_of_the_dawn" } ]
         }
@@ -272,7 +272,7 @@
 
     "mara": {
       "npcId": "mara",
-      "speaker": "Mara the Tinker",
+      "speaker": "Mara the Fishmonger",
       "fallback": "greet",
       "stages": [
         {
@@ -291,7 +291,7 @@
           "expression": "neutral",
           "lines": [
             "Wares! Potions, arrows, and honest steel for whatever the sea left you as.",
-            "Wick's lamp oil, Bessa's ale, and my steel — Havenreach runs on three trades, and I hold the best of them.",
+            "Wick's boat-tar, Bessa's ale, and my trade — the village runs on three catches, and I hold the best of them.",
             "A weapon for every hand — you'll not be caught empty on my account."
           ],
           "actions": [ { "type": "open_shop", "shopId": "merchant_stall" } ]
@@ -309,8 +309,8 @@
           "when": {},
           "expression": "warm",
           "lines": [
-            "Wayfarer's Rest — the only warm hearth left on the reach. Sit, and let the road fall off you.",
-            "Doran holds his corner most nights, if you want the sea told straight. For now — tap, or the arrows or whatever that is.",
+            "Wayfarer's Rest — the only warm hearth left on the reach. Sit, and let the tide fall off you.",
+            "Old Doran holds his corner most nights, if you want the sea told straight. For now — a bed, a bowl, and a roof that does not leak.",
             "Square and Space are your interact keys, and the pause menu will hold the world still."
           ],
           "actions": [ { "type": "rest", "healPct": 1.0 } ]
@@ -320,7 +320,7 @@
 
     "old_sailor_doran": {
       "npcId": "old_sailor_doran",
-      "speaker": "Old Sailor Doran",
+      "speaker": "Old Doran",
       "fallback": "flavor",
       "stages": [
         {
@@ -338,7 +338,7 @@
           "when": {},
           "expression": "neutral",
           "lines": [
-            "I've sailed this reach forty year. Forty year, and the water was never so hungry as it is now.",
+            "I've hauled nets on this reach forty year. Forty year, and the water was never so hungry as it is now.",
             "Halden's watch can't be everywhere, and I'm too old to go where it isn't. Get that beacon lit, and I'll die a happy liar. Fail, and I'll die a truthful one."
           ],
           "actions": []
@@ -348,7 +348,7 @@
 
     "pilgrims_apprentice_tam": {
       "npcId": "pilgrims_apprentice_tam",
-      "speaker": "Pilgrim's Apprentice Tam",
+      "speaker": "Young Tam",
       "fallback": "journal",
       "stages": [
         {
@@ -396,8 +396,118 @@
           "when": {},
           "expression": "neutral",
           "lines": [
-            "New here? Start with Captain Halden in the barracks, or the Elder in the Hall. Everybody starts with one of those two.",
+            "New here? Start with Captain Halden at the watchtower, or the Weigher in the Longhouse. Everybody starts with one of those two.",
             "Then there's three more lights out there. Doran says so, and Doran's never wrong twice."
+          ],
+          "actions": []
+        }
+      ]
+    },
+
+    "deckhand_brann": {
+      "npcId": "deckhand_brann",
+      "speaker": "Brann the Deckhand",
+      "fallback": "shore",
+      "stages": [
+        {
+          "id": "beacon",
+          "when": { "flag": "beaconLit" },
+          "expression": "warm",
+          "lines": [
+            "The beacon's up and the tide's gone kind. Haul's the best it's been since I was a lad.",
+            "Go on, Keeper — the rest of us will keep the boats ready for when you bring the other lights home."
+          ],
+          "actions": []
+        },
+        {
+          "id": "shore",
+          "when": {},
+          "expression": "neutral",
+          "lines": [
+            "Mind the wet planks — the quay's slick at low water, and the boats come in heavier than they look.",
+            "Basket or net, it's all the same work. You take what the water gives and you give it back to the village."
+          ],
+          "actions": []
+        }
+      ]
+    },
+
+    "young_fisher_ilo": {
+      "npcId": "young_fisher_ilo",
+      "speaker": "Ilo the Young Fisher",
+      "fallback": "idle",
+      "stages": [
+        {
+          "id": "beacon",
+          "when": { "flag": "beaconLit" },
+          "expression": "warm",
+          "lines": [
+            "You lit it! The gulls went quiet and everything smelled like light.",
+            "When I'm grown I'll take a boat past the Tide Gate and see what's out there. You'll have made it safe by then, won't you?"
+          ],
+          "actions": []
+        },
+        {
+          "id": "idle",
+          "when": {},
+          "expression": "neutral",
+          "lines": [
+            "I can bait a whole basket before the sun's over the wall. First Fisher says that's fast for my age.",
+            "One day I'll bring in the Sacred First Fish. Then they'll stop calling me young."
+          ],
+          "actions": []
+        }
+      ]
+    },
+
+    "child_kes": {
+      "npcId": "child_kes",
+      "speaker": "Kes",
+      "fallback": "play",
+      "stages": [
+        {
+          "id": "play",
+          "when": {},
+          "expression": "warm",
+          "lines": [
+            "I found a shell with a spiral all the way through it! Drying in the sun makes them click.",
+            "The gulls always come when the boats do. Watch — they know before we do."
+          ],
+          "actions": []
+        }
+      ]
+    },
+
+    "villager_m_odon": {
+      "npcId": "villager_m_odon",
+      "speaker": "Odon",
+      "fallback": "market",
+      "stages": [
+        {
+          "id": "market",
+          "when": {},
+          "expression": "neutral",
+          "lines": [
+            "Morning haul's in and the market's got its scales up. Mara weighs what she likes and argues the rest.",
+            "No one eats alone here — the Long Table fills at dusk. You'll want a seat before the smoked fish runs out."
+          ],
+          "actions": []
+        }
+      ]
+    },
+
+    "villager_f_lena": {
+      "npcId": "villager_f_lena",
+      "speaker": "Lena",
+      "fallback": "market",
+      "stages": [
+        {
+          "id": "market",
+          "when": {},
+          "expression": "neutral",
+          "lines": [
+            "You can smell the smokehouse clear across the village — that's how you know the catch is good.",
+            "We mend the nets by the racks every afternoon. Any hand that's willing is welcome; the work goes faster with stories."
           ],
           "actions": []
         }
@@ -406,12 +516,12 @@
   },
 
   "ambience": {
-    "description": "LIV-81 personality surfaces, consumed by the LIV-85 schedule/bustle system. `quips` are 1-2 short flavour lines fired on approach (no action, never opens a dialogue tree); `scheduleLines` is a hook for a schedule-varied line keyed by time phase — `night` is authored for every NPC, and unlisted phases fall back to the normal dialogue stage. Pure data: never a per-NPC JS branch.",
+    "description": "LIV-81 personality surfaces, consumed by the LIV-85 schedule/bustle system. `quips` are 1-2 short flavour lines fired on approach (no action, never opens a dialogue tree); `scheduleLines` is a hook for a schedule-varied line keyed by time phase — `night` is authored for every NPC, and unlisted phases fall back to the normal dialogue stage. Pure data: never a per-NPC JS branch. LIV-101 extends the block to the five ambient Shore folk.",
     "npcs": {
       "captain_halden": {
         "quips": [
-          "Steady, Pilgrim. The watch has you.",
-          "Dry your steel and keep your wits about you."
+          "Steady, Pilgrim. The watch has the walls, and the walls have you.",
+          "Keep your steel dry and your eyes on the water."
         ],
         "scheduleLines": {
           "night": "Gate's shut and the tide's up. Whatever it is, it can wait for dawn."
@@ -419,7 +529,7 @@
       },
       "wick": {
         "quips": [
-          "Mind the soot — everything here's half-lit and half-oiled.",
+          "Mind the pitch — everything here's half-caulked and half-lit.",
           "Glass sings when it's true. Listen for it."
         ],
         "scheduleLines": {
@@ -429,15 +539,15 @@
       "elder_rowan_vane": {
         "quips": [
           "The reach has a long memory, Pilgrim.",
-          "Sit with the light a while. It steadies the hand."
+          "Sit by the keel-beams a while. The light steadies the hand."
         ],
         "scheduleLines": {
-          "night": "Even elders keep the dark hours. Rest while you can."
+          "night": "Even the Weigher keeps the dark hours. Rest while you can."
         }
       },
       "high_dawnkeeper_aurel": {
         "quips": [
-          "The Dawn asks nothing you cannot give.",
+          "The Tide asks nothing you cannot give.",
           "Breathe. The fire will still be here."
         ],
         "scheduleLines": {
@@ -447,16 +557,16 @@
       "mara": {
         "quips": [
           "Coin first, questions second — but only just.",
-          "Everything's for sale. Some things only once."
+          "Fresh off the scales. Everything's for sale, some things only once."
         ],
         "scheduleLines": {
-          "night": "Stall's shuttered. Even tinkers need dark to sleep in."
+          "night": "Stall's shuttered. Even fishmongers need dark to sleep in."
         }
       },
       "innkeep_bessa": {
         "quips": [
           "Wipe your boots and warm your hands.",
-          "There's always stew on, whatever the sky's doing."
+          "There's always chowder on, whatever the sky's doing."
         ],
         "scheduleLines": {
           "night": "Last call's long past, but the hearth's yours."
@@ -473,11 +583,56 @@
       },
       "pilgrims_apprentice_tam": {
         "quips": [
-          "I've read every ballad twice. Ask me anything!",
+          "I've mended every net twice. Ask me anything!",
           "When I'm Keeper, I'll remember who taught me the ropes."
         ],
         "scheduleLines": {
-          "night": "The lanterns are lovely at night. I write them down so I don't forget."
+          "night": "The harbor lanterns are lovely at night. I write them down so I don't forget."
+        }
+      },
+      "deckhand_brann": {
+        "quips": [
+          "Rope, tar, and a strong back. That's the whole trade.",
+          "Boats don't sink in bad weather. They sink in bad knots."
+        ],
+        "scheduleLines": {
+          "night": "Boats are moored and the nets are hung. I'll sleep when the tide turns."
+        }
+      },
+      "young_fisher_ilo": {
+        "quips": [
+          "First Fisher says I'll make a deckhand yet!",
+          "I already know twelve kinds of knot. Twelve!"
+        ],
+        "scheduleLines": {
+          "night": "They let me stay up to watch the smoker, but I always fall asleep first."
+        }
+      },
+      "child_kes": {
+        "quips": [
+          "Wanna see my best shell? It's THIS big.",
+          "I can hold my breath the whole way across the shallows!"
+        ],
+        "scheduleLines": {
+          "night": "Mam says the tide comes in while I'm sleeping. I never catch it."
+        }
+      },
+      "villager_m_odon": {
+        "quips": [
+          "The Long Table's set if you're hungry.",
+          "Mara's scales are honest. Mostly."
+        ],
+        "scheduleLines": {
+          "night": "Village goes quiet after the Sharing. Best hour on the shore."
+        }
+      },
+      "villager_f_lena": {
+        "quips": [
+          "Any hand that mends a net eats first at the Long Table.",
+          "Smell that? Catch was good today."
+        ],
+        "scheduleLines": {
+          "night": "The racks are covered and the fires are banked. Rest well, traveller."
         }
       }
     }

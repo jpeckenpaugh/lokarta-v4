@@ -42,3 +42,29 @@ To guarantee visibility in dark dungeon environments:
   * Furniture & decor: `throne`, `altar`, `sarcophagus`, `candelabra`, `bookshelf`, `brazier`, `table`, `crate`, `barrel`, `rug`.
   * Braziers emit dynamic ambient light (`brazierLightRadius: 2.5`, max 2 per room).
 * **Preview PNGs:** Committed export previews reside in `docs/art/preview/` and are drift-checked by `html/tests/sprite-assets.test.mjs`.
+
+---
+
+## 5. Fishing-Village Re-Theme (LIV-100 / LIV-101)
+
+The walkable town re-skins into a **Shore People fishing village** without new art
+systems — every element rides an existing contract.
+
+* **Coastal palette:** `town_havenreach` authors `outside.mode:"water"` plus scene
+  palettes for `WATER` (deep/fill/crest/foam, drift animation), `SAND` (shell +
+  wet edge), `BRIDGE`, and **`DOCK`** (timber planks, posts, seafoam edge). Driftwood
+  greys/browns, sea-greens, sandy tans, bright river-blue — per the concept doc's
+  *Visual Notes*. Off-map tiles paint open water, never grass.
+* **Harbor geography:** the town map carves a `WATER` basin, a `SAND` beach, and a
+  walkable `DOCK` quay to the south gate. `DOCK` is appended as tile code `16` (never
+  renumbering existing codes) and is walkable.
+* **Props:** authored 32×32 fishing props — `prop_net`, `prop_drying_rack`,
+  `prop_fish_barrel`, `prop_boat`, `prop_buoy`, `prop_smoke_plume` — placed as
+  catalog data (walk-over; no per-prop JS). The **Longhouse** opts into the
+  data-driven `BUILDING_SILHOUETTE_RENDERERS` hook (`ark_hull`) for its inverted-keel
+  roof-ridge; silhouette selection is a catalog value, not a per-building branch.
+* **NPC cast:** 13 distinct `npc_*` silhouettes (8 named + 5 ambient Shore folk),
+  each one outline-changing signature prop and a 48×48 × 3-expression portrait set,
+  authored by `tools/author-npc-assets.mjs` to [npc-identity-spec.md](../design/npc-identity-spec.md)
+  §2. New fishing-flavored OpenMoji icons committed under `html/assets/openmoji/`
+  (`1F3A3` fishing pole, `1F41F` fish, `1F9FA` basket, `1F9D1` person).

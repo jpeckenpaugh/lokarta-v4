@@ -87,9 +87,9 @@
   },
   "town": {
     "title": "Havenreach",
-    "subtitle": "The town beneath the Crown Spire",
-    "shopName": "Merchant's Stall",
-    "templeName": "Temple of the Dawn",
+    "subtitle": "The fishing village where the river meets the sea",
+    "shopName": "Fish Market",
+    "templeName": "The Tidehall",
     "enterTowerLabel": "Enter the Tower",
     "healCostPerHp": 1,
     "healCostPerMp": 1
@@ -109,7 +109,7 @@
     "npcWanderSkipChance": 0.45,
     "sceneAggroRadius": 8,
     "sceneRespawnSec": 20,
-    "tideGateLocked": "The Tide Gate is warded. Elder Rowan Vane knows the rite.",
+    "tideGateLocked": "The Tide Gate is warded. The Weigher keeps the rite.",
     "tideGateOpen": "The Tide Gate parts for the Keeper of the Tide.",
     "shrineRitePrompt": "Lift the Dawn Lantern to the cup",
     "shrineNeedsItem": "The cup is cold. You need the Dawn Lantern.",
@@ -131,7 +131,7 @@
     "objectiveProgress": "{current}/{count}",
     "quest.rats.name": "Rats in the Gutter",
     "quest.rats.obj.crawlers": "Clear drowned crawlers",
-    "quest.rats.hint.crawlers": "Six of the tide-crawlers prowl the town apron and the west field.",
+    "quest.rats.hint.crawlers": "Six of the tide-crawlers prowl the quay and the west shingle.",
     "quest.rats.obj.king": "Slay the Gutter King",
     "quest.rats.hint.king": "The crowned rat-elite charges in a straight line. Step off the trail, then strike.",
     "quest.wreck.name": "The Lantern Wreck",
@@ -175,7 +175,7 @@
     "autoReviveCue": "{member} pulls themselves back up.",
     "handoffCue": "Control passes to {member}.",
     "partyWipeTitle": "THE LIGHT FAILS",
-    "partyWipeBody": "The last of your party falls on Floor {floor}. The Temple of the Dawn draws you back and restores you at the tower gate.",
+    "partyWipeBody": "The last of your party falls on Floor {floor}. The Tidehall draws you back and restores you at the tower gate.",
     "visuals": {
       "description": "Phase 4 knockout/revive presentation (LIV-45; downed treatment re-specced LIV-49). Behavior lives in party_ai.revive (enabled/color/pulseHz/radius); these are the geometry + palette tokens the renderers read. `downed` authors a near-full grayscale: `desaturate` mixes each palette colour toward its Rec.709 luminance (`luminance` weights), `darken` then multiplies the result, and `tint`/`tintAmount` apply a final cool wash; `rotationDeg` lays the body on its back about the tile centre. The beacon is the E1 'Call for Help' ring; the channel tokens draw the revive tether + progress arc.",
       "downed": {

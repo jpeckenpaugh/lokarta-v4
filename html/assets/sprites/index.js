@@ -26,6 +26,11 @@ import npcMara from './npc/npc_mara.json' with { type: 'json' };
 import npcInnkeepBessa from './npc/npc_innkeep_bessa.json' with { type: 'json' };
 import npcOldSailorDoran from './npc/npc_old_sailor_doran.json' with { type: 'json' };
 import npcPilgrimsApprenticeTam from './npc/npc_pilgrims_apprentice_tam.json' with { type: 'json' };
+import npcDeckhandBrann from './npc/npc_deckhand_brann.json' with { type: 'json' };
+import npcYoungFisherIlo from './npc/npc_young_fisher_ilo.json' with { type: 'json' };
+import npcChildKes from './npc/npc_child_kes.json' with { type: 'json' };
+import npcVillagerMOdon from './npc/npc_villager_m_odon.json' with { type: 'json' };
+import npcVillagerFLena from './npc/npc_villager_f_lena.json' with { type: 'json' };
 
 export const SPRITE_MANIFEST = manifest;
 
@@ -47,6 +52,11 @@ export const SPRITE_CATALOG = {
   npc_innkeep_bessa: npcInnkeepBessa,
   npc_old_sailor_doran: npcOldSailorDoran,
   npc_pilgrims_apprentice_tam: npcPilgrimsApprenticeTam,
+  npc_deckhand_brann: npcDeckhandBrann,
+  npc_young_fisher_ilo: npcYoungFisherIlo,
+  npc_child_kes: npcChildKes,
+  npc_villager_m_odon: npcVillagerMOdon,
+  npc_villager_f_lena: npcVillagerFLena,
 };
 
 // Prop/tile art (keys, chests, gated doors) lives in a separate catalog so it

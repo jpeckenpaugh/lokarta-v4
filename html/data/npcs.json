@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "description": "LIV-58 Island 1 NPC roster. Pure data: every return string is a dialogue id resolved by dialogues.json; no per-NPC JS. `npcSpriteId` (LIV-81) names the NPC's own 32x32 actor sprite in the sprite catalog; the renderer resolve order is `npcSpriteId > spriteId > type`, so an unknown/missing `npcSpriteId` falls back to the shared `spriteId`. `spriteId` resolves through the existing actor pipeline (asset sprites index); `renderTheme` is a LIV-49 tint spec the NPC render pass forwards as opts.tint and remains the fallback until every NPC sprite lands. `portraits` (LIV-81) maps each dialogue expression ({neutral,warm,urgent}) to a 48x48 bust asset id, selected by the playing dialogue stage's `expression`; `svgCode`/`portraitEmoji` stay as the migration fallback. `aiType` is the neutral-entity dispatch key (stationary|wander).",
+  "description": "LIV-101 fishing-village NPC roster (Dawnreach Isle town, `town_havenreach`). Pure data: every return string is a dialogue id resolved by dialogues.json; no per-NPC JS. `npcSpriteId` (LIV-81) names the NPC's own 32x32 actor sprite in the sprite catalog; the renderer resolve order is `npcSpriteId > spriteId > type`, so an unknown/missing `npcSpriteId` falls back to the shared `spriteId`. `spriteId` resolves through the existing actor pipeline (asset sprites index); `renderTheme` remains the fallback tint until every NPC sprite lands. `portraits` (LIV-81) maps each dialogue expression ({neutral,warm,urgent}) to a 48x48 bust asset id, selected by the playing dialogue stage's `expression`; `svgCode`/`portraitEmoji` stay as the migration fallback. `aiType` is the neutral-entity dispatch key (stationary|wander). Quest wiring is unchanged: the 8 named cast keep their ids so `quests.json` `giverNpcId`/`turnInNpcId` resolve; the 5 ambient Shore folk are wander-only flavor with no quest hooks.",
   "npcs": [
     {
       "id": "elder_rowan_vane",
-      "name": "Elder Rowan Vane",
-      "title": "Elder of Havenreach",
+      "name": "The Weigher",
+      "title": "Keeper of the Scale",
       "sceneId": "town_havenreach",
       "x": 19,
       "y": 8,
@@ -28,7 +28,7 @@
     {
       "id": "captain_halden",
       "name": "Captain Halden",
-      "title": "Captain of the Tidewatch",
+      "title": "Master of the Watchtower",
       "sceneId": "town_havenreach",
       "x": 6,
       "y": 11,
@@ -50,8 +50,8 @@
     },
     {
       "id": "wick",
-      "name": "Wick the Lamplighter",
-      "title": "Beacon-wright",
+      "name": "Wick the Boatwright",
+      "title": "Boatwright of the Smokehouse",
       "sceneId": "town_havenreach",
       "x": 17,
       "y": 11,
@@ -73,8 +73,8 @@
     },
     {
       "id": "high_dawnkeeper_aurel",
-      "name": "High Dawnkeeper Aurel",
-      "title": "Keeper of the Temple of the Dawn",
+      "name": "Tidekeeper Aurel",
+      "title": "Keeper of the Tidehall",
       "sceneId": "town_havenreach",
       "x": 12,
       "y": 8,
@@ -96,8 +96,8 @@
     },
     {
       "id": "mara",
-      "name": "Mara the Tinker",
-      "title": "Proprietor of the Merchant's Stall",
+      "name": "Mara the Fishmonger",
+      "title": "Proprietor of the Fish Market",
       "sceneId": "town_havenreach",
       "x": 5,
       "y": 8,
@@ -120,7 +120,7 @@
     {
       "id": "innkeep_bessa",
       "name": "Innkeep Bessa",
-      "title": "Keeper of the Wayfarer's Rest",
+      "title": "Keeper of The Wayfarer's Rest",
       "sceneId": "town_havenreach",
       "x": 19,
       "y": 14,
@@ -142,8 +142,8 @@
     },
     {
       "id": "old_sailor_doran",
-      "name": "Old Sailor Doran",
-      "title": "Retired Sailor",
+      "name": "Old Doran",
+      "title": "Retired Deckhand",
       "sceneId": "town_havenreach",
       "x": 11,
       "y": 12,
@@ -166,8 +166,8 @@
     },
     {
       "id": "pilgrims_apprentice_tam",
-      "name": "Pilgrim's Apprentice Tam",
-      "title": "Apprentice",
+      "name": "Young Tam",
+      "title": "Net Mender's Apprentice",
       "sceneId": "town_havenreach",
       "x": 13,
       "y": 12,
@@ -187,6 +187,126 @@
       },
       "interact": { "type": "dialogue", "dialogueId": "pilgrims_apprentice_tam" },
       "defaultDialogueId": "pilgrims_apprentice_tam"
+    },
+    {
+      "id": "deckhand_brann",
+      "name": "Brann the Deckhand",
+      "title": "Deckhand",
+      "sceneId": "town_havenreach",
+      "x": 4,
+      "y": 20,
+      "facing": "down",
+      "npcSpriteId": "npc_deckhand_brann",
+      "spriteId": "fighter",
+      "renderTheme": { "hex": "#47536e", "amount": 0.35 },
+      "aiType": "wander",
+      "wanderRadius": 2,
+      "blocks": true,
+      "svgCode": "1F9BA",
+      "portraitEmoji": "🦺",
+      "portraits": {
+        "neutral": "portrait_deckhand_brann_neutral",
+        "warm": "portrait_deckhand_brann_warm",
+        "urgent": "portrait_deckhand_brann_urgent"
+      },
+      "interact": { "type": "dialogue", "dialogueId": "deckhand_brann" },
+      "defaultDialogueId": "deckhand_brann"
+    },
+    {
+      "id": "young_fisher_ilo",
+      "name": "Ilo the Young Fisher",
+      "title": "Young Fisher",
+      "sceneId": "town_havenreach",
+      "x": 10,
+      "y": 20,
+      "facing": "left",
+      "npcSpriteId": "npc_young_fisher_ilo",
+      "spriteId": "archer",
+      "renderTheme": { "hex": "#2f6f73", "amount": 0.35 },
+      "aiType": "wander",
+      "wanderRadius": 2,
+      "blocks": true,
+      "svgCode": "1F3A3",
+      "portraitEmoji": "🎣",
+      "portraits": {
+        "neutral": "portrait_young_fisher_ilo_neutral",
+        "warm": "portrait_young_fisher_ilo_warm",
+        "urgent": "portrait_young_fisher_ilo_urgent"
+      },
+      "interact": { "type": "dialogue", "dialogueId": "young_fisher_ilo" },
+      "defaultDialogueId": "young_fisher_ilo"
+    },
+    {
+      "id": "child_kes",
+      "name": "Kes",
+      "title": "Child of the Shore",
+      "sceneId": "town_havenreach",
+      "x": 14,
+      "y": 20,
+      "facing": "down",
+      "npcSpriteId": "npc_child_kes",
+      "spriteId": "magician",
+      "renderTheme": { "hex": "#b3763c", "amount": 0.3 },
+      "aiType": "wander",
+      "wanderRadius": 3,
+      "blocks": true,
+      "svgCode": "1F41F",
+      "portraitEmoji": "🐟",
+      "portraits": {
+        "neutral": "portrait_child_kes_neutral",
+        "warm": "portrait_child_kes_warm",
+        "urgent": "portrait_child_kes_urgent"
+      },
+      "interact": { "type": "dialogue", "dialogueId": "child_kes" },
+      "defaultDialogueId": "child_kes"
+    },
+    {
+      "id": "villager_m_odon",
+      "name": "Odon",
+      "title": "Villager",
+      "sceneId": "town_havenreach",
+      "x": 8,
+      "y": 13,
+      "facing": "right",
+      "npcSpriteId": "npc_villager_m_odon",
+      "spriteId": "fighter",
+      "renderTheme": { "hex": "#6b4423", "amount": 0.3 },
+      "aiType": "wander",
+      "wanderRadius": 2,
+      "blocks": true,
+      "svgCode": "1F9D1",
+      "portraitEmoji": "🧑",
+      "portraits": {
+        "neutral": "portrait_villager_m_odon_neutral",
+        "warm": "portrait_villager_m_odon_warm",
+        "urgent": "portrait_villager_m_odon_urgent"
+      },
+      "interact": { "type": "dialogue", "dialogueId": "villager_m_odon" },
+      "defaultDialogueId": "villager_m_odon"
+    },
+    {
+      "id": "villager_f_lena",
+      "name": "Lena",
+      "title": "Villager",
+      "sceneId": "town_havenreach",
+      "x": 16,
+      "y": 14,
+      "facing": "left",
+      "npcSpriteId": "npc_villager_f_lena",
+      "spriteId": "paladin",
+      "renderTheme": { "hex": "#9a5b2a", "amount": 0.25 },
+      "aiType": "wander",
+      "wanderRadius": 2,
+      "blocks": true,
+      "svgCode": "1F9FA",
+      "portraitEmoji": "🧺",
+      "portraits": {
+        "neutral": "portrait_villager_f_lena_neutral",
+        "warm": "portrait_villager_f_lena_warm",
+        "urgent": "portrait_villager_f_lena_urgent"
+      },
+      "interact": { "type": "dialogue", "dialogueId": "villager_f_lena" },
+      "defaultDialogueId": "villager_f_lena"
     }
   ]
 }

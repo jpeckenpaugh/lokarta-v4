@@ -55,6 +55,19 @@ intersectionally diverse (Vane = chestnut, Halden = tan, Aurel = espresso).
 | Innkeep Bessa `npc_innkeep_bessa` | broad welcoming frame | **apron + towel over forearm** | stocky, 40s | fair | brown, cloth-tied |
 | Old Sailor Doran `npc_old_sailor_doran` | stooped, cane planted forward | **knit cap + cane** | mature/stooped, elder | porcelain | white beard |
 | Pilgrim's Apprentice Tam `npc_pilgrims_apprentice_tam` | pack taller than the head, eager lean | **oversized travel pack + short cloak** | lithe, young teen | bronze | black coils |
+| Brann the Deckhand `npc_deckhand_brann` | broad, rope-over-shoulder workman | **coiled rope over one shoulder + trailing tether** | broad, mid-20s | tan | dark, cropped |
+| Ilo the Young Fisher `npc_young_fisher_ilo` | light, rod-braced stance | **fishing rod raised at an angle + line** | lithe, young teen | olive | black, short |
+| Kes `npc_child_kes` | small, bucket alongside | **carry-bucket at the hip + a fish held up** | small child | honey | brown, tousled |
+| Odon `npc_villager_m_odon` | steady, load on the back | **long pitchfork + fish basket** | average adult | bronze | black, tied |
+| Lena `npc_villager_f_lena` | work-apron, hip-carried basket | **shoulder catch-basket with fish tails** | average adult | fair | auburn, kerchief |
+
+**LIV-101 fishing-village ambient cast.** The five rows below Tam are the
+**wander-only Shore folk** added when the town was re-skinned into a fishing
+village: Deckhand, Young Fisher, Child, and two Villagers. They carry no quest
+hooks — pure inhabited-world flavor (`aiType: "wander"`, own `npcSpriteId`, own
+three-expression portrait set) that lets the harbor read as a living settlement.
+Rukiya and the Shore-trials narrative remain **out of scope** (see
+[LIV-99](/LIV/issues/LIV-99) plan).
 
 **Rules (non-negotiable).**
 
