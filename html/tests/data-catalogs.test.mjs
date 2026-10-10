@@ -60,7 +60,9 @@ test('JSON Data Catalogs', async (t) => {
     assert.ok(Object.keys(MONSTERS_CATALOG).length >= 5);
     for (const key of expectedMonsters) assert.ok(MONSTERS_CATALOG[key], `Missing launch monster ${key}`);
 
-    const aiTypes = ['chase', 'standoff', 'ranged', 'charger', 'bomber', 'summoner'];
+    // LIV-135 adds `stationary` (the sessile shoreline ambusher class) to the
+    // positioning personalities the engine dispatch table resolves.
+    const aiTypes = ['chase', 'standoff', 'ranged', 'charger', 'bomber', 'summoner', 'stationary'];
     const attackKinds = ['melee', 'projectile', 'aoe', 'dash', 'summon'];
 
     for (const [key, monster] of Object.entries(MONSTERS_CATALOG)) {

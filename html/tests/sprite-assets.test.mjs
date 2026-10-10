@@ -162,9 +162,12 @@ test('Sprite assets', async t => {
 
   await t.test('4. required states/dirs and frame counts', () => {
     for (const [id, def] of Object.entries(SPRITE_CATALOG)) {
-      // LIV-134: 3D-baked NPC actors author idle+walk only (renderer idle
-      // fallback covers attack/hit/death); every other actor keeps full 5-state.
-      const states = isBakedNpc(def) ? ['idle', 'walk'] : ['idle', 'walk', 'attack', 'hit', 'death'];
+      // LIV-134/135: 3D-baked actor defs (NPCs + the overworld creatures) author
+      // a reduced state set — directional idle, plus a step-driven walk for
+      // movers (a sessile ambusher authors idle only). The renderer's idle
+      // fallback covers any missing attack/hit/death state.
+      const baked = isBaked3d(def) && (def.kind === 'npc' || def.kind === 'monster');
+      const states = baked ? Object.keys(def.animations) : ['idle', 'walk', 'attack', 'hit', 'death'];
       const expectedDeath = id === 'abyssal_overlord' ? 6 : 4;
       for (const state of states) {
         assert.ok(def.animations[state], `${id} missing animation ${state}`);
@@ -176,14 +179,16 @@ test('Sprite assets', async t => {
       }
       for (const dir of ['down', 'up', 'side']) {
         assert.equal(def.animations.idle[dir].length, 1, `${id} idle ${dir}`);
-        assert.equal(def.animations.walk[dir].length, 2, `${id} walk ${dir}`);
-        if (!isBakedNpc(def)) {
+        if (def.animations.walk) assert.equal(def.animations.walk[dir].length, 2, `${id} walk ${dir}`);
+        if (!baked) {
           assert.equal(def.animations.attack[dir].length, 3, `${id} attack ${dir}`);
           assert.equal(def.animations.hit[dir].length, 1, `${id} hit ${dir}`);
           assert.equal(def.animations.death[dir].length, expectedDeath, `${id} death ${dir}`);
         }
       }
-      assert.equal(def.animations.walk.advanceOn, 'step', `${id} walk should advance on step`);
+      if (def.animations.walk) {
+        assert.equal(def.animations.walk.advanceOn, 'step', `${id} walk should advance on step`);
+      }
     }
   });
 

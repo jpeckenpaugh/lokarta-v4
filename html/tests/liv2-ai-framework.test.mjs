@@ -45,7 +45,7 @@ function mkMonster(type, x, y, overrides = {}) {
 
 describe('LIV-2 AI framework: dispatch tables', () => {
   it('registers the positioning personalities and attack kinds', () => {
-    for (const aiType of ['chase', 'standoff', 'ranged', 'charger', 'bomber', 'summoner']) {
+    for (const aiType of ['chase', 'standoff', 'ranged', 'charger', 'bomber', 'summoner', 'stationary']) {
       assert.ok(EntityAI.AI_TYPES.includes(aiType), `missing aiType handler ${aiType}`);
     }
     for (const kind of ['melee', 'projectile', 'aoe', 'dash', 'summon']) {
