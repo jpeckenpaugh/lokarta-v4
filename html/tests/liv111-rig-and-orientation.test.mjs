@@ -217,7 +217,7 @@ test('LIV-111 rigged actor bake — skeleton sampling + animation helpers', asyn
 });
 
 test('LIV-111 hut orientation — variants + Havenreach placement rules', async (t) => {
-  await t.test('1. >=4 distinct hut variants are registered, sizes 2x3/3x3/3x4', () => {
+  await t.test('1. >=4 distinct hut variants are registered, sizes 2x3/3x4/4x3', () => {
     const town = getTownDefinition('town_havenreach');
     const silhouettes = new Set(town.buildings.map((b) => b.silhouette));
     assert.ok(silhouettes.size >= 4, `>=4 distinct variants, got ${[...silhouettes].join(', ')}`);
@@ -227,7 +227,9 @@ test('LIV-111 hut orientation — variants + Havenreach placement rules', async 
       assert.ok(def, `${s} registered`);
       sizes.add(`${def.tiles.w}x${def.tiles.h}`);
     }
-    assert.ok(sizes.has('2x3') && sizes.has('3x3') && sizes.has('3x4'), `sizes must include 2x3/3x3/3x4, got ${[...sizes].join(', ')}`);
+    // LIV-114: the side-facing huts widened 3x3 -> 4x3 (stretched), so the
+    // registered catalogue now spans 2x3 / 3x4 / 4x3 rather than 3x3.
+    assert.ok(sizes.has('2x3') && sizes.has('4x3') && sizes.has('3x4'), `sizes must include 2x3/4x3/3x4, got ${[...sizes].join(', ')}`);
   });
 
   await t.test('2. orientation rules: top forward, left right-facing, right left-facing, bottom backward', () => {

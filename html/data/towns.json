@@ -111,7 +111,7 @@
           "footprint": [
             1,
             9,
-            3,
+            4,
             11
           ],
           "silhouette": "fishing_hut_right"
@@ -120,7 +120,7 @@
           "id": "right_left_facing_hut",
           "name": "Boatwright's Shed",
           "footprint": [
-            20,
+            19,
             9,
             22,
             11

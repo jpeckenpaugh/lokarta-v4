@@ -32,8 +32,8 @@ elevation (`--rise`)**:
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `fishing_hut` | forward | 0 | 2×3 (64×96) | 10 | the Phase 1 front bake (door + ladder) |
 | `fishing_hut_large` | forward | 0 | 3×4 (96×128) | 14 | bigger front landmark |
-| `fishing_hut_right` | right-facing | 90 | 3×3 (96×96) | 6 | low-angle side, faces the road |
-| `fishing_hut_left` | left-facing | 270 | 3×3 (96×96) | 26 | steep side, faces the road |
+| `fishing_hut_right` | right-facing | 90 | 4×3 (128×96) | 6 | low-angle side, faces the road (LIV-114: stretched to 4 tiles wide) |
+| `fishing_hut_left` | left-facing | 270 | 4×3 (128×96) | 26 | steep side, faces the road (LIV-114: stretched to 4 tiles wide) |
 | `fishing_hut_back` | backward | 180 | 2×3 (64×96) | 18 | windowed rear |
 
 Each def sets `placement.defaultFrame` to its single baked `view_<az>`, so the
@@ -62,6 +62,20 @@ node tools/gltf-to-sprite.mjs "$GLB" --id hut_x --out docs/art/3d-poc/variants \
 strongest landmark, and the **steep left-facing** side (`--rise 26`) is the most
 distinct of the two sides — a low `--rise` side and the front read closest to one
 another, which is expected for a symmetric hull.
+
+**LIV-114 (round 2.1) — framing + side width.** Two pipeline parameters were
+added to `tools/gltf-to-sprite.mjs` while keeping the footprint path unchanged:
+
+- `fitProjected` (multi-tile bakes, always on): frame the model by its **true
+  projected bounding box** — `Y-height + depth·sin(rise)` — instead of the
+  Y-extent alone. The old framing under-budgeted the `rise` tilt, so a long/low
+  building (the longhouse, both fishers houses, every hut) overran the canvas and
+  **clipped at the base** in the chopped tile canvas. The fit leaves a margin on
+  every edge, then `chopToTileCanvas` re-anchors the art to the footprint bottom.
+- `stretchX` (`--stretch-x`): a horizontal-only scale that fills the canvas
+  width while keeping the contained height. The **side-facing** huts use it to
+  honour the board's "stretch the width" request — **4×3 (128×96)** rather than
+  the old 3×3, still bottom-anchored and grid-aligned.
 
 ---
 

@@ -106,7 +106,7 @@ function sampleBilinear(tex, u, v) {
 }
 
 /* ---------------- orthographic software rasteriser ---------------- */
-export function render(glb, tex, { azimuth = 0, rise = 10, targetH = 512, ambient = 0.30, light = [-0.45, 0.72, 0.53], rim = 0, bounce = 0 } = {}) {
+export function render(glb, tex, { azimuth = 0, rise = 10, targetH = 512, ambient = 0.30, light = [-0.45, 0.72, 0.53], rim = 0, bounce = 0, fitProjected = false } = {}) {
   const j = glb.json; const prim = j.meshes[0].primitives[0];
   const pos = readAccessor(glb, prim.attributes.POSITION);
   const nrm = prim.attributes.NORMAL != null ? readAccessor(glb, prim.attributes.NORMAL) : null;
@@ -115,18 +115,47 @@ export function render(glb, tex, { azimuth = 0, rise = 10, targetH = 512, ambien
   let mnx = 1e9, mny = 1e9, mnz = 1e9, mxx = -1e9, mxy = -1e9, mxz = -1e9;
   for (let i = 0; i < pos.count; i++) { const x = pos.data[i * 3], y = pos.data[i * 3 + 1], z = pos.data[i * 3 + 2]; if (x < mnx) mnx = x; if (y < mny) mny = y; if (z < mnz) mnz = z; if (x > mxx) mxx = x; if (y > mxy) mxy = y; if (z > mxz) mxz = z; }
   const ccx = (mnx + mxx) / 2, ccy = (mny + mxy) / 2, ccz = (mnz + mxz) / 2;
-  const modelH = (mxy - mny) || 1; const scale = (targetH * 0.92) / modelH; const Hpx = targetH;
-  const halfXZ = Math.max(mxx - mnx, mxz - mnz) / 2;
-  const Wpx = Math.max(Hpx, Math.ceil(2 * halfXZ * scale) + 8);
-  const rgba = new Float32Array(Wpx * Hpx * 4); const depth = new Float32Array(Wpx * Hpx).fill(-1e9);
+  const modelH = (mxy - mny) || 1;
   const _rise = rise * Math.PI / 180;
   const ca = Math.cos(azimuth), sa = Math.sin(azimuth), cr = Math.cos(_rise), sr = Math.sin(_rise);
+  // Projected-extent fit (LIV-114). The default path frames the model's Y-extent
+  // into `targetH`, but the `rise` camera tilt adds a depth*sin(rise) term to the
+  // projected height. A long/low building (large Z) then overruns the canvas and
+  // clips at the bottom in the chopped tile canvas. `fitProjected` instead
+  // measures the true projected bounding box of the model corners and scales it
+  // to fill `targetH` with margin, so multi-tile buildings bake whole. Only the
+  // multi-tile path opts in, keeping single-tile actor bakes byte-identical.
+  let scale, Hpx, Wpx, offX = 0, offY = 0, pmnX = 0, pmxY = 0;
+  if (fitProjected) {
+    let bx0 = 1e9, bx1 = -1e9, by0 = 1e9, by1 = -1e9;
+    for (let ci = 0; ci < 8; ci++) {
+      const x = (ci & 1 ? mxx : mnx) - ccx, y = (ci & 2 ? mxy : mny) - ccy, z = (ci & 4 ? mxz : mnz) - ccz;
+      const vx = ca * x + sa * z; const vz = -sa * x + ca * z; const py = cr * y - sr * vz;
+      if (vx < bx0) bx0 = vx; if (vx > bx1) bx1 = vx; if (py < by0) by0 = py; if (py > by1) by1 = py;
+    }
+    const pW = (bx1 - bx0) || 1, pH = (by1 - by0) || 1; const pad = 8;
+    Hpx = targetH; scale = (targetH * 0.92) / pH;
+    Wpx = Math.max(2 * pad + 1, Math.ceil(pW * scale) + 2 * pad);
+    offX = pad - bx0 * scale;
+    offY = (Hpx - pH * scale) / 2 + by1 * scale;
+    pmnX = bx0; pmxY = by1;
+  } else {
+    scale = (targetH * 0.92) / modelH; Hpx = targetH;
+    const halfXZ = Math.max(mxx - mnx, mxz - mnz) / 2;
+    Wpx = Math.max(Hpx, Math.ceil(2 * halfXZ * scale) + 8);
+  }
+  const rgba = new Float32Array(Wpx * Hpx * 4); const depth = new Float32Array(Wpx * Hpx).fill(-1e9);
   const xf = (x, y, z, out) => { x -= ccx; y -= ccy; z -= ccz; const vx = ca * x + sa * z; const vz = -sa * x + ca * z; out[0] = vx; out[1] = cr * y - sr * vz; out[2] = sr * y + cr * vz; };
   const ll = Math.hypot(light[0], light[1], light[2]); const Lx = light[0] / ll, Ly = light[1] / ll, Lz = light[2] / ll;
   const tn = idx ? idx.count : pos.count; const getI = k => (idx ? idx.data[k] : k);
   const sx = new Float32Array(pos.count), sy = new Float32Array(pos.count), sz = new Float32Array(pos.count);
   const tmp = [0, 0, 0];
-  for (let i = 0; i < pos.count; i++) { xf(pos.data[i * 3], pos.data[i * 3 + 1], pos.data[i * 3 + 2], tmp); sx[i] = Wpx / 2 + tmp[0] * scale; sy[i] = Hpx / 2 - tmp[1] * scale; sz[i] = tmp[2]; }
+  for (let i = 0; i < pos.count; i++) {
+    xf(pos.data[i * 3], pos.data[i * 3 + 1], pos.data[i * 3 + 2], tmp);
+    if (fitProjected) { sx[i] = offX + tmp[0] * scale; sy[i] = offY - tmp[1] * scale; }
+    else { sx[i] = Wpx / 2 + tmp[0] * scale; sy[i] = Hpx / 2 - tmp[1] * scale; }
+    sz[i] = tmp[2];
+  }
   const N0 = [0, 0, 0];
   function tri(p0, p1, p2) {
     const ax = sx[p0], ay = sy[p0], az = sz[p0], bx = sx[p1], by = sy[p1], bz = sz[p1], dx = sx[p2], dy = sy[p2], dz = sz[p2];
@@ -613,11 +642,16 @@ export function tileCanvasSize(tiles) {
  * Returns `{ w, h, rgba, fit, offset, tiles }` where `fit` is the fitted render
  * box and `offset` its top-left placement inside the tile canvas.
  */
-export function chopToTileCanvas(sprite, tiles, { align = 'bottom', anchor = 'center' } = {}) {
+export function chopToTileCanvas(sprite, tiles, { align = 'bottom', anchor = 'center', stretchX = false } = {}) {
   const { w: cw, h: ch } = tileCanvasSize(tiles);
   const fitScale = Math.min(cw / sprite.w, ch / sprite.h);
-  const fw = Math.max(1, Math.min(cw, Math.round(sprite.w * fitScale)));
-  const fh = Math.max(1, Math.min(ch, Math.round(sprite.h * fitScale)));
+  let fw = Math.max(1, Math.min(cw, Math.round(sprite.w * fitScale)));
+  let fh = Math.max(1, Math.min(ch, Math.round(sprite.h * fitScale)));
+  // LIV-114: side-facing huts are asked to "stretch the width" to fill a wider
+  // tile canvas (4 tiles) while keeping the contained height. That is a
+  // horizontal-only scale: X fills the canvas width, Y stays the contain fit.
+  // Only opted-in bakes set `stretchX`; every other multi-tile bake is unchanged.
+  if (stretchX) { fw = cw; }
   const fitted = fw === sprite.w && fh === sprite.h ? sprite : downscale(sprite, fw, fh);
   const out = new Float32Array(cw * ch * 4);
   const ox = anchor === 'center' ? Math.round((cw - fw) / 2) : anchor === 'right' ? cw - fw : 0;
@@ -731,7 +765,7 @@ function chopSheet(slices, scale, bg = [10, 11, 14, 255], pad = 6) {
   return { w: W, h: H, buf };
 }
 
-export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 90, 180, 270], colors = 14, rise = 10, flat = false, renderRes = 512, tiles = null, kind = null, tier = 'indexed', families = 6, steps = 4 }) {
+export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 90, 180, 270], colors = 14, rise = 10, flat = false, renderRes = 512, tiles = null, kind = null, tier = 'indexed', families = 6, steps = 4, stretchX = false }) {
   const baked = tier === 'baked';
   const glb = parseGLB(glbPath);
   const tex = flat ? null : await loadBaseColor(glb, glb.json.meshes[0].primitives[0].material);
@@ -740,11 +774,11 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
   for (const az of views) {
     // Tier B bakes the 135-degree key (upper-left `light`) plus a rim term and a
     // cool bounce; Tier A stays flat Lambert (LIV-109 / art-direction-target §5).
-    const hi = render(glb, tex, { azimuth: az * Math.PI / 180, rise, targetH: renderRes, rim: baked ? 0.7 : 0, bounce: baked ? 0.35 : 0 });
+    const hi = render(glb, tex, { azimuth: az * Math.PI / 180, rise, targetH: renderRes, rim: baked ? 0.7 : 0, bounce: baked ? 0.35 : 0, fitProjected: multiTile });
     // Single-tile classes box-downscale the whole render into ONE 32x32 tile.
     // Multi-tile buildings CHOP the render into a whole-tile canvas instead of
     // squishing it into a single tile (LIV-106).
-    viewPix.push({ az, px: multiTile ? chopToTileCanvas(cropToContent(hi), tiles) : downscale(hi, size, size) });
+    viewPix.push({ az, px: multiTile ? chopToTileCanvas(cropToContent(hi), tiles, { stretchX }) : downscale(hi, size, size) });
   }
   const all = [];
   for (const v of viewPix) for (let i = 0; i < v.px.w * v.px.h; i++) if (v.px.rgba[i * 4 + 3] > 128) all.push([v.px.rgba[i * 4], v.px.rgba[i * 4 + 1], v.px.rgba[i * 4 + 2]]);
@@ -785,7 +819,7 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
     ...(baked ? { renderTier: 'baked' } : {}),
     source: `${path.basename(glbPath)} (glTF-Transform ${glb.json.asset && glb.json.asset.generator})`,
     method: multiTile
-      ? `ortho-software-raster@${renderRes} -> chop-to-tile-canvas(${tiles.w}x${tiles.h}) -> ${pipeline}`
+      ? `ortho-software-raster@${renderRes} -> chop-to-tile-canvas(${tiles.w}x${tiles.h}${stretchX ? ', stretchX' : ''}) -> ${pipeline}`
       : `ortho-software-raster@${renderRes} -> ${size}px box-downscale -> ${pipeline}`,
     native: multiTile ? { w: tiles.w * NATIVE_TILE, h: tiles.h * NATIVE_TILE } : { w: size, h: size },
     anchor: multiTile ? { x: Math.floor((tiles.w * NATIVE_TILE) / 2), y: tiles.h * NATIVE_TILE - 2 } : { x: Math.floor(size / 2), y: size - 2 },
@@ -941,6 +975,7 @@ function parseArgs(argv) {
     else if (t === '--anim') a.anim = argv[++i];
     else if (t === '--anim-frames') a.animFrames = +argv[++i];
     else if (t === '--times') a.times = argv[++i].split(',').map(Number);
+    else if (t === '--stretch-x') a.stretchX = true;
     else if (t === '--flat') a.flat = true;
     else rest.push(t);
   }
@@ -959,7 +994,7 @@ if (isMain) {
     console.log(`${res.id}: ${res.frames} skinned frames, ${res.palette.length}-colour palette (${res.renderTier}), clip=${a.anim}, ${a.views.length} views x ${res.sampleTimes.length} phases -> ${path.relative(ROOT, outDir)}`);
     process.exit(0);
   }
-  const res = await buildAsset({ glbPath, id, outDir, size: a.size, views: a.views, colors: a.colors, rise: a.rise, flat: a.flat, renderRes: a.renderRes, tiles: a.tiles, kind: a.kind, tier: a.tier, families: a.families, steps: a.steps });
+  const res = await buildAsset({ glbPath, id, outDir, size: a.size, views: a.views, colors: a.colors, rise: a.rise, flat: a.flat, renderRes: a.renderRes, tiles: a.tiles, kind: a.kind, tier: a.tier, families: a.families, steps: a.steps, stretchX: a.stretchX });
   const shape = res.tiles ? `${res.tiles.w}x${res.tiles.h} tiles` : `${a.size}px`;
   console.log(`${res.id}: ${res.opaquePixels} opaque px, ${res.palette.length}-colour palette (${res.renderTier}), textured=${res.textured}, ${shape} -> ${path.relative(ROOT, outDir)}`);
 }
