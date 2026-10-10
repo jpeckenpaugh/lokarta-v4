@@ -200,6 +200,23 @@ export function composeScene(kind, def) {
     landmarks: (def.landmarks || []).map((landmark) => ({ ...landmark })),
     safeZones: (def.safeZones || []).map((zone) => ({ ...zone })),
     spawnZones: (def.spawnZones || []).map((zone) => ({ ...zone })),
+    // LIV-100: authored scene props are emitted so the renderer draws them.
+    // Placement is pure catalog data (towns.json/islands.json `props[]`); the
+    // `layer` field (prop | decor) decides blocking vs walk-over. Previously
+    // dropped, so the town props path was inert.
+    props: (def.props || []).map((prop) => ({ ...prop })),
+    // LIV-100: town building footprints are emitted so a per-building silhouette
+    // hook can key a renderer on the building's `silhouette` (or id) through a
+    // dispatch table. Additive and empty for scenes that author no buildings.
+    buildings: kind === 'town'
+      ? (def.buildings || []).map((building) => ({
+          id: building.id,
+          name: building.name || building.id,
+          footprint: Array.isArray(building.footprint) ? building.footprint.slice() : null,
+          door: building.door ? { ...building.door } : null,
+          silhouette: building.silhouette || null,
+        }))
+      : [],
     islandId: kind === 'island' ? def.id : (def.islandId || null),
     townId: kind === 'town' ? def.id : (def.townId || null),
     towerId: def.towerId || null,

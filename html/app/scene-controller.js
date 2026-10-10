@@ -154,7 +154,15 @@ export const sceneControllerMethods = {
     this.towerName = null;
     this.bossName = null;
     this.chests = [];
-    this.props = [];
+    // LIV-100: scene props (fishing nets, barrels, boats, …) authored in the
+    // catalog `props[]` now render. Furniture-layer props block movement, while
+    // decor/undefined-layer props stay walk-over — mirroring the floor path so
+    // town walkability and the south gate are untouched (props carry no layer
+    // today, so nothing new is blocked).
+    this.props = (scene.props || []).map((prop) => ({ ...prop }));
+    for (const prop of this.props) {
+      if (prop.layer === 'prop') this.gridMap.blockTile(prop.x, prop.y, true);
+    }
     this.springs = [];
     this.ambientLights = [];
     this.monsters = [];

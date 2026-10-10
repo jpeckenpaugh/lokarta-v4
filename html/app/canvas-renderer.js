@@ -268,6 +268,50 @@ const PROJECTILE_RENDERERS = {
   },
 };
 
+/**
+ * Per-building silhouette dispatch (LIV-100). A town building may declare a
+ * `silhouette` in its catalog entry (towns.json); the lookup falls back to the
+ * building `id`, so either keying works. Adding a silhouette is a catalog value
+ * plus one entry here — never a per-building JS branch. A building with no
+ * matching renderer simply keeps the generic tile look.
+ *
+ * Renderers receive `(ctx, building, left, top, width, height)` in screen space
+ * for the building's footprint, so they can overlay an ark-hull roof ridge, a
+ * steeple, etc. without touching per-tile wall drawing.
+ */
+const BUILDING_SILHOUETTE_RENDERERS = {
+  // The ark-hull Longhouse: an inverted keel ridge spanning the footprint roof,
+  // with exposed ribs. Colors are the coastal timber/driftwood palette.
+  ark_hull(ctx, building, left, top, width, height) {
+    const ridge = Math.min(height * 0.45, 28);
+    const cx = left + width / 2;
+    ctx.save();
+    ctx.fillStyle = '#6b4a2a';
+    ctx.beginPath();
+    ctx.moveTo(left, top + ridge * 0.35);
+    ctx.lineTo(left + width * 0.12, top - ridge);
+    ctx.lineTo(cx, top - ridge * 1.25);
+    ctx.lineTo(left + width * 0.88, top - ridge);
+    ctx.lineTo(left + width, top + ridge * 0.35);
+    ctx.lineTo(left + width, top + ridge * 0.35 + 3);
+    ctx.lineTo(left, top + ridge * 0.35 + 3);
+    ctx.closePath();
+    ctx.fill();
+    // Exposed ribs.
+    ctx.strokeStyle = '#8a6a45';
+    ctx.lineWidth = Math.max(1, width / 32);
+    for (let i = 1; i < 6; i++) {
+      const rx = left + (width * i) / 6;
+      const ry = top - ridge * (1 - Math.abs(i - 3) / 4.5);
+      ctx.beginPath();
+      ctx.moveTo(rx, ry);
+      ctx.lineTo(rx, top + ridge * 0.35 + 3);
+      ctx.stroke();
+    }
+    ctx.restore();
+  },
+};
+
 export class CanvasRenderer {
   constructor(canvas) {
     this.canvas = canvas;
@@ -490,6 +534,12 @@ export class CanvasRenderer {
         }
       }
     }
+
+    // 1a. Per-building silhouettes (LIV-100): overlays a catalog-declared
+    //     building shape on its footprint (e.g. the ark-hull Longhouse). No-op
+    //     for scenes with no silhouetted buildings, so tower/scene rendering is
+    //     unchanged.
+    this.renderBuildingSilhouettes(ctx);
 
     // 1a-2. Town return spot (LIV-75): a glowing ground teleporter back to the
     //       last-exited tower/floor. Data-placed; drawn only while the app
@@ -1140,6 +1190,39 @@ export class CanvasRenderer {
         prop.y * CONFIG.GRID_SIZE - this.cameraY,
         CONFIG.GRID_SIZE
       );
+    }
+  }
+
+  /**
+   * Draws catalog-declared building silhouettes (LIV-100). Iterates the active
+   * scene's `buildings`, resolves a renderer through `BUILDING_SILHOUETTE_
+   * RENDERERS` keyed on `building.silhouette` (or its id), and hands it the
+   * building's footprint in screen space. Buildings without a footprint or a
+   * matching renderer are skipped, so the pass is a no-op unless content opts
+   * in. Footprints fully off-screen are culled before any canvas call.
+   * @param {CanvasRenderingContext2D} ctx
+   */
+  renderBuildingSilhouettes(ctx) {
+    const buildings = this.scene && this.scene.buildings;
+    if (!Array.isArray(buildings) || buildings.length === 0) return;
+    const size = CONFIG.GRID_SIZE;
+    const viewW = this.canvas ? this.canvas.width : 0;
+    const viewH = this.canvas ? this.canvas.height : 0;
+    for (const building of buildings) {
+      if (!building) continue;
+      const key = building.silhouette || building.id;
+      const draw = BUILDING_SILHOUETTE_RENDERERS[key];
+      if (!draw || !Array.isArray(building.footprint) || building.footprint.length < 4) continue;
+      const [x0, y0, x1, y1] = building.footprint;
+      const left = x0 * size - this.cameraX;
+      const top = y0 * size - this.cameraY;
+      const width = (x1 - x0 + 1) * size;
+      const height = (y1 - y0 + 1) * size;
+      if (width <= 0 || height <= 0) continue;
+      // Cull footprints entirely outside the viewport.
+      if (viewW > 0 && (left + width < 0 || left > viewW)) continue;
+      if (viewH > 0 && (top + height < 0 || top > viewH)) continue;
+      draw(ctx, building, left, top, width, height);
     }
   }
 
