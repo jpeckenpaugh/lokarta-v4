@@ -210,6 +210,10 @@ export const sceneControllerMethods = {
     // LIV-60 P2: neutral NPCs. P3: quest ground items (fetch) + visible roaming
     // monsters (kill objectives) from the authored spawn zones/elites.
     this.npcs = typeof spawnNpcsForScene === 'function' ? spawnNpcsForScene(scene) : [];
+    // LIV-134: presentation-only walk/idle state per NPC. Wandering NPCs now
+    // render their directional 3D-baked walk frames instead of sliding on
+    // `idle_down` (docs/art/3d-sprite-mapping.md §2.4); stationary NPCs keep idle.
+    for (const npc of this.npcs) npc.anim = createAnimState(npc.facing || 'down');
     this.armContactTalk();
     this.armAutoTriggerObjects();
     this.refreshQuestMarkers();

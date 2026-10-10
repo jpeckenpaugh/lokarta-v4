@@ -333,7 +333,17 @@ export const gameLoopMethods = {
       for (const m of this.monsters) if (m.hp > 0) occupied.add(m.y * width + m.x);
       for (const a of PartyAI.livingAllies(this.player)) occupied.add(a.y * width + a.x);
       for (const n of this.npcs) occupied.add(n.y * width + n.x);
+      // Snapshot tiles into one reusable buffer (no per-tick allocation) so a
+      // step can advance the NPC's walk cycle once, exactly like monsters.
+      let snap = this._npcPosSnapshot;
+      if (!snap || snap.length < this.npcs.length * 2) snap = this._npcPosSnapshot = new Int32Array(this.npcs.length * 2);
+      for (let i = 0; i < this.npcs.length; i++) { snap[i * 2] = this.npcs[i].x; snap[i * 2 + 1] = this.npcs[i].y; }
       updateNpcs(this.npcs, this.gridMap, deltaSec, occupied);
+      for (let i = 0; i < this.npcs.length; i++) {
+        const npc = this.npcs[i];
+        if (npc.x !== snap[i * 2] || npc.y !== snap[i * 2 + 1]) setAnimState(npc, 'walk');
+        else if (npc.anim && npc.anim.state === 'walk') setAnimState(npc, 'idle');
+      }
       // LIV-66 bump-to-talk: the trigger lives in `processMovementInput`'s
       // blocked-step branch (see above) — the player must attempt to walk onto
       // the NPC's tile. Standing adjacent never fires.
