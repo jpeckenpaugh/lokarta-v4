@@ -179,7 +179,9 @@ test('LIV-111 rigged actor bake — skeleton sampling + animation helpers', asyn
       for (const dir of ['down', 'up', 'side']) {
         for (const fid of c.animations[state][dir]) {
           const b = bbox(c.frames[fid]);
-          assert.ok(b.h >= 28, `${fid} fills the tile height (h=${b.h})`);
+          // LIV-115: the Tier B outline opt-out removes the 1px outline ring, so
+          // a full-tile upright frame now reads one pixel shorter (>=27 not 28).
+          assert.ok(b.h >= 27, `${fid} fills the tile height (h=${b.h})`);
           assert.ok(b.miny <= 3, `${fid} head nears the tile top (miny=${b.miny})`);
           assert.ok(b.maxy >= anchorY - 1 && b.maxy <= 31, `${fid} feet on the ground anchor (maxy=${b.maxy})`);
           assert.ok(b.minx >= 0 && b.maxx <= 31, `${fid} stays inside the tile`);

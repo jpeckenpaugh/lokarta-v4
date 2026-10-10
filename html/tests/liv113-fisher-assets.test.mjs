@@ -69,18 +69,25 @@ test('LIV-113 fisher assets — longhouse, fishers house, fishers net', async (t
   });
 
   await t.test('4. fishers net is a baked multi-facing prop placed at multiple angles', () => {
+    // LIV-115 (Fix 4): the four baked angles now split by orientation — the
+    // face-on views live in the horizontal (2x1) def, the edge-on views in the
+    // vertical (1x2) def. Collectively every angle is still baked.
     const def = PROP_CATALOG.prop_fishers_net;
-    assert.ok(def, 'prop_fishers_net is registered');
-    assert.equal(def.renderTier, 'baked', 'Tier B');
-    assert.ok(Object.keys(def.palette).length <= 32, 'baked palette cap');
-    for (const f of ['view_0', 'view_90', 'view_180', 'view_270']) {
-      assert.ok(def.frames[f], `net bakes angle ${f}`);
+    const vert = PROP_CATALOG.prop_fishers_net_vertical;
+    assert.ok(def && vert, 'both net orientation defs are registered');
+    for (const d of [def, vert]) {
+      assert.equal(d.renderTier, 'baked', 'Tier B');
+      assert.ok(Object.keys(d.palette).length <= 32, 'baked palette cap');
+      assert.deepEqual(validateSpriteDef(d, { label: d.id }).errors, []);
     }
-    assert.deepEqual(validateSpriteDef(def, { label: 'prop_fishers_net' }).errors, []);
+    const bakedAngles = new Set([...Object.keys(def.frames), ...Object.keys(vert.frames)]);
+    for (const f of ['view_0', 'view_90', 'view_180', 'view_270']) {
+      assert.ok(bakedAngles.has(f), `net bakes angle ${f}`);
+    }
     assert.ok(def.native.w > def.native.h, 'a net hung between two posts reads wide');
 
     const scene = composeSceneById(DEFAULT_TOWN_ID);
-    const nets = (scene.props || []).filter((p) => p.propId === 'prop_fishers_net');
+    const nets = (scene.props || []).filter((p) => String(p.propId).startsWith('prop_fishers_net'));
     assert.ok(nets.length >= 2, `net placed around town, got ${nets.length}`);
     const angles = new Set(nets.map((p) => p.frame));
     assert.ok(angles.size >= 2, `>= 3 angles placed, got ${[...angles].join(', ')}`);
