@@ -166,15 +166,20 @@ renderer via `silhouette`:
 | Building / landmark | `N*32 × M*32` | N×M | `renderBuildingSilhouettes` (one blit into footprint) | +1 dispatch entry |
 | Tile (wall/floor/water) | 32×32, procedural | 1×1 | `TILE_RENDERERS` | none |
 
-**Boss call-out (engine/contract gap):** the boss is authored at **48×48** — `1.5` tiles —
-and `drawActor` (scale 2) renders it at **96×96 display px** about the tile's bottom-centre,
-so it straddles/overhangs neighbouring cells and is **not** tile-aligned. For grid
-consistency the boss should become **64×64 native (2×2 tiles)** on the multi-tile path, or
-be declared as an intentional "overhang" class. This is an **art-contract decision** →
-route to the Game Designer child (LIV-107). No runtime path change is required for the
-hut: the existing `buildings`/footprint + `BUILDING_SILHOUETTE_RENDERERS` machinery is
-reused; a production build only needs **one new sprite-backed silhouette renderer** that
-integer-blits the `kind: building` bitmap into the footprint rect.
+**Boss call-out:** the boss is authored at **48×48** — `1.5` tiles — and `drawActor`
+(scale 2) renders it at **96×96 display px** about the tile's bottom-centre, so it overhangs
+its cell and is **not** tile-aligned. [LIV-107](/LIV/issues/LIV-107) settled this as an
+**intentional single-tile entity with overhang** (not a multi-tile sprite); no engine change
+is required, and the tool's `--tiles` path is not applied to it. No runtime path change is
+required for the hut either: the existing `buildings`/footprint + `BUILDING_SILHOUETTE_
+RENDERERS` machinery is reused; a production build only needs **one new sprite-backed
+silhouette renderer** that integer-blits the `kind: building` bitmap into the footprint rect.
+
+**Reconciliation with [LIV-107](/LIV/issues/LIV-107):** the settled contract allows
+multi-tile canvases `32W×32H` with `W,H ∈ {1,2,3,4}`, `≤128×128`, whole tiles, non-square
+(e.g. 4×2). The tool's `--tiles WxH` produces exactly these (`tileCanvasSize` enforces
+`tiles*32`), plus the `tiles`/`placement`/`footprint` JSON fields and the inclusive
+`footprint:[x0,y0,x1,y1]` binding, which LIV-107 deferred to this issue.
 
 ### 3.4 Revised proof (committed, `docs/art/3d-poc/`)
 
@@ -346,7 +351,7 @@ Blender path is $0 software but adds eng time. **Effort:** 3–5 days to product
   (`native = tiles × 32`), never squished to one tile. Formalise in `docs/art/art-direction.md`.
 - **Tile count is derived from projected aspect** (§3.1) — decide whether the contract
   mandates aspect-matched footprints (recommended) or allows transparent-margin canvases.
-- **Boss** is currently 48×48 = 1.5 tiles and overhangs its cell; decide 64×64 (2×2) vs an
-  explicit intentional-overhang class (§3.3).
+- ~~**Boss** 48×48 overhang~~ — **settled by [LIV-107](/LIV/issues/LIV-107):** intentional
+  single-tile entity with overhang; not a multi-tile sprite (§3.3).
 - Whether multi-tile sprites require a **manifest/loader field** (`kind`, `tiles`,
   `placement`) or stay scene-only until a sprite-backed building renderer is added.
