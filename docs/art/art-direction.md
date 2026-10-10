@@ -694,6 +694,66 @@ Constraints (theme-coherence + readability lenses):
   not rotate with yaw** — a yawed object keeps the same lit edge, which is what
   keeps the cast coherent (§12.4).
 
+#### 12.3.1 Fishing-village ruling — yaw stays **0** (LIV-131)
+
+Game-Designer ruling (2026-10-10, [LIV-131](/LIV/issues/LIV-131), following the
+[LIV-129](/LIV/issues/LIV-129) baseline re-bake): the **8 buildings + 2 net
+props keep `yaw: 0`** as a single set. **No re-bake.** Measured at `rise:60`,
+`fitProjected` (projected-bbox aspect, opaque bounds):
+
+| Asset (GLB) | aspect @yaw0 (az₀/₉₀/₁₈₀/₂₇₀) | aspect @yaw45 | yaw0 read |
+| :-- | :-- | :-- | :-- |
+| `fisherman_hut` | 0.76 / 0.82 / 0.78 / 0.82 | 0.93 ×4 | portrait hut |
+| `fishers_house` | 0.88 / 0.87 / 0.88 / 0.87 | 1.06 ×4 | near-square house |
+| `longhouse` | **2.06** / 0.58 / **2.06** / 0.56 | 1.08 / 1.05 / 1.01 / 1.03 | long landmark |
+| `fishers_net` | **3.52** / 0.11 / **3.52** / 0.11 | 0.92 ×4 | long flat net / thin vertical |
+
+Why 0, not 45:
+
+* **Readability & legibility (decisive).** Town building footprints are *solid*:
+  `scene-controller.js` blocks the **whole footprint** (no doors authored), and
+  the renderer blits the sprite into that **axis-aligned** rect. A 45° yaw
+  rotates the *sprite* but not its `footprint`, so the diagonal silhouette no
+  longer matches the collision rect — the rect's corners become invisible-wall
+  tiles the player *sees as walkable but cannot enter*. The larger the footprint,
+  the worse the lie (the longhouse is the worst case).
+* **Asset identity.** Yaw deletes the town's two "long" reads: the longhouse
+  collapses `2.06 → 1.08` (its long axis is gone; every view becomes a near-square
+  diagonal), and the flat net collapses `3.52 → 0.92`, so the horizontal and the
+  edge-on vertical net both become the same square blob — the two net defs
+  (`prop_fishers_net` / `..._vertical`) become redundant.
+* **Theme coherence (§12.3).** The village is one **scene**. Yawing only the
+  near-square dwellings while the longhouse and nets stay axis-aligned mixes
+  0°/45° within a single scene, which §12.3 forbids. There is **no per-scene yaw
+  consistent** that preserves the longhouse.
+* **Kano model.** The 60° oblique (§12.2) already delivers the 3/4 read; yaw is a
+  *delighter* whose only win here (the huts/houses) is bought with *must-haves*
+  (silhouette↔collision fidelity, landmark identity, the flat-net read). Do not
+  trade must-haves for a delighter on this set.
+* **Axis-alignment is already broken.** The town already varies orientation via
+  the existing multi-view frames (`fishing_hut_left`/`_right`/`_back`) and the
+  nets' explicit scene `frame` refs (`view_0`/`90`/`180`/`270`), so the
+  "everything aligns N/S/E/W" problem §12.3 targets does not arise here.
+
+**Forward rule — when yaw IS worth it.** Author a 45° yaw only for a scene/family
+whose members are (a) all **near-square in projection** at `rise:60`
+(`|aspect−1|` small) so a square tile canvas stays tight, and (b) placed on
+footprints authored to **match the diagonal silhouette** (or on non-solid décor).
+Keep yaw **uniform across the whole scene**.
+
+**Override recipe (only if the board later overrides — for reference, not a plan).**
+Yaw **all 10** for scene consistency, then re-derive `tiles`/footprints:
+
+| Asset | yaw45 aspect | new tiles | was |
+| :-- | :-- | :-- | :-- |
+| `fisherman_hut` family | 0.93 | `3×3` | `2×3` / `3×4` / `4×3` |
+| `fishers_house` family | 1.06 | `3×3` | `3×3` / `3×4` |
+| `longhouse` | 1.08 | `7×6` | `12×6` |
+| `fishers_net` (both) | 0.92 | `1×1` | `4×1` / `1×2` |
+
+…and re-place every `towns.json` footprint (longhouse shrinks `12→7` wide) and
+update the net `frame` refs (`view_0`→`view_45`, etc.).
+
 ### 12.4 Interaction with existing rules (all unaffected by the camera change)
 
 The camera baseline changes **projected geometry only** — the pixels the render
