@@ -22,7 +22,7 @@ Authoritative 16-bit SNES-inspired pixel art direction and rendering contract fo
   * `attack`: 3 directions (3 frames each)
   * `hit`: 3 directions (1 frame each)
   * `death`: 4 frames (`death_0`..`death_3`) non-directional (Boss `abyssal_overlord` has 6 frames: `death_0`..`death_5`).
-* **Outline & Shading:** Standard $1\text{ px}$ silhouette outline (`#0b0d12`) with $\le 16$-color indexed palettes and flat pixel ramps.
+* **Outline & Shading:** Standard $1\text{ px}$ silhouette outline (`#0b0d12`) with $\le 16$-color indexed palettes and flat pixel ramps. A new opt-in **Tier B "baked"** class (≤32 colors, 4-step ramps, ordered dither, baked key light) is specified in [art-direction-target.md](art-direction-target.md) for heroes, bosses, and signature NPCs/props; it keeps this outline, the pixelated rule, and the ≥3:1 rim bar.
 
 ---
 
