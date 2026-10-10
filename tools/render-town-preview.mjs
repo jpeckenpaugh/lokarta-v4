@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url';
 import { TILE_TYPES } from '../html/engine/config.js';
 import { composeSceneById, isCodeWalkable } from '../html/services/scene-composer.js';
 import { DEFAULT_TOWN_ID, getTownDefinition } from '../html/data/index.js';
-import { SPRITE_CATALOG, PROP_CATALOG } from '../html/assets/sprites/index.js';
+import { SPRITE_CATALOG, PROP_CATALOG, BUILDING_CATALOG } from '../html/assets/sprites/index.js';
 import { sceneTheme, parseFrame, applyOutline } from '../html/app/sprite-renderer.js';
 import { encodePNG } from './render-sprite-preview.mjs';
 
@@ -136,7 +136,9 @@ export function renderTownPreview(sceneId = DEFAULT_TOWN_ID) {
     }
   }
 
-  // 2. Building silhouettes / roofs (catalog footprints only).
+  // 2. Building silhouettes. A building that declares a `silhouette` present in
+  //    BUILDING_CATALOG blits that Tier B multi-tile sprite into its footprint
+  //    (the same path the runtime uses); otherwise a generic roof marker.
   const roof = hexToRgba(theme.tiles.BUILDING_WALL?.roof || '#8a6a45', 150);
   const ridge = hexToRgba(theme.tiles.BUILDING_WALL?.roofPeak || '#6b4a2a', 220);
   for (const b of scene.buildings || []) {
@@ -144,6 +146,12 @@ export function renderTownPreview(sceneId = DEFAULT_TOWN_ID) {
     const [x0, y0, x1, y1] = b.footprint;
     const px = x0 * CELL * SCALE; const py = y0 * CELL * SCALE;
     const w = (x1 - x0 + 1) * CELL * SCALE; const h = (y1 - y0 + 1) * CELL * SCALE;
+    const def = BUILDING_CATALOG[b.silhouette] || BUILDING_CATALOG[b.id];
+    if (def && def.native && def.frames) {
+      const pix = spriteFrame(BUILDING_CATALOG, b.silhouette || b.id, 'view_0');
+      const scale = w / def.native.w;
+      if (pix && Number.isInteger(scale) && scale >= 1) { blit(buf, W, H, pix, px, py, scale); continue; }
+    }
     rect(px, py, w, h, roof);
     rect(px, py + Math.floor(h / 2), w, 2, ridge);
     if (b.door) rect(b.door.x * CELL * SCALE, b.door.y * CELL * SCALE, CELL * SCALE, CELL * SCALE, hexToRgba(theme.tiles.DOORWAY?.glow || '#ffd48a'));

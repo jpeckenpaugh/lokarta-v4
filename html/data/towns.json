@@ -23,24 +23,24 @@
       "map": [
         "WWWWWWWWWWWWWWWWWWWWWWWW",
         "W......................W",
-        "W........WWWWWWW.......W",
-        "W..WWWWW.WWWWWWW.WWWWW.W",
-        "W..WWWWW.WWWWWWW.WWWWW.W",
-        "W..WWWWW.WWWWWWW.WWWWW.W",
-        "W..WWWWW.WWWWWWW.WWWWW.W",
+        "W......................W",
+        "W......................W",
+        "W...WW.....WW.....WW...W",
+        "W...WW.....WW.....WW...W",
+        "W...WW.....WW.....WW...W",
         "W..==D======D======D==.W",
         "W...........=..........W",
-        "WWWWWW......=.....WWWWWW",
-        "WWWWWW......=.....WWWWWW",
-        "WWWWWD......=.....DWWWWW",
-        "WWWWWW......=.....WWWWWW",
+        "W...WW......=.....WW...W",
+        "W...WW......=.....WW...W",
+        "W...WW......=.....WW...W",
+        "W...WD......=.....WD...W",
         "W======================W",
         "W...........=..........W",
-        "W...........=....WWDWW.W",
-        "W...........========WW.W",
-        "W...........=....WWWWW.W",
-        "W...........=....WWWWW.W",
-        "W...........=....WWWWW.W",
+        "W...........=.....WW...W",
+        "W...........=.....WW...W",
+        "W...........=.....WW...W",
+        "W...........=.....WD...W",
+        "W...........=..........W",
         "W::::::::::_=_:::::::::W",
         "W~~~~~~~~~~___~~~~~~~~~W",
         "W~~~~~~~~~~___~~~~~~~~~W",
@@ -76,9 +76,9 @@
           "id": "merchant_stall",
           "name": "Fish Market",
           "footprint": [
-            3,
-            3,
-            7,
+            4,
+            4,
+            5,
             6
           ],
           "door": {
@@ -88,15 +88,16 @@
           "interaction": {
             "type": "shop"
           },
-          "npcId": "mara"
+          "npcId": "mara",
+          "silhouette": "fishing_hut"
         },
         {
           "id": "temple_of_the_dawn",
           "name": "The Tidehall",
           "footprint": [
-            9,
-            2,
-            15,
+            11,
+            4,
+            12,
             6
           ],
           "door": {
@@ -106,15 +107,16 @@
           "interaction": {
             "type": "temple"
           },
-          "npcId": "high_dawnkeeper_aurel"
+          "npcId": "high_dawnkeeper_aurel",
+          "silhouette": "fishing_hut"
         },
         {
           "id": "elders_hall",
           "name": "The Longhouse",
           "footprint": [
-            17,
-            3,
-            21,
+            18,
+            4,
+            19,
             6
           ],
           "door": {
@@ -126,7 +128,7 @@
             "dialogueId": "elder_rowan_vane"
           },
           "npcId": "elder_rowan_vane",
-          "silhouette": "ark_hull"
+          "silhouette": "fishing_hut"
         },
         {
           "id": "beaconwrights_workshop",
@@ -134,56 +136,59 @@
           "footprint": [
             18,
             9,
-            22,
-            12
+            19,
+            11
           ],
           "door": {
-            "x": 18,
-            "y": 11
+            "x": 19,
+            "y": 12
           },
           "interaction": {
             "type": "dialogue",
             "dialogueId": "wick"
           },
-          "npcId": "wick"
+          "npcId": "wick",
+          "silhouette": "fishing_hut"
         },
         {
           "id": "tidewatch_barracks",
           "name": "Watchtower",
           "footprint": [
-            1,
+            4,
             9,
             5,
-            12
+            11
           ],
           "door": {
             "x": 5,
-            "y": 11
+            "y": 12
           },
           "interaction": {
             "type": "dialogue",
             "dialogueId": "captain_halden"
           },
-          "npcId": "captain_halden"
+          "npcId": "captain_halden",
+          "silhouette": "fishing_hut"
         },
         {
           "id": "wayfarers_rest",
           "name": "The Wayfarer's Rest",
           "footprint": [
-            17,
+            18,
             15,
-            21,
-            19
+            19,
+            17
           ],
           "door": {
             "x": 19,
-            "y": 15
+            "y": 18
           },
           "interaction": {
             "type": "dialogue",
             "dialogueId": "innkeep_bessa"
           },
-          "npcId": "innkeep_bessa"
+          "npcId": "innkeep_bessa",
+          "silhouette": "fishing_hut"
         }
       ],
       "props": [
@@ -219,7 +224,7 @@
         },
         {
           "propId": "prop_table",
-          "x": 18,
+          "x": 16,
           "y": 17
         },
         {
