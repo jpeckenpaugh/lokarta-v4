@@ -74,7 +74,7 @@ test('LIV-110 runtime integration of the 3D-baked assets', async (t) => {
 
   await t.test('4. Havenreach buildings use varied baked hut views sized to their footprint', () => {
     const town = getTownDefinition(DEFAULT_TOWN_ID);
-    assert.equal(town.buildings.length, 6);
+    assert.equal(town.buildings.length, 7);
     const used = new Set();
     for (const b of town.buildings) {
       assert.ok(b.silhouette, `${b.id} declares a silhouette`);
@@ -90,7 +90,7 @@ test('LIV-110 runtime integration of the 3D-baked assets', async (t) => {
 
   await t.test('5. the running silhouette path blits a hut for every town building', () => {
     const scene = composeSceneById(DEFAULT_TOWN_ID);
-    assert.equal(scene.buildings.length, 6);
+    assert.equal(scene.buildings.length, 7);
     const renderer = Object.create(CanvasRenderer.prototype);
     renderer.scene = scene; renderer.cameraX = 0; renderer.cameraY = 0;
     renderer.canvas = { width: 4096, height: 4096 };

@@ -1,7 +1,10 @@
 {
-  "id": "archer",
-  "kind": "vocation",
+  "id": "rukiya_archer_rigged",
+  "kind": "actor",
   "renderTier": "baked",
+  "source": "rukiya_walking_optimized.glb (glTF-Transform glTF-Transform v4.5.1)",
+  "method": "skinned-skeleton-sample(clip=Walking, 33 frames) -> ortho-software-raster@512 -> 32px box-downscale -> 6x4-ramp palettes + 2x2 Bayer dither + baked 135deg key/rim -> 1px outline",
+  "clip": "Walking",
   "native": {
     "w": 32,
     "h": 32
@@ -37,91 +40,6 @@
     "m": "#3d231e",
     "n": "#5f3529",
     "o": "#8c4e37"
-  },
-  "animations": {
-    "idle": {
-      "down": [
-        "idle_down"
-      ],
-      "up": [
-        "idle_up"
-      ],
-      "side": [
-        "idle_side"
-      ],
-      "frameMs": null,
-      "advanceOn": "timer"
-    },
-    "walk": {
-      "down": [
-        "walk_down_0",
-        "walk_down_1"
-      ],
-      "up": [
-        "walk_up_0",
-        "walk_up_1"
-      ],
-      "side": [
-        "walk_side_0",
-        "walk_side_1"
-      ],
-      "frameMs": null,
-      "advanceOn": "step"
-    },
-    "attack": {
-      "down": [
-        "attack_down_0",
-        "attack_down_1",
-        "attack_down_2"
-      ],
-      "up": [
-        "attack_up_0",
-        "attack_up_1",
-        "attack_up_2"
-      ],
-      "side": [
-        "attack_side_0",
-        "attack_side_1",
-        "attack_side_2"
-      ],
-      "frameMs": 90,
-      "advanceOn": "timer"
-    },
-    "hit": {
-      "down": [
-        "hit_down"
-      ],
-      "up": [
-        "hit_up"
-      ],
-      "side": [
-        "hit_side"
-      ],
-      "frameMs": 120,
-      "advanceOn": "timer"
-    },
-    "death": {
-      "down": [
-        "death_0",
-        "death_1",
-        "death_2",
-        "death_3"
-      ],
-      "up": [
-        "death_0",
-        "death_1",
-        "death_2",
-        "death_3"
-      ],
-      "side": [
-        "death_0",
-        "death_1",
-        "death_2",
-        "death_3"
-      ],
-      "frameMs": 120,
-      "advanceOn": "timer"
-    }
   },
   "frames": {
     "idle_down": [

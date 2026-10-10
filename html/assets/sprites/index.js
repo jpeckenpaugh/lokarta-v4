@@ -33,8 +33,8 @@ import npcVillagerMOdon from './npc/npc_villager_m_odon.json' with { type: 'json
 import npcVillagerFLena from './npc/npc_villager_f_lena.json' with { type: 'json' };
 import buildingFishingHut from './buildings/fishing_hut.json' with { type: 'json' };
 import buildingFishingHutBack from './buildings/fishing_hut_back.json' with { type: 'json' };
-import buildingFishingHutSide from './buildings/fishing_hut_side.json' with { type: 'json' };
-import buildingFishingHutSideAlt from './buildings/fishing_hut_side_alt.json' with { type: 'json' };
+import buildingFishingHutRight from './buildings/fishing_hut_right.json' with { type: 'json' };
+import buildingFishingHutLeft from './buildings/fishing_hut_left.json' with { type: 'json' };
 import buildingFishingHutLarge from './buildings/fishing_hut_large.json' with { type: 'json' };
 
 export const SPRITE_MANIFEST = manifest;
@@ -73,7 +73,7 @@ export { PROP_CATALOG, PROP_MANIFEST, PROP_IDS_BY_TIER, PROP_IDS_BY_KIND } from 
 export const BUILDING_CATALOG = {
   fishing_hut: buildingFishingHut,
   fishing_hut_back: buildingFishingHutBack,
-  fishing_hut_side: buildingFishingHutSide,
-  fishing_hut_side_alt: buildingFishingHutSideAlt,
+  fishing_hut_right: buildingFishingHutRight,
+  fishing_hut_left: buildingFishingHutLeft,
   fishing_hut_large: buildingFishingHutLarge,
 };

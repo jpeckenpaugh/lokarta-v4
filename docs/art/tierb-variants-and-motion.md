@@ -20,29 +20,35 @@ Adding/placing a building is therefore a catalog entry: an `id`/`name`, a
 
 ---
 
-## 2. Multiple hut views & sizes from the one GLB
+## 2. Multiple hut views & sizes from the one GLB (LIV-111 orientation pass)
 
-The board's point: one front-facing 2×3 hut is not enough variety. The same
-`fisherman_hut_optimized.glb` is now baked at several **camera azimuths** and
-**tile sizes** with the existing pipeline
-(`tools/gltf-to-sprite.mjs --tier baked --views <az> --tiles <WxH>`):
+The same `fisherman_hut_optimized.glb` is baked at several **camera azimuths**
+and **tile sizes** with `tools/gltf-to-sprite.mjs --tier baked --views <az>
+--tiles <WxH> --rise <deg>`. The board's orientation rule is applied by azimuth
+and the near-symmetric hull is made **visibly distinct through differing camera
+elevation (`--rise`)**:
 
-| Silhouette key | View | Tiles (native px) | Notes |
-| :--- | :--- | :--- | :--- |
-| `fishing_hut` | front (az 0) | 2×3 (64×96) | the Phase 1 bake |
-| `fishing_hut_back` | back (az 180) | 2×3 (64×96) | windowed rear |
-| `fishing_hut_side` | side (az 90) | 3×3 (96×96) | wider profile |
-| `fishing_hut_side_alt` | side (az 270) | 3×3 (96×96) | the mirrored other side |
-| `fishing_hut_large` | front (az 0) | 3×4 (96×128) | bigger variant |
+| Catalog key | Facing | View (az) | Tiles (native px) | `--rise` | Notes |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `fishing_hut` | forward | 0 | 2×3 (64×96) | 10 | the Phase 1 front bake (door + ladder) |
+| `fishing_hut_large` | forward | 0 | 3×4 (96×128) | 14 | bigger front landmark |
+| `fishing_hut_right` | right-facing | 90 | 3×3 (96×96) | 6 | low-angle side, faces the road |
+| `fishing_hut_left` | left-facing | 270 | 3×3 (96×96) | 26 | steep side, faces the road |
+| `fishing_hut_back` | backward | 180 | 2×3 (64×96) | 18 | windowed rear |
 
-Runtime defs live in `html/assets/sprites/buildings/*.json` (registered in
-`BUILDING_CATALOG`); authoring artifacts in `docs/art/3d-poc/variants/`. The
-shared `spriteBuilding` renderer picks the frame from the def's
-`placement.defaultFrame`, and **any key backed by a `BUILDING_CATALOG` sprite
-auto-dispatches** — adding a new view is a catalog entry plus a file, never a
-per-building JS branch.
+Each def sets `placement.defaultFrame` to its single baked `view_<az>`, so the
+shared `spriteBuilding` renderer picks the right orientation **with no
+per-building JS branch**. Runtime defs live in
+`html/assets/sprites/buildings/*.json` (registered in `BUILDING_CATALOG`);
+authoring artifacts in `docs/art/3d-poc/variants/`.
 
-Havenreach now shows a mix: front, large, side, side-alt and back huts.
+**Havenreach placement (board rule):** 3 forward huts across the top row, a
+**right-facing** hut on the left side and a **left-facing** hut on the right side
+(each facing the central road), and 1–2 **backward-facing** huts along the bottom
+as artwork. See `html/data/towns.json` `buildings[]`. Proofs:
+`docs/art/3d-poc/phase3/hut_variants.png`, `phase3/town_before.png` vs
+`phase3/town_havenreach.png` (rendered through the engine path by
+`tools/render-town-preview.mjs` / `tools/render-phase3-proof.mjs`).
 
 **To add more variety** (e.g. more sizes), re-run the pipeline:
 
@@ -52,49 +58,42 @@ node tools/gltf-to-sprite.mjs "$GLB" --id hut_x --out docs/art/3d-poc/variants \
   --tiles 4x5 --kind building --tier baked --views 0 --rise 8
 ```
 
-Note: the hull is roughly symmetric, so the side views read close to the front;
-the back view and the large variant are the visually strongest differentiators.
+**Which read best:** the **large front** (`fishing_hut_large`, 3×4) is the
+strongest landmark, and the **steep left-facing** side (`--rise 26`) is the most
+distinct of the two sides — a low `--rise` side and the front read closest to one
+another, which is expected for a symmetric hull.
 
 ---
 
-## 3. Archer movement — no skeleton in the GLB; cheap motion shipped
+## 3. Archer movement — baked from the genuinely-rigged mesh (LIV-111)
 
-**Does the 3D model support a skeleton/joints?** No. Verified on
-`rukiya_optimized.glb`: **1 node, 0 skins, 0 joint attributes, 0 animations** — it
-is a single static posed mesh. There is nothing to drive limb motion from.
+`rukiya_walking_optimized.glb` **is rigged** (`SmartRigArmature`, 42 joints,
+`skin 0`, one `Walking` clip, `JOINTS_0/1/2` + `WEIGHTS_0/1/2` — up to 12
+influences/vertex). `tools/gltf-to-sprite.mjs` now consumes a **skinned GLB +
+animation clip**: it samples the skeleton per frame, builds the joint matrices
+(`world[joint] · inverseBind`), linear-blend-skins every vertex + normal, and
+renders each pose through one **fixed projection** (the union bbox across all
+frames) so the animation never jitters.
 
-**What was implemented (cheap, seam-preserving, no rig):** `tools/integrate-actor-bake.mjs`
-now synthesises walk/attack frames from the baked pose with two transforms that
-cannot tear the silhouette:
+`tools/bake-rigged-archer.mjs` bakes the runtime frame ids directly from that
+clip at chosen phases, and `tools/integrate-actor-bake.mjs` reads the committed
+artifact (`docs/art/3d-poc/rukiya_archer_rigged.sprite.json`) to assemble
+`html/assets/sprites/vocations/archer.json` — so the T0 suite stays GLB-free in
+CI.
 
-- **Walk** — a *leg shear*: rows below the hip shift progressively (feet swing)
-  while the hips stay connected, plus a 1px vertical bob on the alternate frame.
-- **Attack** — an *upper-body lean*: a wind-up (−1px), a release (+2px toward the
-  target) and a settle, so the draw/release reads across the 3 attack frames.
+- **Walk** — two stride-extreme phases (t≈0.26 / 0.781) per facing (down az 0,
+  up az 180, side az 90; the runtime mirrors `side` for the opposite direction).
+- **Idle** — a neutral walk phase (t=0).
+- **Attack** — a **posed** draw → fire → settle sequence (bow arm raised, string
+  drawn, then released), built by offsetting the rig's own arm/forearm bind
+  rotations; only the `Walking` clip exists, so this is posed, not a bespoke clip.
+- **Hit / death** — posed recoil + a progressive collapse (lean + hips drop).
 
-These run at authoring time and bake into the committed frames; the runtime
-re-applies the outline per frame, so sheared edges stay clean. Motion is locked by
-tests (walk frames differ frame-to-frame; attack frames differ; geometry stays
-32×32).
+**Honest limits:** attack/hit/death are *derived from* the walk rig, so they do
+not articulate as cleanly as purpose-authored clips; the real fix is a dedicated
+`idle/walk/attack/hit/death` clip set. Motion is locked by
+`html/tests/liv111-rig-and-orientation.test.mjs` (walk/idle/attack frames are
+distinct; facings differ; 25-frame runtime contract holds). Proof:
+`docs/art/3d-poc/phase3/archer_rig.png`; the live archer renders it in Havenreach
+via **New Game → Archer**.
 
-**Honest limits:** this fakes motion from a single pose — it does not articulate
-joints and will not match a hand-animated walk. It is a stopgap.
-
-### Options to do better (advice)
-
-| Option | Effort | Result |
-| :--- | :--- | :--- |
-| **Cut-out puppet** (segment head/torso/arms/legs from the baked sprite, offset per frame) | M | Real limb swings from the same 2D art; needs per-view masks, risks seams. |
-| **Re-skin the existing Tier A animation** (apply the baked palette/shading to the archer's existing walk/attack poses) | S | Correct poses immediately, but the silhouette becomes the Tier A archer, not the GLB. |
-| **Rig the mesh** and re-bake per animation frame (the proper fix) | L | True animated bake; the only path to the real 16-bit-DKC read. |
-| **meshy.ai Auto-Rig** on the mesh | blocked | meshy is not available in this workspace. |
-
-### Net-new-mesh requirement for a truly animated archer
-
-To replace the stopgap with a real walk/fire cycle, the board would need a
-**rigged** rukiya mesh: same GLB spec as
-[tierb-phase2-method.md §5](tierb-phase2-method.md), **plus** a humanoid skeleton
-(hips/spine/head + arms/legs), and **baked animation clips** — at minimum
-`idle` (2), `walk` (4–6), `attack` (3), `hit` (1), `death` (4). Render each clip's
-key frames through `tools/gltf-to-sprite.mjs --tier baked` and map them onto the
-existing `animations` table. Static props/buildings need no rig.

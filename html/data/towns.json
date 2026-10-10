@@ -73,70 +73,81 @@
       ],
       "buildings": [
         {
-          "id": "merchant_stall",
+          "id": "top_forward_hut_west",
           "name": "Fish Market",
           "footprint": [
-            4,
-            4,
-            5,
-            6
+            2,
+            2,
+            3,
+            4
           ],
           "silhouette": "fishing_hut"
         },
         {
-          "id": "temple_of_the_dawn",
+          "id": "top_forward_hut_center",
           "name": "The Tidehall",
           "footprint": [
-            10,
-            3,
-            12,
-            6
+            9,
+            1,
+            11,
+            4
           ],
           "silhouette": "fishing_hut_large"
         },
         {
-          "id": "elders_hall",
+          "id": "top_forward_hut_east",
           "name": "The Longhouse",
           "footprint": [
-            17,
-            4,
             19,
-            6
+            2,
+            20,
+            4
           ],
-          "silhouette": "fishing_hut_side"
+          "silhouette": "fishing_hut"
         },
         {
-          "id": "beaconwrights_workshop",
+          "id": "left_right_facing_hut",
+          "name": "Watchtower",
+          "footprint": [
+            1,
+            9,
+            3,
+            11
+          ],
+          "silhouette": "fishing_hut_right"
+        },
+        {
+          "id": "right_left_facing_hut",
           "name": "Boatwright's Shed",
           "footprint": [
-            18,
+            20,
             9,
-            19,
+            22,
             11
+          ],
+          "silhouette": "fishing_hut_left"
+        },
+        {
+          "id": "bottom_back_hut_west",
+          "name": "Old Net Shed",
+          "footprint": [
+            2,
+            16,
+            3,
+            18
           ],
           "silhouette": "fishing_hut_back"
         },
         {
-          "id": "tidewatch_barracks",
-          "name": "Watchtower",
+          "id": "bottom_back_hut_east",
+          "name": "Driftwood Shack",
           "footprint": [
-            3,
-            9,
-            5,
-            11
+            20,
+            16,
+            21,
+            18
           ],
-          "silhouette": "fishing_hut_side_alt"
-        },
-        {
-          "id": "wayfarers_rest",
-          "name": "The Wayfarer's Rest",
-          "footprint": [
-            18,
-            15,
-            19,
-            17
-          ],
-          "silhouette": "fishing_hut"
+          "silhouette": "fishing_hut_back"
         }
       ],
       "props": [
@@ -177,8 +188,8 @@
         },
         {
           "propId": "prop_smoke_plume",
-          "x": 20,
-          "y": 9
+          "x": 21,
+          "y": 8
         },
         {
           "propId": "prop_net",
