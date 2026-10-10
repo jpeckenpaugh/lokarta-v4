@@ -10,7 +10,7 @@ import { NPCS_CATALOG, DIALOGUES_CATALOG } from '../data/index.js';
 const EXPRESSIONS = ['neutral', 'warm', 'urgent'];
 
 test('LIV-81 NPC identity surfaces', async (t) => {
-  await t.test('every NPC declares a unique own-sprite id and keeps the tint fallbacks', () => {
+  await t.test('every NPC declares a unique own-sprite id and keeps the identity fallbacks', () => {
     const spriteIds = new Set();
     for (const npc of NPCS_CATALOG.npcs) {
       assert.equal(typeof npc.npcSpriteId, 'string', `${npc.id} must declare npcSpriteId`);
@@ -20,7 +20,8 @@ test('LIV-81 NPC identity surfaces', async (t) => {
       spriteIds.add(npc.npcSpriteId);
       // Migration fallbacks must remain until every sprite/portrait lands.
       assert.ok(npc.spriteId, `${npc.id} must keep spriteId as the migration fallback`);
-      assert.ok(npc.renderTheme, `${npc.id} must keep renderTheme as the migration fallback`);
+      // LIV-144: tinting is not a valid way to diversify town NPCs, so
+      // `renderTheme` is no longer a required fallback (inert if still present).
       assert.ok(npc.svgCode && npc.portraitEmoji, `${npc.id} must keep the emoji fallback`);
     }
   });
