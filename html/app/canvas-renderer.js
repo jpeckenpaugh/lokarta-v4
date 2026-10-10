@@ -609,15 +609,22 @@ export class CanvasRenderer {
       this.renderLightMask(ctx, gridMap, player, ambientLights, width, height, projectiles);
     }
 
-    // 4. Transient death effects (actors playing their collapse animation)
+    // 4. Transient death effects (actors playing their collapse animation).
+    //    LIV-140: an opponent with no authored death frames passes a procedural
+    //    squish progress (0..1 over `totalMs`) so the existing artwork flattens
+    //    toward the ground at draw time instead of snapping out.
     for (const fx of deathEffects) {
       if (!fx) continue;
+      const total = Number(fx.totalMs) || 0;
+      const squish = fx.procedural && total > 0
+        ? Math.max(0, Math.min(1, (fx.anim?.elapsedMs || 0) / total))
+        : undefined;
       SpriteRenderer.drawActor(
         ctx,
         { spriteId: fx.spriteId, vocation: fx.vocation, type: fx.type, facing: fx.facing || 'down', anim: fx.anim },
         fx.x * CONFIG.GRID_SIZE - this.cameraX,
         fx.y * CONFIG.GRID_SIZE - this.cameraY,
-        { size: CONFIG.GRID_SIZE }
+        { size: CONFIG.GRID_SIZE, squish }
       );
     }
 

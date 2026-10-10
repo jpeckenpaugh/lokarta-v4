@@ -121,3 +121,26 @@ export function resolveFrameIndex(anim, length) {
   if (!length) return 0;
   return ((anim.frame % length) + length) % length;
 }
+
+/**
+ * Pure procedural-squish transform (LIV-140). Maps a defeat progress (0..1) to
+ * the draw-time scale applied to an opponent that lacks authored death frames:
+ * the height compresses toward the ground point while the width widens slightly,
+ * so the sprite reads as flattening/squashing down. `style` is the resolved
+ * `PROCEDURAL_SQUISH` catalog block; every field is guarded so a partial catalog
+ * still yields a valid transform. Allocation-free and unit-testable with no
+ * canvas: returns `{ scaleX, scaleY }`.
+ */
+export function squishScaleFor(progress, style = {}) {
+  const p = Number.isFinite(Number(progress)) ? Math.max(0, Math.min(1, Number(progress))) : 0;
+  const num = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d);
+  const squashY = num(style.squashY, 0.92);
+  const widenX = num(style.widenX, 0.12);
+  const minScaleY = Math.min(1, Math.max(0.01, num(style.minScaleY, 0.08)));
+  // Smoothstep so the squash eases in and settles flat rather than moving linear.
+  const ease = p * p * (3 - 2 * p);
+  return {
+    scaleX: 1 + widenX * ease,
+    scaleY: Math.max(minScaleY, 1 - squashY * ease),
+  };
+}

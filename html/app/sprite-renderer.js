@@ -11,9 +11,9 @@
  */
 
 import { CONFIG, TILE_TYPES } from '../engine/index.js';
-import { TILE_THEMES_CATALOG, VOCATIONS_CATALOG, CHESTS_CATALOG, MONSTERS_CATALOG, DEFAULT_TOWER_ID, getTowerDefinition } from '../data/index.js';
+import { TILE_THEMES_CATALOG, VOCATIONS_CATALOG, CHESTS_CATALOG, MONSTERS_CATALOG, DEFAULT_TOWER_ID, getTowerDefinition, PROCEDURAL_SQUISH } from '../data/index.js';
 import { SPRITE_CATALOG, PROP_CATALOG, PROP_IDS_BY_TIER } from '../assets/sprites/index.js';
-import { dirFromFacing, resolveFrameIndex } from './animation-state.js';
+import { dirFromFacing, resolveFrameIndex, squishScaleFor } from './animation-state.js';
 
 // Minimal hairline guard so 1px strokes stay visible even if GRID_SIZE shrinks.
 const HAIRLINE = (u) => Math.max(1, u);
@@ -1519,6 +1519,20 @@ export class SpriteRenderer {
         ctx.drawImage(shadow, drawX + offX, drawY + offY);
         ctx.globalAlpha = spriteAlpha;
       }
+    }
+
+    // LIV-140 procedural defeat squish: flatten the drawn frame toward its ground
+    // point (bottom-centre of the sprite box) at draw time — never a re-bake. The
+    // transform composes into the outer save/restore, so the caller's ctx is
+    // untouched. Under reduced motion the squish snaps to its fully-flat pose
+    // (a static defeated silhouette) rather than animating.
+    if (Number.isFinite(Number(opts.squish)) && PROCEDURAL_SQUISH.enabled) {
+      const { scaleX, scaleY } = squishScaleFor(reduced ? 1 : opts.squish, PROCEDURAL_SQUISH);
+      const pivotX = drawX + nw / 2;
+      const pivotY = drawY + nh;
+      ctx.translate(pivotX, pivotY);
+      ctx.scale(scaleX, scaleY);
+      ctx.translate(-pivotX, -pivotY);
     }
 
     const canvas = getFrameCanvas(def, frameId, scale, flip, tint);

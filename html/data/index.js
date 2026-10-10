@@ -19,6 +19,7 @@ import keybindingsData from './keybindings.json' with { type: 'json' };
 import uiData from './ui.json' with { type: 'json' };
 import economyData from './economy.json' with { type: 'json' };
 import movementData from './movement.json' with { type: 'json' };
+import deathEffectsData from './death_effects.json' with { type: 'json' };
 import partyAiData from './party_ai.json' with { type: 'json' };
 import islandsData from './islands.json' with { type: 'json' };
 import townsData from './towns.json' with { type: 'json' };
@@ -187,6 +188,24 @@ export const UI_CATALOG = uiData;
 export const ECONOMY_CATALOG = economyData;
 export const MOVEMENT_CATALOG = movementData;
 export const PARTY_AI_CATALOG = partyAiData;
+export const DEATH_EFFECTS_CATALOG = deathEffectsData;
+
+/**
+ * Resolved procedural-squish style (LIV-140). Opponents without authored death
+ * frames flatten toward their ground point over the death effect's `totalMs`;
+ * this is a draw-time transform of the existing artwork, never a re-bake. Every
+ * field falls back so a partial/absent catalog can never break a defeat.
+ */
+export const PROCEDURAL_SQUISH = (() => {
+  const s = deathEffectsData?.proceduralSquish || {};
+  const num = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d);
+  return {
+    enabled: s.enabled !== false,
+    squashY: num(s.squashY, 0.92),
+    widenX: num(s.widenX, 0.12),
+    minScaleY: num(s.minScaleY, 0.08),
+  };
+})();
 
 /**
  * Scene registries (LIV-59 P0). Islands and towns are catalog-authored compact

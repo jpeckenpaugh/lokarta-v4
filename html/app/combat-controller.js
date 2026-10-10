@@ -506,10 +506,15 @@ export const combatControllerMethods = {
     const deathFrames = spriteDef?.animations?.death?.down?.length;
     const frames = deathFrames || (actor.isBoss ? 6 : 4);
     const facing = actor.facing || 'down';
+    // LIV-140: an opponent without authored death frames (the 3D-baked creature
+    // class) plays a runtime-only procedural squish instead of a no-op snap. The
+    // eligibility is derived from the sprite def alone — no type/name heuristics.
+    const procedural = !deathFrames;
     this.deathEffects.push({
       spriteId: actor.type || actor.vocation || actor.spriteId,
       type: actor.type,
       vocation: actor.vocation,
+      procedural,
       facing,
       x: actor.x,
       y: actor.y,

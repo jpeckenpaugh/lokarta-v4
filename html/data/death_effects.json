@@ -1,0 +1,9 @@
+{
+  "_comment": "LIV-140 procedural defeat presentation. Opponents with no authored `animations.death` frames (the 3D-baked creature class) play a runtime-only 'squish' instead of a no-op snap: the drawn frame is flattened toward its ground point and widened slightly over the death effect's `totalMs`. `squashY` is the fraction of height removed at full squash (1 = pancake), `widenX` the fractional width gained, `minScaleY` the hard floor so a fully squashed frame still reads as a body. No sprites are re-rendered or baked; this is a draw-time transform of the existing artwork. Authored death animations are untouched.",
+  "proceduralSquish": {
+    "enabled": true,
+    "squashY": 0.92,
+    "widenX": 0.12,
+    "minScaleY": 0.08
+  }
+}
