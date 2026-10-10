@@ -43,8 +43,8 @@ export const PROP_RISE = 60;
 export const PROP_SPECS = [
   { id: 'prop_wooden_barrel', glb: 'wooden_barrel_optimized.glb', size: 64, views: [0], kind: 'prop', renderRes: 512 },
   { id: 'prop_rock_pile', glb: 'rock_pile_optimized.glb', tiles: { w: 2, h: 2 }, views: [0, 90, 180, 270], kind: 'prop', renderRes: 768, margin: 4 },
-  { id: 'prop_palm_tree', glb: 'palm_tree_optimized.glb', tiles: { w: 1, h: 2 }, views: [0, 90, 180, 270], kind: 'prop', renderRes: 768 },
-  { id: 'prop_palm_tree_large', glb: 'palm_tree_optimized.glb', tiles: { w: 2, h: 3 }, views: [0, 90, 180, 270], kind: 'prop', renderRes: 1024 },
+  { id: 'prop_palm_tree', glb: 'palm_tree_optimized.glb', tiles: { w: 1, h: 2 }, views: [0, 45, 135, 225], kind: 'prop', renderRes: 768 },
+  { id: 'prop_palm_tree_large', glb: 'palm_tree_optimized.glb', tiles: { w: 2, h: 3 }, views: [0, 45, 135, 225], kind: 'prop', renderRes: 1024 },
   { id: 'prop_wooden_dock', glb: 'wooden_dock_optimized.glb', tiles: { w: 3, h: 3 }, views: [0], yaw: 90, kind: 'decor', renderRes: 768 },
 ];
 

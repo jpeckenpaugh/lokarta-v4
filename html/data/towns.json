@@ -282,14 +282,14 @@
           "x": 22,
           "y": 18,
           "layer": "prop",
-          "frame": "view_180"
+          "frame": "view_225"
         },
         {
           "propId": "prop_palm_tree_large",
           "x": 20,
           "y": 16,
           "layer": "prop",
-          "frame": "view_90"
+          "frame": "view_135"
         },
         {
           "propId": "prop_rock_pile",

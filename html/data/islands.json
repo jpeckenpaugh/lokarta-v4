@@ -84,8 +84,8 @@
           "tile": "TREE",
           "layer": "decor",
           "variants": [
-            { "propId": "prop_palm_tree", "weight": 4, "frames": ["view_0", "view_90", "view_180", "view_270"] },
-            { "propId": "prop_palm_tree_large", "weight": 2, "frames": ["view_0", "view_90", "view_180", "view_270"] },
+            { "propId": "prop_palm_tree", "weight": 4, "frames": ["view_0", "view_45", "view_135", "view_225"] },
+            { "propId": "prop_palm_tree_large", "weight": 2, "frames": ["view_0", "view_45", "view_135", "view_225"] },
             { "propId": "prop_rock_pile", "weight": 2, "frames": ["view_0", "view_90", "view_180", "view_270"] }
           ]
         }

@@ -24,7 +24,10 @@ import { SpriteRenderer, sceneTheme } from '../app/sprite-renderer.js';
 //   4. Dawnreach Isle's 2D TREE tiles -> 3D palm/rock props at varied sizes/angles
 //      WITHOUT touching the tile walkability/collision contract.
 
-const VIEWS = ['view_0', 'view_90', 'view_180', 'view_270'];
+// Palms author four non-edge-on azimuths (90/270 render edge-on as slivers);
+// rocks keep the four cardinal views.
+const PALM_VIEWS = ['view_0', 'view_45', 'view_135', 'view_225'];
+const ROCK_VIEWS = ['view_0', 'view_90', 'view_180', 'view_270'];
 
 /** Content bbox (non-transparent) of a frame. */
 function bbox(rows) {
@@ -68,7 +71,7 @@ test('LIV-137 decor refinement', async (t) => {
       assert.equal(nativePerTile(def), 64, `${id} is 64 px/tile`);
       assert.deepEqual(def.native, { w: tiles.w * 64, h: tiles.h * 64 }, `${id} native == tiles*64`);
       assert.equal(def.camera.rise, 60, `${id} at the 60° prop baseline`);
-      for (const v of VIEWS) assert.ok(def.frames[v], `${id} has ${v}`);
+      for (const v of PALM_VIEWS) assert.ok(def.frames[v], `${id} has ${v}`);
       assert.ok(def.frames.idle, `${id} aliases a default idle frame`);
       assert.ok(Object.keys(def.palette).length <= paletteCapFor(def), `${id} palette cap`);
       assert.deepEqual(validateSpriteDef(def, { label: id }).errors, [], id);
@@ -82,10 +85,10 @@ test('LIV-137 decor refinement', async (t) => {
     assert.deepEqual(def.tiles, { w: 2, h: 2 }, 'rock pile is 2x2');
     assert.deepEqual(def.native, { w: 128, h: 128 }, 'native 128x128');
     assert.equal(nativePerTile(def), 64, 'N64');
-    for (const v of VIEWS) assert.ok(def.frames[v], `rock ${v}`);
+    for (const v of ROCK_VIEWS) assert.ok(def.frames[v], `rock ${v}`);
     // "Zoom to fit": every frame's silhouette sits inside the canvas with a real
     // margin on all four edges (the whole pile fits, nothing is clipped).
-    for (const v of VIEWS) {
+    for (const v of ROCK_VIEWS) {
       const b = bbox(def.frames[v]);
       assert.ok(b.minx >= 2 && b.miny >= 2, `${v} top/left margin (${b.minx},${b.miny})`);
       assert.ok(b.maxx <= def.native.w - 3 && b.maxy <= def.native.h - 3, `${v} bottom/right margin`);

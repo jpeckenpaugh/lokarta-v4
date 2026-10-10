@@ -47,7 +47,7 @@ function tileBaseColor(code, theme) {
     case TILE_TYPES.FLOOR: return t.PATH?.fill || '#8a7250';
     case TILE_TYPES.BRIDGE: return t.BRIDGE?.plank || '#7a5a34';
     case TILE_TYPES.DOCK: return t.DOCK?.plank || '#8a6a42';
-    case TILE_TYPES.TREE: return t.TREE?.canopy || '#284a24';
+    case TILE_TYPES.TREE: return t.TREE?.art === 'prop' ? (t.GRASS?.fill || '#33552b') : (t.TREE?.canopy || '#284a24');
     case TILE_TYPES.WALL: return t.BUILDING_WALL?.shade || '#5a4a37';
     case TILE_TYPES.BUILDING_WALL: return t.BUILDING_WALL?.fill || '#7d6b52';
     case TILE_TYPES.DOOR: return t.DOORWAY?.fill || '#5a3a1e';
