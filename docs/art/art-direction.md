@@ -4,12 +4,61 @@ Authoritative 16-bit SNES-inspired pixel art direction and rendering contract fo
 
 ---
 
-## 1. Resolution & Coordinate Space
+## 1. Resolution, Coordinate Space & Tile Footprint
 
-* **Native Sprite Canvas:** $32 \times 32\text{ px}$ for actors, player vocations, regular monsters, props, and tiles.
-* **Boss Canvas:** $48 \times 48\text{ px}$ for The Spire Warden (`abyssal_overlord`), bottom-aligned with horizontal centering.
-* **Display Tile Grid:** Scaled by integer scaling factor `SCALE = CONFIG.GRID_SIZE / 32` ($\times 2$ at $64\text{ px}$ tiles).
-* **Rendering Style:** `image-rendering: pixelated; crisp-edges`. No anti-aliasing or sub-pixel coordinate offsets.
+* **Atomic tile $= 32\times32$ native px.** **ONE $32\times32$ canvas is exactly
+  ONE tile.** Everything is authored, placed, and collision-tested on this single
+  tile grid; there is no sub-tile sprite grid. A scene element is therefore
+  always a *whole number of tiles* on each axis — never squished to fit one tile.
+* **Single-tile canvases ($1\times1$ tile):** the $32\times32\text{ px}$ canvas is
+  mandatory for actors, player vocations, regular monsters, NPCs, single-tile
+  props, and tiles. These never exceed one tile.
+* **Boss canvas ($1\times1$ tile + overhang):** $48\times48\text{ px}$ for The
+  Spire Warden (`abyssal_overlord`), rendered bottom-aligned with horizontal
+  centering. $48$ is not a tile multiple, so the boss is a *single-tile entity*
+  whose canvas overhangs its cell by $8\text{ px}$ per horizontal side (and $16$
+  at top). It occupies **one** tile for collision/occupancy — it is **not** a
+  multi-tile sprite. A boss canvas larger than $48\times48$ (e.g. $64\times64$)
+  requires an engine occupancy change and is deferred to the Tech Lead.
+* **Multi-tile scene objects ($W\times H$ tiles):** signature props/landmarks
+  (fishing hut, Longhouse, boat) and town buildings use $32W\times32H$ native px.
+  Allowed footprints: $W, H \in \{1,2,3,4\}$ (non-square allowed), i.e. canvases
+  from $32\times32$ up to $128\times128$ native px. A $128\times64$ hut is
+  $4\times2$ tiles; a $96\times96$ landmark is $3\times3$.
+* **Tile-grid alignment.** A multi-tile piece's top-left origin is snapped to an
+  integer tile $(x_0, y_0)$; its canvas covers exactly the inclusive tile rect
+  $[x_0, y_0] \ldots [x_0{+}W{-}1, y_0{+}H{-}1]$ — the engine's existing
+  `footprint:[x0,y0,x1,y1]` form consumed by `renderBuildingSilhouettes`
+  (`html/app/canvas-renderer.js`). No partial-tile offsets, no fractional
+  placement.
+* **Native vs. display scaling.** Display tile $=$ `CONFIG.GRID_SIZE = 64\text{ px}`,
+  `SCALE = CONFIG.GRID_SIZE / 32 = \times2`. A piece scales by the *same* integer
+  `SCALE` across its whole canvas in one blit, so a $W\times H$ native canvas
+  displays at $(64W)\times(64H)\text{ px}$ covering exactly $W\times H$ display
+  tiles. No per-tile scaling and no squish-to-one-tile.
+* **"Chopping."** Multi-tile assets are authored/rendered at full multi-tile
+  native resolution, then decomposed against the $32\text{ px}$ tile grid —
+  either sliced into $32\times32$ tile chunks or stored as one $W\times H$
+  char-grid bitmap blitted into its footprint. **Placement rides the existing
+  building footprint + `BUILDING_SILHOUETTE_RENDERERS` dispatch — not a new
+  sprite path.** The exact blit-vs-slice binding and the asset JSON field names
+  are [LIV-106](/LIV/issues/LIV-106)'s (Tech Lead).
+* **Rendering Style:** `image-rendering: pixelated; crisp-edges`. No
+  anti-aliasing or sub-pixel coordinate offsets.
+
+### 1.1 Multi-tile eligibility by asset class
+
+| Class | Tile footprint | Native canvas | Notes |
+| :--- | :--- | :--- | :--- |
+| Tiles | $1\times1$ | $32\times32$ | atomic stage cell |
+| Actor / monster / vocation / NPC | $1\times1$ | $32\times32$ | collision + animation contract |
+| Regular prop (`prop_*`) | $1\times1$ | $32\times32$ | placed per grid cell, walk-over |
+| Boss | $1\times1$ (+overhang) | $48\times48$ | single-tile entity, centered/bottom-aligned |
+| Signature prop / landmark | $W\times H$ | $32W\times32H$ | boat, drying-rack, fishing hut |
+| Town building | $W\times H$ | $32W\times32H$ | occupies its footprint; feeds collision |
+
+Single-tile props stay single-tile. A scene element only becomes multi-tile when
+it is a *building/landmark* that rides the footprint mechanism above.
 
 ---
 

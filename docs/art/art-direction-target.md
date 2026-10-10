@@ -95,7 +95,8 @@ changes**. `renderTier` is metadata for validation and for future authors/tools.
 | **Player vocations (4)** | **B** | On screen 100% of the run — best ROI |
 | **Bosses (4)** | **B** | Emotional peak; DKC-style presence matters most here |
 | **Quest-critical NPCs** | **B** | Dialogue close-ups + identity |
-| **Signature props** (fishing hut/Longhouse, boat) | **B** | The board's own examples; scene anchors |
+| **Signature props** (fishing hut/Longhouse, boat) | **B** | The board's own examples; scene anchors. **Multi-tile** ($32W\times32H$ canvas) per §5.10 — a hut is $4\times2$ tiles, not one. |
+| **Town buildings** | **B** | Multi-tile footprint already exists (`footprint` + silhouettes); bake to $32W\times32H$ canvases. |
 
 ---
 
@@ -129,6 +130,40 @@ changes**. `renderTier` is metadata for validation and for future authors/tools.
 9. **Contrast — unchanged and enforced.** At least one palette entry must clear
    **≥3:1** WCAG vs the floor (luminance ≤0.02). Tier B's rim step is the
    intended carrier and must itself clear it.
+10. **Multi-tile canvases — allowed for scene objects; per-pixel rules
+    unchanged.** Signature props/landmarks and town buildings may use
+    $32W\times32H$ canvases ($W,H\in\{1,2,3,4\}$, up to $128\times128$ native px,
+    non-square allowed) per [art-direction.md §1](art-direction.md). **$32\times32$
+    is one tile**; a $128\times64$ hut is $4\times2$ tiles and is placed
+    grid-aligned — never squished to a single tile. Every rule above (≤32 palette,
+    4-step ramps, dither, 135° key light, outline + inner rim, 3:1 rim) applies
+    **unchanged**; only the canvas is larger. Actors, monsters, vocations, NPCs,
+    regular props, and tiles stay single-tile $32\times32$; the $48\times48$ boss
+    stays a single-tile entity. Placement rides the **existing building
+    footprint + `BUILDING_SILHOUETTE_RENDERERS` dispatch** (`canvas-renderer.js`),
+    not a new path; the blit/slice binding is [LIV-106](/LIV/issues/LIV-106)'s.
+11. **Anchor / origin convention (multi-tile).** The canvas top-left is the
+    tile-grid origin. `anchor` records the **ground-contact point in native px
+    from the top-left**, default **bottom-center** $\{x:16W,\ y:32H\}$ — the
+    existing prop convention (`prop_boat`: `{x:16,y:27}` at $1\times1$). A
+    multi-tile building's anchor must fall inside its footprint rect. Exact field
+    binding on the footprint entry is LIV-106's.
+
+### 5.1 Testable contract (Tier A + Tier B, single- and multi-tile)
+
+* Existing single-tile checks stay untouched: frame geometry = native size
+  (test 2), palette integrity/cap (test 3/28), prop validator (test 15), NPC
+  geometry (test 25), and the committed preview drift tests (10/18/27).
+* **New assertion (Tech Lead, `sprite-assets.test.mjs`):** every multi-tile
+  scene-object asset must satisfy
+  `native.w % 32 === 0 && native.h % 32 === 0`,
+  `native.w ≤ 128 && native.h ≤ 128`, and
+  `(native.w/32) × (native.h/32) === (x1-x0+1) × (y1-y0+1)` for its
+  `footprint:[x0,y0,x1,y1]` — i.e. the canvas is a whole number of tiles and
+  exactly matches its occupancy. Palette cap (tier-aware) and ≥3:1 rim-vs-floor
+  reuse the existing checks, so a richer/bigger Tier B asset still passes.
+* Preview drift stays byte-compare; a re-exported multi-tile preview must be
+  committed.
 
 ---
 
@@ -139,7 +174,8 @@ changes**. `renderTier` is metadata for validation and for future authors/tools.
 | **≥3:1 rim contrast vs floor** | **Kept, reinforced** | Tier B rim step is the carrier; tests scan every palette entry, so a richer palette still passes (best-of). |
 | **`image-rendering: pixelated; crisp-edges`** | **Kept** | No AA/smoothing; dither is on-grid; integer scaling unchanged. |
 | **1px `#0b0d12` outline** | **Kept** | Silhouette legibility over ≤0.02 floors; Tier B only *adds* an inner rim light. |
-| **32×32 native / integer 2×** | **Kept** | Avoids an engine `GRID_SIZE` change (48-native would need 96/144). |
+| **32×32 native / integer 2×** | **Kept** | Avoids an engine `GRID_SIZE` change (48-native would need 96/144). Multi-tile canvases are integer tile multiples, so the same 2× scale holds across the whole piece. |
+| **"Props are 32×32"** | **Clarified** | $32\times32$ = **one tile**. Single-tile `prop_*` unchanged; multi-tile scene objects (buildings/landmarks) use $32W\times32H$ and the existing `footprint` mechanism (art-direction.md §1). |
 | **≤16 palette (Art §2, test 3/28)** | **Amended** | Becomes tier-aware: `renderTier==='baked' ? 32 : 16`. The single thing that changes in the test contract. |
 | **3-direction facing** | **Kept** | No new directions. |
 
@@ -154,9 +190,15 @@ and a naive 32px render would be mush. The bake must end in the same char-grid
 JSON:
 
 ```
-GLB → orthographic render (fixed 135° key) → downscale to 32/48 →
-quantize to ≤32 palette → apply ordered dither → outline pass → char-grid JSON
+GLB → orthographic render (fixed 135° key) →
+  downscale to 32/48 (actors, boss) OR 32W×32H native multi-tile (scene objects) →
+  quantize to ≤32 palette → apply ordered dither → outline pass → char-grid JSON
 ```
+
+**Do not downscale a building/landmark to a single $32\times32$ tile.** A
+$1.9$-tall hut keeps multi-tile native resolution ($128\times64 = 4\times2$ tiles)
+and is placed grid-aligned via its `footprint` (art-direction.md §1, §5.10); the
+blit/slice mechanics are LIV-106's.
 
 Value delivered by the bake is **consistent baked lighting and correct form**,
 not raw detail. This keeps runtime zero-dependency and the drift tests intact.
@@ -171,8 +213,8 @@ Each phase is independently shippable and testable; stop anywhere.
 
 | # | Phase | Work | Cost | Acceptance |
 | :--: | :--- | :--- | :--- | :--- |
-| **0** | Contract | Land this doc; Tech Lead adds tier-aware palette cap + optional ramp assertion | XS | `sprite-assets.test.mjs` green; Tier A untouched |
-| **1** | Board's own examples | Re-author **`archer`** (vocation) + the **fishing hut / Longhouse** prop as Tier B "before/after" proof | S | Preview PNG shows 4-step ramp + rim light; archer palette 16→≤32; drift test green |
+| **0** | Contract | Land this doc; Tech Lead adds tier-aware palette cap + multi-tile footprint assertion | XS | `sprite-assets.test.mjs` green; Tier A untouched |
+| **1** | Board's own examples | Re-author **`archer`** (vocation, $1\times1$) + the **fishing hut / Longhouse** as a Tier B **multi-tile** ($4\times2$ / $W\times H$) scene object "before/after" proof | S | Preview PNG shows 4-step ramp + rim light; hut native = whole tiles matching its footprint; archer palette 16→≤32; drift test green |
 | **2** | Hero class | 4 vocations + 4 bosses → Tier B | M | All boss/vocation previews show baked key light; 3:1 holds |
 | **3** | Animation juice | Tier B heroes idle 2 / walk 4 (test 4/25 update) | S | Frame-count assertions tier-aware; walk reads smoother |
 | **4** | Identity + stage | Quest-critical NPCs → Tier B; raise hero-room prop density | M | NPC previews enriched; `docs/art/preview/` re-exported |
