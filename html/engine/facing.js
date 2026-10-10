@@ -99,6 +99,18 @@ export function basisForDir8(dir) {
 }
 
 /**
+ * The 8-dir bucket from `fromX,fromY` toward `toX,toY` — the pure "turn-to-face"
+ * target resolver shared by dialogue (both parties face each other), attacks
+ * (the attacker faces the fire/target direction), and the AI `getFacing` seam.
+ * Coincident tiles fall back to `down`. Allocation-free.
+ */
+export function facingToward(fromX, fromY, toX, toY) {
+  const dx = (Number(toX) || 0) - (Number(fromX) || 0);
+  const dy = (Number(toY) || 0) - (Number(fromY) || 0);
+  return dir8FromVector(dx, dy);
+}
+
+/**
  * Shortest signed 45-degree arc from `from` to `to`: range [-4, 4], positive
  * clockwise. The exact 180-degree tie always resolves clockwise (+4) so turning
  * is deterministic across platforms.

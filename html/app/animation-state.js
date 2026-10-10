@@ -25,6 +25,7 @@ import {
   turnTowardDir8,
   dirFromFacing,
   flipFromFacing,
+  facingToward,
 } from '../engine/facing.js';
 
 export {
@@ -41,6 +42,7 @@ export {
   turnTowardDir8,
   dirFromFacing,
   flipFromFacing,
+  facingToward,
 };
 
 export const ANIM_STATES = ['idle', 'walk', 'attack', 'hit', 'death'];

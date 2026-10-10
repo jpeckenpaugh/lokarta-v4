@@ -4,7 +4,8 @@
  * Runtime entities for the town/overworld NPCs authored in `html/data/npcs.json`
  * (LIV-58). NPCs are neutral (no combat faction, never targeted by attacks).
  * Their behaviour is a two-entry dispatch table keyed by the catalog `aiType`:
- *   - `stationary` — stands still, turns to face the player when adjacent.
+ *   - `stationary` — holds its tile, turns in place periodically (LIV-149), and
+ *     turns to face the player when adjacent.
  *   - `wander`     — ambles one tile at a time within `wanderRadius` of home.
  *
  * The module is pure: no DOM, no canvas, no storage. The renderer draws each NPC
@@ -16,7 +17,7 @@
 
 import { listNpcDefinitions } from '../data/index.js';
 import { UI_CATALOG } from '../data/index.js';
-import { rotateDir8 } from './facing.js';
+import { rotateDir8, facingToward } from './facing.js';
 
 /** Orthogonal step table (right/left/down/up) — reused, never allocated per step. */
 const STEP_DX = Int8Array.from([1, -1, 0, 0]);
@@ -31,6 +32,13 @@ const WANDER_SKIP_CHANCE = Math.min(0.95, Math.max(0, Number(UI_CATALOG?.island?
 
 /** Chance an idle wanderer turns in place instead of stepping (LIV-147). */
 const NPC_IDLE_TURN_CHANCE = Math.min(0.95, Math.max(0, Number(UI_CATALOG?.island?.npcIdleTurnChance) || 0.35));
+
+/**
+ * Mean seconds between in-place turns for a `stationary` NPC (LIV-149), resolved
+ * from copy (`>= 0.5`). Stationary quest givers never step, but idle-turn so the
+ * town reads as alive.
+ */
+const NPC_STATIONARY_TURN_COOLDOWN_MIN = Math.max(0.5, Number(UI_CATALOG?.island?.npcStationaryTurnCooldownSec) || 3);
 
 /** Builds a runtime NPC entity from a catalog/npc descriptor. */
 export function makeNpcRuntime(def) {
@@ -67,6 +75,9 @@ export function makeNpcRuntime(def) {
     portraitEmoji: def.portraitEmoji || null,
     svgCode: def.svgCode || null,
     _wanderCooldownSec: 0,
+    // LIV-149: stagger the first in-place glance so a row of stationary NPCs
+    // does not turn in lockstep on scene load. The handler reschedules each tick.
+    _idleTurnCooldownSec: Math.random() * NPC_STATIONARY_TURN_COOLDOWN_MIN,
   };
 }
 
@@ -91,13 +102,6 @@ export function npcAt(npcs, x, y) {
     if (npc && npc.blocks && npc.x === x && npc.y === y) return npc;
   }
   return null;
-}
-
-function facingTo(fromX, fromY, toX, toY) {
-  const dx = toX - fromX;
-  const dy = toY - fromY;
-  if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? 'right' : 'left';
-  return dy >= 0 ? 'down' : 'up';
 }
 
 /**
@@ -128,7 +132,23 @@ export function updateNpcs(npcs, gridMap, deltaSec, occupied = null) {
  * A handler returns true when the NPC changed tile.
  */
 export const NEUTRAL_AI_HANDLERS = {
-  stationary: () => false,
+  // LIV-149: a stationary NPC never changes tile, but periodically turns in
+  // place so the three quest givers glance around. Structural rule: turn only;
+  // `npc.x`/`npc.y` are untouched. The adjacent "face the player" behaviour is
+  // applied on interaction lookup in `findInteractableNpc`.
+  stationary: (npc, gridMap, deltaSec) => {
+    npc._idleTurnCooldownSec = (npc._idleTurnCooldownSec || 0) - (Number(deltaSec) || 0);
+    if (npc._idleTurnCooldownSec > 0) return false;
+    // Reschedule a jittered window so turns never synchronize across NPCs.
+    npc._idleTurnCooldownSec = NPC_STATIONARY_TURN_COOLDOWN_MIN * (0.5 + Math.random());
+    if (Math.random() < NPC_IDLE_TURN_CHANCE) {
+      // A 45/90-degree arc (never a 180-degree flip) so `advanceTurn` eases the
+      // change through the intermediate 8-angle frame rather than snapping.
+      const arc = (Math.random() < 0.5 ? -1 : 1) * (Math.random() < 0.5 ? 1 : 2);
+      npc.facing = rotateDir8(npc.facing, arc);
+    }
+    return false;
+  },
   wander: (npc, gridMap, deltaSec, occupied, width) => {
     npc._wanderCooldownSec = (npc._wanderCooldownSec || 0) - deltaSec;
     if (npc._wanderCooldownSec > 0) return false;
@@ -189,7 +209,7 @@ export function findInteractableNpc(npcs, player) {
     || npcAt(npcs, px - 1, py)
     || npcAt(npcs, px, py + 1)
     || npcAt(npcs, px, py - 1);
-  if (npc) npc.facing = facingTo(npc.x, npc.y, px, py);
+  if (npc) npc.facing = facingToward(npc.x, npc.y, px, py);
   return npc;
 }
 

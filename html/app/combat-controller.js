@@ -19,7 +19,7 @@ import { soundFX } from '../audio/index.js';
 import { ITEMS_CATALOG, UI_CATALOG } from '../data/index.js';
 import { SPRITE_CATALOG } from '../assets/sprites/index.js';
 import { TOWER_LEVEL_COUNT } from '../services/floor-generator.js';
-import { setAnimState, dirFromFacing } from './animation-state.js';
+import { setAnimState, dirFromFacing, facingToward } from './animation-state.js';
 import { resolveSpriteId } from './sprite-renderer.js';
 
 /**
@@ -120,6 +120,7 @@ export const combatControllerMethods = {
     const handlers = {
       wand_spark: () => {
         const target = this.getTargetMonster(CONFIG.MAGICIAN_SPARK_RANGE);
+        this.faceAttackerToward(target);
         soundFX.play('wandSpark');
         const res = CombatSystem.executeWandSpark(this.player, target, this.gridMap, item);
         this.handleCombatResult(res, null, null);
@@ -149,6 +150,7 @@ export const combatControllerMethods = {
         const maxRange = CombatSystem.itemRange(bow) || CONFIG.ARCHER_POWER_SHOT_RANGE;
         const target = this.getTargetMonster(maxRange);
         if (!target) return this.logCombat('No enemy in range for Power Shot.', 'warning');
+        this.faceAttackerToward(target);
         soundFX.play('powerShot');
         const res = CombatSystem.executePowerShot(this.player, target, this.gridMap, bow);
         this.handleCombatResult(res, target.x, target.y);
@@ -158,6 +160,7 @@ export const combatControllerMethods = {
         const maxRange = CombatSystem.itemRange(bow) || CONFIG.ARCHER_BOW_RANGE;
         const target = this.getTargetMonster(maxRange);
         if (!target) return this.logCombat('No enemy in range for Bow Shot.', 'warning');
+        this.faceAttackerToward(target);
         soundFX.play('bowShot');
         const res = CombatSystem.executeBowShot(this.player, target, this.gridMap, bow);
         this.handleCombatResult(res, target.x, target.y);
@@ -185,6 +188,7 @@ export const combatControllerMethods = {
       slash: () => {
         soundFX.play('hit');
         const target = this.getTargetMonster(2.5);
+        this.faceAttackerToward(target);
         const res = CombatSystem.executeSlash(this.player, target, this.gridMap, { monsters: this.monsters, item: this.player.paperdoll?.main_hand });
         this.handleCombatResult(res, res.hitX ?? null, res.hitY ?? null);
       },
@@ -301,6 +305,7 @@ export const combatControllerMethods = {
       holy_strike: () => {
         soundFX.play('hit');
         const target = this.getTargetMonster(2.5);
+        this.faceAttackerToward(target);
         const res = CombatSystem.executeHolyStrike(this.player, target, this.gridMap, { monsters: this.monsters, item: this.player.paperdoll?.main_hand });
         this.handleCombatResult(res, res.hitX ?? null, res.hitY ?? null);
       },
@@ -312,6 +317,19 @@ export const combatControllerMethods = {
     }
 
     this.updateHUD();
+  },
+  /**
+   * LIV-149: turn the attacker to face the fire/target direction before an
+   * attack resolves. Sets the logical `facing` (the renderer eases the 8-angle
+   * frame via `advanceTurn`). Data-driven callers: any handler that resolved a
+   * target passes it here; a null/missing target is a no-op.
+   */
+  faceAttackerToward(target) {
+    if (!this.player || !target) return;
+    const tx = target.x;
+    const ty = target.y;
+    if (!Number.isFinite(tx) || !Number.isFinite(ty)) return;
+    this.player.facing = facingToward(this.player.x, this.player.y, tx, ty);
   },
   getTargetMonster(maxRange) {
     const bonusRng = this.player.skillBoosts?.bonusRange || 0;

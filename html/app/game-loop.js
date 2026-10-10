@@ -293,6 +293,12 @@ export const gameLoopMethods = {
         for (const spawn of res.spawns) this.monsters.push(spawn);
       }
       if (res.sourceMonster && (res.dodged || (res.damageToPlayer && res.damageToPlayer > 0) || (res.absorbed && res.absorbed > 0))) {
+        // LIV-149: an attacking opponent turns to face the target it struck, so
+        // its attack reads toward the fire direction rather than its last walk
+        // heading. The drawn frame eases via `advanceTurn`.
+        if (res.target) {
+          res.sourceMonster.facing = EntityAI.getFacing(res.sourceMonster.x, res.sourceMonster.y, res.target.x, res.target.y);
+        }
         setAnimState(res.sourceMonster, 'attack', this.nowMs());
       }
       if (res.deflected) {

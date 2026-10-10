@@ -45,6 +45,7 @@ import { planSceneMonsters, makeSceneMonster } from '../services/scene-spawner.j
 import { soundFX, ambientDirector } from '../audio/index.js';
 import { ModalManager } from './modal-manager.js';
 import { createAnimState } from './animation-state.js';
+import { facingToward } from '../engine/facing.js';
 import { resolvePortraitId } from './portrait-renderer.js';
 
 /** Quest-elite respawn cadence (seconds) and roamer aggro reach, catalog copy. */
@@ -673,6 +674,13 @@ export const sceneControllerMethods = {
   /** Opens the dialogue tree bound to `npc` and records the `talk` objective. */
   openNpcDialogue(npc) {
     if (!npc) return false;
+    // LIV-149: both parties turn to face each other as the beat starts. The
+    // logical `facing` is set here; `advanceTurn` (game-loop) then eases the
+    // drawn 8-angle frame for player and NPC simultaneously through the turn.
+    if (this.player) {
+      npc.facing = facingToward(npc.x, npc.y, this.player.x, this.player.y);
+      this.player.facing = facingToward(this.player.x, this.player.y, npc.x, npc.y);
+    }
     const dialogueId = npc.defaultDialogueId || npc.interact?.dialogueId;
     this.fireQuestEvent({ type: 'talk', npcId: npc.npcId });
     if (!dialogueId) return false;

@@ -108,6 +108,7 @@
     "npcWanderCooldownSec": 1.4,
     "npcWanderSkipChance": 0.45,
     "npcIdleTurnChance": 0.35,
+    "npcStationaryTurnCooldownSec": 3,
     "sceneAggroRadius": 8,
     "sceneRespawnSec": 20,
     "tideGateLocked": "The Tide Gate is warded. The Weigher keeps the rite.",
