@@ -16,6 +16,7 @@
 
 import { listNpcDefinitions } from '../data/index.js';
 import { UI_CATALOG } from '../data/index.js';
+import { rotateDir8 } from './facing.js';
 
 /** Orthogonal step table (right/left/down/up) — reused, never allocated per step. */
 const STEP_DX = Int8Array.from([1, -1, 0, 0]);
@@ -27,6 +28,9 @@ export const NPC_INTERACT_RADIUS = Math.max(1, Number(UI_CATALOG?.island?.intera
 /** Random wander cooldown window in seconds, resolved from copy (`>= 0.2`). */
 const WANDER_COOLDOWN_MIN = Math.max(0.2, Number(UI_CATALOG?.island?.npcWanderCooldownSec) || 1.4);
 const WANDER_SKIP_CHANCE = Math.min(0.95, Math.max(0, Number(UI_CATALOG?.island?.npcWanderSkipChance) || 0.45));
+
+/** Chance an idle wanderer turns in place instead of stepping (LIV-147). */
+const NPC_IDLE_TURN_CHANCE = Math.min(0.95, Math.max(0, Number(UI_CATALOG?.island?.npcIdleTurnChance) || 0.35));
 
 /** Builds a runtime NPC entity from a catalog/npc descriptor. */
 export function makeNpcRuntime(def) {
@@ -129,6 +133,16 @@ export const NEUTRAL_AI_HANDLERS = {
     npc._wanderCooldownSec = (npc._wanderCooldownSec || 0) - deltaSec;
     if (npc._wanderCooldownSec > 0) return false;
     npc._wanderCooldownSec = WANDER_COOLDOWN_MIN + Math.random() * WANDER_COOLDOWN_MIN;
+
+    // LIV-147: an idle wanderer occasionally glances left/right. Rotating the
+    // facing by a 45/90-degree arc (never a 180-degree flip) and letting
+    // `advanceTurn` ease one bucket at a time makes the change read as a turn
+    // through the intermediate angle frame rather than a snap.
+    if (Math.random() < NPC_IDLE_TURN_CHANCE) {
+      const arc = (Math.random() < 0.5 ? -1 : 1) * (Math.random() < 0.5 ? 1 : 2);
+      npc.facing = rotateDir8(npc.facing, arc);
+      return false;
+    }
     if (Math.random() < WANDER_SKIP_CHANCE) return false;
 
     const start = Math.floor(Math.random() * 4);

@@ -7,6 +7,7 @@ import { LightingSystem } from './lighting-system.js';
 import { MONSTERS_CATALOG, resolveMonsterDefinition } from '../data/index.js';
 import { CombatSystem } from './combat-system.js';
 import { MONSTER_FACTION } from './faction.js';
+import { dir8FromVector } from './facing.js';
 
 /** Cardinal neighbor offsets (static, frozen: no per-tick allocation, §3.1). */
 const CARDINAL_DIRS = Object.freeze([
@@ -1017,10 +1018,15 @@ export class EntityAI {
     return { x: curr.x, y: curr.y };
   }
 
+  /**
+   * Facing direction (one of the eight 45-degree buckets) from a source tile
+   * toward a direction of interest — a target, the player, or the movement
+   * heading. LIV-147: a diagonal target now resolves to the intermediate
+   * down_right/up_right/up_left/down_left frame so opponents visibly "look"
+   * toward what they care about instead of snapping to a cardinal. Orthogonal
+   * grid steps still resolve to their cardinal direction, unchanged.
+   */
   static getFacing(fromX, fromY, toX, toY) {
-    if (toX > fromX) return 'right';
-    if (toX < fromX) return 'left';
-    if (toY > fromY) return 'down';
-    return 'up';
+    return dir8FromVector(toX - fromX, toY - fromY);
   }
 }

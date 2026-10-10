@@ -1,10 +1,13 @@
 {
-  "_comment": "LIV-139 movement feel tuning. `player.tilesPerSec` is the authoritative player step cadence (tiles travelled per second); the logical tile position stays authoritative and only rendering interpolates. `tween` is a render-only smoothing of each tile hop shared by the player, NPCs and opponents: `intermediateFrames` sub-positions are drawn between the source and destination tile over `durationMs`.",
+  "_comment": "LIV-139 movement feel tuning. `player.tilesPerSec` is the authoritative player step cadence (tiles travelled per second); the logical tile position stays authoritative and only rendering interpolates. `tween` is a render-only smoothing of each tile hop shared by the player, NPCs and opponents: `intermediateFrames` sub-positions are drawn between the source and destination tile over `durationMs`. LIV-147 `turn.stepMs` is the render-only time to rotate one 45-degree facing step, so a direction change eases through the intermediate angle frame instead of snapping.",
   "player": {
     "tilesPerSec": 5
   },
   "tween": {
     "intermediateFrames": 3,
     "durationMs": 180
+  },
+  "turn": {
+    "stepMs": 50
   }
 }

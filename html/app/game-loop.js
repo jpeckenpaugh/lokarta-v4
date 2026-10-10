@@ -23,7 +23,7 @@ import {
 } from '../engine/projectile-collision.js';
 import { soundFX, ambientDirector } from '../audio/index.js';
 import { KEYBINDINGS_CATALOG, UI_CATALOG, VOCATIONS_CATALOG } from '../data/index.js';
-import { setAnimState, advanceAnim } from './animation-state.js';
+import { setAnimState, advanceAnim, advanceTurn } from './animation-state.js';
 import { advanceActorTween } from './actor-tween.js';
 import { swapWithPartyMemberAt } from '../engine/party-swap.js';
 import { runEquipTickEffect } from './equip-tick-effects.js';
@@ -1294,6 +1294,23 @@ export const gameLoopMethods = {
     }
     if (Array.isArray(this.npcs)) {
       for (const npc of this.npcs) if (npc) advanceActorTween(npc, dtMs);
+    }
+
+    // LIV-147: ease every actor's drawn facing toward its logical facing through
+    // the intermediate 45-degree frames (player, allies, opponents, neutral
+    // NPCs). The logical `facing` stays authoritative; only `anim.dir` eases.
+    const turnMs = CONFIG.TURN_STEP_MS;
+    if (this.player) advanceTurn(this.player, dtMs, turnMs);
+    if (this.player && Array.isArray(this.player.party)) {
+      for (const member of this.player.party) {
+        if (member && member.memberId !== this.player.activeMemberId) advanceTurn(member, dtMs, turnMs);
+      }
+    }
+    if (this.monsters) {
+      for (const m of this.monsters) if (m && m.hp > 0) advanceTurn(m, dtMs, turnMs);
+    }
+    if (Array.isArray(this.npcs)) {
+      for (const npc of this.npcs) if (npc) advanceTurn(npc, dtMs, turnMs);
     }
   }
 };

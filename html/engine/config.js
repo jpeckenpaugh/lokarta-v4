@@ -181,6 +181,9 @@ export const CONFIG = {
   PLAYER_MOVE_SPEED_TILES_PER_SEC: Number(MOVEMENT_CATALOG?.player?.tilesPerSec) || 5,
   MOVE_TWEEN_INTERMEDIATE_FRAMES: Number(MOVEMENT_CATALOG?.tween?.intermediateFrames) || 3,
   MOVE_TWEEN_DURATION_MS: Number(MOVEMENT_CATALOG?.tween?.durationMs) || 180,
+  // LIV-147: render-only ms to rotate one 45-degree facing step (see
+  // `advanceTurn` in app/animation-state.js).
+  TURN_STEP_MS: Number(MOVEMENT_CATALOG?.turn?.stepMs) || 50,
 };
 
 function emptySlots(n) {
