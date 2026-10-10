@@ -10,6 +10,9 @@ import { DEFAULT_TOWN_ID, getTownDefinition } from '../data/index.js';
 import { composeSceneById, sceneAccessReport } from '../services/scene-composer.js';
 import { CanvasRenderer } from '../app/canvas-renderer.js';
 import { BUILDING_CATALOG, SPRITE_CATALOG } from '../assets/sprites/index.js';
+import { sceneControllerMethods } from '../app/scene-controller.js';
+import { createPartyPlayer } from '../engine/party.js';
+import { GridMap } from '../engine/grid-map.js';
 
 // LIV-110 (board-directed): prove the 3D->2D concept in the RUNNING game, not
 // just as artifacts — (1) the live archer renders the baked rukiya GLB sprite,
@@ -69,19 +72,20 @@ test('LIV-110 runtime integration of the 3D-baked assets', async (t) => {
     assert.deepEqual(committed, fresh, 'committed archer must equal a fresh build');
   });
 
-  await t.test('4. every Havenreach building is a 2x3 fishing-hut silhouette', () => {
+  await t.test('4. Havenreach buildings use varied baked hut views sized to their footprint', () => {
     const town = getTownDefinition(DEFAULT_TOWN_ID);
     assert.equal(town.buildings.length, 6);
+    const used = new Set();
     for (const b of town.buildings) {
-      assert.equal(b.silhouette, 'fishing_hut', `${b.id} uses the fishing hut`);
-      assert.deepEqual(
-        [b.footprint[2] - b.footprint[0] + 1, b.footprint[3] - b.footprint[1] + 1],
-        [2, 3],
-        `${b.id} footprint must match the 2x3 hut canvas`
-      );
+      assert.ok(b.silhouette, `${b.id} declares a silhouette`);
+      const def = BUILDING_CATALOG[b.silhouette];
+      assert.ok(def, `${b.id} silhouette ${b.silhouette} is registered`);
+      assert.deepEqual(validateSpriteDef(def, { label: b.silhouette }).errors, [], `${b.silhouette} valid`);
+      const span = [b.footprint[2] - b.footprint[0] + 1, b.footprint[3] - b.footprint[1] + 1];
+      assert.deepEqual(span, [def.tiles.w, def.tiles.h], `${b.id} footprint must match the ${b.silhouette} canvas`);
+      used.add(b.silhouette);
     }
-    assert.ok(BUILDING_CATALOG.fishing_hut, 'the hut sprite is registered');
-    assert.deepEqual(BUILDING_CATALOG.fishing_hut.tiles, { w: 2, h: 3 });
+    assert.ok(used.size >= 4, `town should show varied hut views, got: ${[...used].join(', ')}`);
   });
 
   await t.test('5. the running silhouette path blits a hut for every town building', () => {
@@ -106,5 +110,41 @@ test('LIV-110 runtime integration of the 3D-baked assets', async (t) => {
     const report = sceneAccessReport('town', town);
     assert.equal(report.spawnReachable, true, 'spawn reachable');
     assert.equal(report.townReachable, true, 'town exit reachable');
+  });
+
+  await t.test('7. hut bodies block movement from their footprint; grass stays walkable', () => {
+    const player = createPartyPlayer('archer');
+    player.x = 12; player.y = 19;
+    const app = Object.assign({}, sceneControllerMethods, {
+      player, npcs: [], monsters: [], scene: null, props: [], gridMap: new GridMap(),
+      updateHUD: () => {}, persistSave: () => Promise.resolve(),
+      logCombat: () => {}, addFloatingText: () => {}, layoutPartyOnFloor: () => {},
+    });
+    app.applySceneData(composeSceneById(DEFAULT_TOWN_ID));
+    const town = getTownDefinition(DEFAULT_TOWN_ID);
+    for (const b of town.buildings) {
+      const [x0, y0, x1, y1] = b.footprint;
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+        assert.equal(app.gridMap.isWalkable(x, y), false, `${b.id} tile ${x},${y} must block`);
+      }
+    }
+    // An NPC-adjacent grass tile is still open.
+    assert.equal(app.gridMap.isWalkable(19, 8), true, 'grass beside a hut is walkable');
+  });
+
+  await t.test('8. the baked archer gained cheap walk + attack motion (no rig available)', () => {
+    const archer = SPRITE_CATALOG.archer;
+    // Walk frames must differ frame-to-frame (a step), and from idle.
+    assert.notDeepEqual(archer.frames.walk_down_0, archer.frames.walk_down_1, 'walk steps');
+    assert.notDeepEqual(archer.frames.walk_down_0, archer.frames.idle_down, 'walk differs from idle');
+    assert.notDeepEqual(archer.frames.walk_side_0, archer.frames.walk_side_1, 'side walk steps');
+    // Attack frames must show a draw/release lean.
+    assert.notDeepEqual(archer.frames.attack_down_1, archer.frames.attack_down_0, 'attack release differs');
+    assert.notDeepEqual(archer.frames.attack_down_1, archer.frames.attack_down_2, 'attack settle differs');
+    // Motion never changes geometry.
+    for (const fid of Object.keys(archer.frames)) {
+      assert.equal(archer.frames[fid].length, 32, `${fid} height`);
+      assert.ok(archer.frames[fid].every((r) => r.length === 32), `${fid} width`);
+    }
   });
 });
