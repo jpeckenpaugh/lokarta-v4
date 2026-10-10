@@ -2,7 +2,7 @@
  * Lokarta: Come Into The Light - Engine Configuration & Constants
  */
 
-import { VOCATIONS_CATALOG, MONSTERS_CATALOG, ABILITIES_CATALOG, UI_CATALOG, ECONOMY_CATALOG, KEYBINDINGS_CATALOG, DEFAULT_TOWER_ID } from '../data/index.js';
+import { VOCATIONS_CATALOG, MONSTERS_CATALOG, ABILITIES_CATALOG, UI_CATALOG, ECONOMY_CATALOG, KEYBINDINGS_CATALOG, MOVEMENT_CATALOG, DEFAULT_TOWER_ID } from '../data/index.js';
 import { PARTY_FACTION } from './faction.js';
 
 /**
@@ -172,6 +172,15 @@ export const CONFIG = {
   // MONSTERS_CATALOG in entity-ai.js and floor-generator.js.
   CULTIST_STANDOFF_MIN: MONSTERS_CATALOG.shadow_cultist.standoffMin,
   CULTIST_STANDOFF_MAX: MONSTERS_CATALOG.shadow_cultist.standoffMax,
+
+  // LIV-139 movement feel (catalog-driven; see movement.json). The player steps
+  // `PLAYER_MOVE_SPEED_TILES_PER_SEC` tiles per second (was implicitly one tile
+  // per 10 Hz tick = 10 tiles/sec). The tween block drives the render-only
+  // interpolation that smooths every tile hop for the player, NPCs and
+  // opponents; the logical tile position remains authoritative.
+  PLAYER_MOVE_SPEED_TILES_PER_SEC: Number(MOVEMENT_CATALOG?.player?.tilesPerSec) || 5,
+  MOVE_TWEEN_INTERMEDIATE_FRAMES: Number(MOVEMENT_CATALOG?.tween?.intermediateFrames) || 3,
+  MOVE_TWEEN_DURATION_MS: Number(MOVEMENT_CATALOG?.tween?.durationMs) || 180,
 };
 
 function emptySlots(n) {

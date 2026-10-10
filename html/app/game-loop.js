@@ -24,6 +24,7 @@ import {
 import { soundFX, ambientDirector } from '../audio/index.js';
 import { KEYBINDINGS_CATALOG, UI_CATALOG, VOCATIONS_CATALOG } from '../data/index.js';
 import { setAnimState, advanceAnim } from './animation-state.js';
+import { advanceActorTween } from './actor-tween.js';
 import { swapWithPartyMemberAt } from '../engine/party-swap.js';
 import { runEquipTickEffect } from './equip-tick-effects.js';
 
@@ -107,8 +108,9 @@ export const gameLoopMethods = {
     // 0. Accumulate playtime for the slot card
     this.player.playtimeMs = (this.player.playtimeMs || 0) + CONFIG.TICK_INTERVAL_MS;
 
-    // 1. Movement
-    this.processMovementInput();
+    // 1. Movement (LIV-139: cadence-gated so the player steps at a fixed
+    //    tiles/sec; the renderer tweens every hop — see `actor-tween.js`).
+    this.processMovementInput(deltaSec);
 
     // 2. Decrement cooldowns
     CombatSystem.decrementCooldowns(this.player, deltaSec);
@@ -761,10 +763,10 @@ export const gameLoopMethods = {
       }
     }
   },
-  processMovementInput() {
+  processMovementInput(deltaSec = null) {
     // Player control statuses (catalog `onHit`): stun skips input entirely;
     // root pins the actor in place (positional only — cooldowns keep ticking);
-    // slow accumulates toward a full step so cadence drops by `slowFactor`.
+    // slow stretches the step cadence by `slowFactor`.
     if (this.player.stunTimer > 0) return;
     if (this.player.rootTimer > 0) return;
 
@@ -789,14 +791,26 @@ export const gameLoopMethods = {
       }
     }
 
-    if ((dx !== 0 || dy !== 0) && this.player.slowTimer > 0) {
-      this.player.slowAccumulator = (this.player.slowAccumulator || 0) + (this.player.slowFactor || 0.5);
-      if (this.player.slowAccumulator < 1) return;
-      this.player.slowAccumulator -= 1;
+    // LIV-139: fixed player cadence. The player steps `tilesPerSec` tiles per
+    // second (catalog), stretched by the `slow` status factor. The gate only
+    // runs in the live loop (a frame delta is supplied); direct single-step
+    // invocations keep one-step-per-call semantics for callers/tests.
+    const moving = dx !== 0 || dy !== 0;
+    let gateOpen = true;
+    if (deltaSec != null) {
+      const slowFactor = this.player.slowTimer > 0 ? (this.player.slowFactor || 0.5) : 1;
+      const tilesPerSec = (CONFIG.PLAYER_MOVE_SPEED_TILES_PER_SEC || 10) * slowFactor;
+      const stepSec = tilesPerSec > 0 ? 1 / tilesPerSec : 0;
+      this.player.moveCooldownSec = Math.max(0, (this.player.moveCooldownSec || 0) - deltaSec);
+      gateOpen = this.player.moveCooldownSec <= 0;
+      if (moving && gateOpen) this.player.moveCooldownSec = stepSec;
     }
 
-    if (dx !== 0 || dy !== 0) {
+    if (moving) {
       this.player.facing = newFacing;
+      // Cadence gate: hold on the current tile until the next step is due. The
+      // walk animation already playing keeps advancing across the gap.
+      if (!gateOpen) return;
       const targetX = this.player.x + dx;
       const targetY = this.player.y + dy;
 
@@ -1264,6 +1278,22 @@ export const gameLoopMethods = {
         advanceAnim(fx, dtMs);
         if (fx.anim.elapsedMs >= (fx.totalMs || 680)) this.deathEffects.splice(i, 1);
       }
+    }
+
+    // LIV-139: advance the render-only position tween for every moving actor
+    // (player, party allies, monsters, neutral NPCs). The logical x/y stay the
+    // source of truth; this only changes where each sprite is drawn.
+    if (this.player) advanceActorTween(this.player, dtMs);
+    if (this.player && Array.isArray(this.player.party)) {
+      for (const member of this.player.party) {
+        if (member && member.memberId !== this.player.activeMemberId) advanceActorTween(member, dtMs);
+      }
+    }
+    if (this.monsters) {
+      for (const m of this.monsters) if (m && m.hp > 0) advanceActorTween(m, dtMs);
+    }
+    if (Array.isArray(this.npcs)) {
+      for (const npc of this.npcs) if (npc) advanceActorTween(npc, dtMs);
     }
   }
 };

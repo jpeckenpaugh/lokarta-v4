@@ -7,6 +7,7 @@ import { SpriteRenderer, themeForFloor, sceneTheme, drawSpriteFrameInto } from '
 import { BUILDING_CATALOG } from '../assets/sprites/index.js';
 import { UI_CATALOG, PARTY_AI_CATALOG } from '../data/index.js';
 import { resolveEasing, prefersReducedMotion } from './swap-feedback.js';
+import { tweenTileX, tweenTileY } from './actor-tween.js';
 
 /** Static entity-bar token cache from `ui.json.entityBars` (D1 §3.2). */
 const OUTLINE_COLOR = '#0b0d12';
@@ -392,8 +393,10 @@ export class CanvasRenderer {
   }
 
   updateCamera(player, width, height, nowMs = this._now()) {
-    const targetX = player.x * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - width / 2;
-    const targetY = player.y * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - height / 2;
+    // LIV-139: follow the player's tweened (fractional) position so the world
+    // glides with the sprite instead of jumping a whole tile per step.
+    const targetX = tweenTileX(player) * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - width / 2;
+    const targetY = tweenTileY(player) * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - height / 2;
     const g = this.cameraGlide;
     if (g) {
       const t = Math.max(0, Math.min(1, (nowMs - g.startMs) / g.durationMs));
@@ -622,8 +625,8 @@ export class CanvasRenderer {
     const playerRadius = Math.max(1, LightingSystem.computePlayerRadius(player));
     for (const monster of monsters) {
       if (monster.visible && monster.hp > 0) {
-        const screenX = monster.x * CONFIG.GRID_SIZE - this.cameraX;
-        const screenY = monster.y * CONFIG.GRID_SIZE - this.cameraY;
+        const screenX = tweenTileX(monster) * CONFIG.GRID_SIZE - this.cameraX;
+        const screenY = tweenTileY(monster) * CONFIG.GRID_SIZE - this.cameraY;
         const isBoss = monster.isBoss === true;
         const d = Math.hypot(monster.x - player.x, monster.y - player.y) / playerRadius;
         monster._dim = isBoss ? 1 : Math.max(0.65, Math.min(1, 1 - 0.35 * d));
@@ -659,8 +662,8 @@ export class CanvasRenderer {
     if (Array.isArray(npcs) && npcs.length > 0) {
       for (const npc of npcs) {
         if (!npc) continue;
-        const npcScreenX = npc.x * CONFIG.GRID_SIZE - this.cameraX;
-        const npcScreenY = npc.y * CONFIG.GRID_SIZE - this.cameraY;
+        const npcScreenX = tweenTileX(npc) * CONFIG.GRID_SIZE - this.cameraX;
+        const npcScreenY = tweenTileY(npc) * CONFIG.GRID_SIZE - this.cameraY;
         if (npcScreenX < -CONFIG.GRID_SIZE || npcScreenY < -CONFIG.GRID_SIZE
           || npcScreenX > width || npcScreenY > height) continue;
         SpriteRenderer.drawActor(ctx, npc, npcScreenX, npcScreenY, {
@@ -690,8 +693,8 @@ export class CanvasRenderer {
       for (const member of party) {
         if (!member) continue;
         if (member.memberId && member.memberId === player.activeMemberId) continue;
-        const memberScreenX = member.x * CONFIG.GRID_SIZE - this.cameraX;
-        const memberScreenY = member.y * CONFIG.GRID_SIZE - this.cameraY;
+        const memberScreenX = tweenTileX(member) * CONFIG.GRID_SIZE - this.cameraX;
+        const memberScreenY = tweenTileY(member) * CONFIG.GRID_SIZE - this.cameraY;
         if (isDownedEntry(member)) {
           SpriteRenderer.drawPlayer(ctx, member, memberScreenX, memberScreenY, CONFIG.GRID_SIZE, DOWNED_DRAW_OPTS);
         } else {
@@ -701,9 +704,9 @@ export class CanvasRenderer {
       }
     }
 
-    // 6. Player Layer
-    const playerScreenX = player.x * CONFIG.GRID_SIZE - this.cameraX;
-    const playerScreenY = player.y * CONFIG.GRID_SIZE - this.cameraY;
+    // 6. Player Layer (drawn at its tweened fractional position, LIV-139)
+    const playerScreenX = tweenTileX(player) * CONFIG.GRID_SIZE - this.cameraX;
+    const playerScreenY = tweenTileY(player) * CONFIG.GRID_SIZE - this.cameraY;
     SpriteRenderer.drawPlayer(ctx, player, playerScreenX, playerScreenY);
 
     // Small health + mana bars above the player.
@@ -1535,8 +1538,10 @@ export class CanvasRenderer {
 
     // Smooth continuous radial darkness dissolve over player FOV
     const playerRadius = LightingSystem.computePlayerRadius(player);
-    const playerScreenX = player.x * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraX;
-    const playerScreenY = player.y * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraY;
+    // LIV-139: centre the light dissolve on the tweened position so the lit
+    // pocket glides with the sprite instead of popping a tile per step.
+    const playerScreenX = tweenTileX(player) * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraX;
+    const playerScreenY = tweenTileY(player) * CONFIG.GRID_SIZE + CONFIG.GRID_SIZE / 2 - this.cameraY;
     const maxRadiusPx = (playerRadius + 0.5) * CONFIG.GRID_SIZE;
     const innerClearRadiusPx = (playerRadius * 0.58) * CONFIG.GRID_SIZE;
 
