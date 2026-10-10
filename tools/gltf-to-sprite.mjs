@@ -29,6 +29,12 @@ import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 const OUTLINE = '#0b0d12';
+// Native tile grid: 32px == ONE tile. Actors/props are authored at 1 tile
+// (32x32); buildings/landmarks are authored at NxM tiles (e.g. 128x64 = 4x2).
+// The display grid is CONFIG.GRID_SIZE=64 == 32 * SCALE(2). The ratio between
+// native and display must stay an integer (SCALE), so multi-tile bitmaps are
+// upscaled by the same integer SCALE as single-tile sprites (LIV-106).
+const NATIVE_TILE = 32;
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
 
@@ -203,6 +209,100 @@ export function outlinePass(idx, w, h) {
   return rows.map(r => r.join(''));
 }
 
+/* ---------------- multi-tile chopping (LIV-106) ---------------- */
+/**
+ * Trims fully-transparent border rows/cols from a render so the model's
+ * projected bounding box fills the downscale target. The rasteriser always
+ * emits a padded canvas (min targetH square); cropping first means the
+ * multi-tile downscale spends all its resolution on the model rather than on
+ * dead margin. Returns a new `{ w, h, rgba }`.
+ */
+export function cropToContent(sprite) {
+  const { w, h, rgba } = sprite;
+  let minx = w, miny = h, maxx = -1, maxy = -1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (rgba[(y * w + x) * 4 + 3] > 0) { if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y; }
+  }
+  if (maxx < 0) return sprite;
+  const cw = maxx - minx + 1, ch = maxy - miny + 1;
+  const out = new Float32Array(cw * ch * 4);
+  for (let y = 0; y < ch; y++) out.set(rgba.subarray(((miny + y) * w + minx) * 4, ((miny + y) * w + minx + cw) * 4), y * cw * 4);
+  return { w: cw, h: ch, rgba: out };
+}
+
+/**
+ * Native pixel size of a TilesxTiles boolean pair: `cols` tiles wide, `rows`
+ * tiles tall. `{ tiles: { w: 4, h: 2 } }` -> `{ w: 128, h: 64 }`. This is the
+ * ONLY place a tile count becomes pixels; callers never hardcode 128/64.
+ */
+export function tileCanvasSize(tiles) {
+  if (!tiles || !Number.isInteger(tiles.w) || !Number.isInteger(tiles.h) || tiles.w < 1 || tiles.h < 1) {
+    throw new Error(`tiles must be positive integers, got ${JSON.stringify(tiles)}`);
+  }
+  return { w: tiles.w * NATIVE_TILE, h: tiles.h * NATIVE_TILE };
+}
+
+/**
+ * "Chops" (aligns) a raw high-res orthographic render to the nearest whole-tile
+ * native canvas. The render keeps its aspect ratio, is box-downscaled to the
+ * largest fit inside a `cols*32 x rows*32` canvas, then padded bottom-centre so
+ * the building's ground contact sits on the footprint's bottom edge and the
+ * silhouette is centred horizontally. Padding is transparent so the outline
+ * pass can trace the real silhouette. This is alignment, not physical slicing:
+ * the result stays ONE multi-tile bitmap for the engine's footprint path.
+ *
+ * Returns `{ w, h, rgba, fit, offset, tiles }` where `fit` is the fitted render
+ * box and `offset` its top-left placement inside the tile canvas.
+ */
+export function chopToTileCanvas(sprite, tiles, { align = 'bottom', anchor = 'center' } = {}) {
+  const { w: cw, h: ch } = tileCanvasSize(tiles);
+  const fitScale = Math.min(cw / sprite.w, ch / sprite.h);
+  const fw = Math.max(1, Math.min(cw, Math.round(sprite.w * fitScale)));
+  const fh = Math.max(1, Math.min(ch, Math.round(sprite.h * fitScale)));
+  const fitted = fw === sprite.w && fh === sprite.h ? sprite : downscale(sprite, fw, fh);
+  const out = new Float32Array(cw * ch * 4);
+  const ox = anchor === 'center' ? Math.round((cw - fw) / 2) : anchor === 'right' ? cw - fw : 0;
+  const oy = align === 'bottom' ? ch - fh : align === 'center' ? Math.round((ch - fh) / 2) : 0;
+  for (let y = 0; y < fh; y++) {
+    const src = y * fw * 4;
+    const dst = ((oy + y) * cw + ox) * 4;
+    out.set(fitted.rgba.subarray(src, src + fw * 4), dst);
+  }
+  return { w: cw, h: ch, rgba: out, fit: { w: fw, h: fh }, offset: { x: ox, y: oy }, tiles: { w: tiles.w, h: tiles.h } };
+}
+
+/**
+ * Decomposes a chopped multi-tile sprite into its `rows*cols` 32x32 tile
+ * slices, row-major (top-left first). Used for the "chop" proof sheet: each
+ * slice is an exact NATIVE_TILE x NATIVE_TILE crop of the whole bitmap, so the
+ * sheet visually proves the large raster aligns to the 32px tile grid. The
+ * engine itself keeps the single bitmap; this is authoring/verification only.
+ * Returns `[{ tx, ty, rgba }]`.
+ */
+export function tileSlices(sprite, tiles) {
+  const { w: cw } = tileCanvasSize(tiles);
+  const slices = [];
+  for (let ty = 0; ty < tiles.h; ty++) for (let tx = 0; tx < tiles.w; tx++) {
+    const rgba = new Float32Array(NATIVE_TILE * NATIVE_TILE * 4);
+    for (let y = 0; y < NATIVE_TILE; y++) {
+      const src = ((ty * NATIVE_TILE + y) * cw + tx * NATIVE_TILE) * 4;
+      rgba.set(sprite.rgba.subarray(src, src + NATIVE_TILE * 4), y * NATIVE_TILE * 4);
+    }
+    slices.push({ tx, ty, rgba });
+  }
+  return slices;
+}
+
+/**
+ * Inclusive footprint rect for a building that occupies `tiles.w x tiles.h`
+ * grid cells at top-left `[x0, y0]`, matching the engine's
+ * `footprint:[x0,y0,x1,y1]` contract (both corners inclusive). A 4x2 building
+ * at (3,5) -> `[3,5,6,6]`.
+ */
+export function footprintFor(x0, y0, tiles) {
+  return [x0, y0, x0 + tiles.w - 1, y0 + tiles.h - 1];
+}
+
 /* ---------------- pipeline driver ---------------- */
 const hex = (r, g, b) => '#' + [r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
 
@@ -224,13 +324,65 @@ function sheet(rgbaTiles, size, scale, bg = [10, 11, 14, 255], pad = 4, cols = n
   return { w: W, h: H, buf };
 }
 
-export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 90, 180, 270], colors = 14, rise = 10, flat = false, renderRes = 512 }) {
+/**
+ * Upscales one chopped multi-tile bitmap `scale`x with a visible native-tile
+ * grid overlay (1px cyan lines every NATIVE_TILE px) so a reviewer can see the
+ * raster align to 32px tiles. Neutral background under transparent pixels.
+ */
+function gridSheet(sprite, scale, bg = [10, 11, 14, 255]) {
+  const W = sprite.w * scale, H = sprite.h * scale; const buf = Buffer.alloc(W * H * 4);
+  for (let i = 0; i < W * H; i++) { buf[i * 4] = bg[0]; buf[i * 4 + 1] = bg[1]; buf[i * 4 + 2] = bg[2]; buf[i * 4 + 3] = bg[3]; }
+  for (let y = 0; y < sprite.h; y++) for (let x = 0; x < sprite.w; x++) {
+    const si = (y * sprite.w + x) * 4, a = sprite.rgba[si + 3] / 255;
+    for (let dy = 0; dy < scale; dy++) for (let dx = 0; dx < scale; dx++) {
+      const di = ((y * scale + dy) * W + (x * scale + dx)) * 4;
+      buf[di] = Math.round(sprite.rgba[si] * a + bg[0] * (1 - a));
+      buf[di + 1] = Math.round(sprite.rgba[si + 1] * a + bg[1] * (1 - a));
+      buf[di + 2] = Math.round(sprite.rgba[si + 2] * a + bg[2] * (1 - a));
+      buf[di + 3] = 255;
+    }
+  }
+  // Native tile-boundary lines (every NATIVE_TILE native px == one tile edge).
+  for (let tx = 1; tx < sprite.w / NATIVE_TILE; tx++) for (let y = 0; y < H; y++) { const di = (y * W + tx * NATIVE_TILE * scale) * 4; buf[di] = 40; buf[di + 1] = 200; buf[di + 2] = 220; buf[di + 3] = 255; }
+  for (let ty = 1; ty < sprite.h / NATIVE_TILE; ty++) for (let x = 0; x < W; x++) { const di = ((ty * NATIVE_TILE * scale) * W + x) * 4; buf[di] = 40; buf[di + 1] = 200; buf[di + 2] = 220; buf[di + 3] = 255; }
+  return { w: W, h: H, buf };
+}
+
+/**
+ * "Chop" proof: lays the `rows*cols` 32x32 tile slices in a row with gaps,
+ * each upscaled `scale`x, so the decomposition into whole tiles is visible.
+ */
+function chopSheet(slices, scale, bg = [10, 11, 14, 255], pad = 6) {
+  const tile = NATIVE_TILE * scale; const n = slices.length;
+  const W = n * (tile + pad) + pad, H = tile + pad * 2; const buf = Buffer.alloc(W * H * 4);
+  for (let i = 0; i < W * H; i++) { buf[i * 4] = bg[0]; buf[i * 4 + 1] = bg[1]; buf[i * 4 + 2] = bg[2]; buf[i * 4 + 3] = bg[3]; }
+  slices.forEach((s, i) => {
+    const ox = i * (tile + pad) + pad, oy = pad;
+    for (let y = 0; y < NATIVE_TILE; y++) for (let x = 0; x < NATIVE_TILE; x++) {
+      const si = (y * NATIVE_TILE + x) * 4, a = s.rgba[si + 3] / 255;
+      for (let dy = 0; dy < scale; dy++) for (let dx = 0; dx < scale; dx++) {
+        const di = ((oy + y * scale + dy) * W + (ox + x * scale + dx)) * 4;
+        buf[di] = Math.round(s.rgba[si] * a + bg[0] * (1 - a));
+        buf[di + 1] = Math.round(s.rgba[si + 1] * a + bg[1] * (1 - a));
+        buf[di + 2] = Math.round(s.rgba[si + 2] * a + bg[2] * (1 - a));
+        buf[di + 3] = 255;
+      }
+    }
+  });
+  return { w: W, h: H, buf };
+}
+
+export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 90, 180, 270], colors = 14, rise = 10, flat = false, renderRes = 512, tiles = null, kind = null }) {
   const glb = parseGLB(glbPath);
   const tex = flat ? null : await loadBaseColor(glb, glb.json.meshes[0].primitives[0].material);
+  const multiTile = !!tiles;
   const viewPix = [];
   for (const az of views) {
     const hi = render(glb, tex, { azimuth: az * Math.PI / 180, rise, targetH: renderRes });
-    viewPix.push({ az, px: downscale(hi, size, size) });
+    // Single-tile classes box-downscale the whole render into ONE 32x32 tile.
+    // Multi-tile buildings CHOP the render into a whole-tile canvas instead of
+    // squishing it into a single tile (LIV-106).
+    viewPix.push({ az, px: multiTile ? chopToTileCanvas(cropToContent(hi), tiles) : downscale(hi, size, size) });
   }
   const all = [];
   for (const v of viewPix) for (let i = 0; i < v.px.w * v.px.h; i++) if (v.px.rgba[i * 4 + 3] > 128) all.push([v.px.rgba[i * 4], v.px.rgba[i * 4 + 1], v.px.rgba[i * 4 + 2]]);
@@ -238,33 +390,55 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
   const palette = { '0': OUTLINE, '.': null };
   palRGB.forEach((c, i) => { palette[i.toString(16)] = hex(...c); });
   const frames = {};
-  const tiles = [];
+  const frameRgba = [];
   for (const v of viewPix) {
-    const idx = outlinePass(quantize(v.px, palRGB), size, size);
+    const vw = v.px.w, vh = v.px.h;
+    const idx = outlinePass(quantize(v.px, palRGB), vw, vh);
     frames[`view_${v.az}`] = idx;
-    const rgba = new Uint8ClampedArray(size * size * 4);
-    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
-      const p = palette[idx[y][x]]; if (!p) continue; const hx = p.slice(1); const i = (y * size + x) * 4;
+    const rgba = new Uint8ClampedArray(vw * vh * 4);
+    for (let y = 0; y < vh; y++) for (let x = 0; x < vw; x++) {
+      const p = palette[idx[y][x]]; if (!p) continue; const hx = p.slice(1); const i = (y * vw + x) * 4;
       rgba[i] = parseInt(hx.slice(0, 2), 16); rgba[i + 1] = parseInt(hx.slice(2, 4), 16); rgba[i + 2] = parseInt(hx.slice(4, 6), 16); rgba[i + 3] = 255;
     }
-    tiles.push(new Float32Array(rgba));
+    frameRgba.push({ w: vw, h: vh, rgba: new Float32Array(rgba) });
   }
+  const canvas = multiTile ? tileCanvasSize(tiles) : null;
   fs.mkdirSync(outDir, { recursive: true });
   const def = {
-    id, kind: 'actor',
+    id, kind: kind || (multiTile ? 'building' : 'actor'),
     source: `${path.basename(glbPath)} (glTF-Transform ${glb.json.asset && glb.json.asset.generator})`,
-    method: `ortho-software-raster@${renderRes} -> ${size}px box-downscale -> ${palRGB.length}-colour median-cut -> 1px outline`,
-    native: { w: size, h: size }, anchor: { x: Math.floor(size / 2), y: size - 2 },
+    method: multiTile
+      ? `ortho-software-raster@${renderRes} -> chop-to-tile-canvas(${tiles.w}x${tiles.h}) -> ${palRGB.length}-colour median-cut -> 1px outline`
+      : `ortho-software-raster@${renderRes} -> ${size}px box-downscale -> ${palRGB.length}-colour median-cut -> 1px outline`,
+    native: multiTile ? { w: tiles.w * NATIVE_TILE, h: tiles.h * NATIVE_TILE } : { w: size, h: size },
+    anchor: multiTile ? { x: Math.floor((tiles.w * NATIVE_TILE) / 2), y: tiles.h * NATIVE_TILE - 2 } : { x: Math.floor(size / 2), y: size - 2 },
     palette, frames,
   };
+  if (multiTile) {
+    // Intrinsic asset shape for a multi-tile building: tile counts + the
+    // placement mode + a default relative footprint. Scene files author the
+    // absolute footprint; the engine's footprint path (renderBuildingSilhouettes)
+    // consumes it. `mode: multi-tile-blit` == one blitted bitmap, NOT per-tile
+    // slicing (LIV-106).
+    def.tiles = { w: tiles.w, h: tiles.h };
+    def.placement = { mode: 'multi-tile-blit', footprint: footprintFor(0, 0, tiles) };
+  }
   fs.writeFileSync(path.join(outDir, `${id}.sprite.json`), JSON.stringify(def, null, 2) + '\n');
-  const s = sheet(tiles, size, 8);
-  fs.writeFileSync(path.join(outDir, `${id}_${size}px_x8.png`), encodePNG(s.w, s.h, s.buf));
-  return { id, palette: palRGB, opaquePixels: all.length, textured: !!tex };
+  if (multiTile) {
+    const zoom = 4;
+    const g = gridSheet(frameRgba[0], zoom);
+    fs.writeFileSync(path.join(outDir, `${id}_${canvas.w}x${canvas.h}_x${zoom}_grid.png`), encodePNG(g.w, g.h, g.buf));
+    const c = chopSheet(tileSlices(frameRgba[0], tiles), 8);
+    fs.writeFileSync(path.join(outDir, `${id}_chop.png`), encodePNG(c.w, c.h, c.buf));
+  } else {
+    const s = sheet(frameRgba.map((f) => f.rgba), size, 8);
+    fs.writeFileSync(path.join(outDir, `${id}_${size}px_x8.png`), encodePNG(s.w, s.h, s.buf));
+  }
+  return { id, palette: palRGB, opaquePixels: all.length, textured: !!tex, tiles: multiTile ? tiles : null };
 }
 
 function parseArgs(argv) {
-  const a = { views: [0, 90, 180, 270], size: 32, colors: 14, rise: 10, flat: false, renderRes: 512 };
+  const a = { views: [0, 90, 180, 270], size: 32, colors: 14, rise: 10, flat: false, renderRes: 512, tiles: null, kind: null };
   const rest = [];
   for (let i = 0; i < argv.length; i++) {
     const t = argv[i];
@@ -275,6 +449,8 @@ function parseArgs(argv) {
     else if (t === '--rise') a.rise = +argv[++i];
     else if (t === '--render-res') a.renderRes = +argv[++i];
     else if (t === '--views') a.views = argv[++i].split(',').map(Number);
+    else if (t === '--tiles') { const [tw, th] = argv[++i].split('x').map(Number); a.tiles = { w: tw, h: th }; }
+    else if (t === '--kind') a.kind = argv[++i];
     else if (t === '--flat') a.flat = true;
     else rest.push(t);
   }
@@ -284,10 +460,11 @@ function parseArgs(argv) {
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
   const { a, rest } = parseArgs(process.argv.slice(2));
-  if (!rest.length) { console.error('usage: node tools/gltf-to-sprite.mjs <input.glb> [--id name] [--out dir] ...'); process.exit(1); }
+  if (!rest.length) { console.error('usage: node tools/gltf-to-sprite.mjs <input.glb> [--id name] [--out dir] [--tiles 4x2] [--kind building] ...'); process.exit(1); }
   const glbPath = rest[0];
   const id = a.id || path.basename(glbPath).replace(/\.glb$/i, '');
   const outDir = a.out || path.join(ROOT, 'docs', 'art', '3d-poc');
-  const res = await buildAsset({ glbPath, id, outDir, size: a.size, views: a.views, colors: a.colors, rise: a.rise, flat: a.flat, renderRes: a.renderRes });
-  console.log(`${res.id}: ${res.opaquePixels} opaque px, ${res.palette.length}-colour palette, textured=${res.textured} -> ${path.relative(ROOT, outDir)}`);
+  const res = await buildAsset({ glbPath, id, outDir, size: a.size, views: a.views, colors: a.colors, rise: a.rise, flat: a.flat, renderRes: a.renderRes, tiles: a.tiles, kind: a.kind });
+  const shape = res.tiles ? `${res.tiles.w}x${res.tiles.h} tiles` : `${a.size}px`;
+  console.log(`${res.id}: ${res.opaquePixels} opaque px, ${res.palette.length}-colour palette, textured=${res.textured}, ${shape} -> ${path.relative(ROOT, outDir)}`);
 }
