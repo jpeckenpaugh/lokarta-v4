@@ -162,9 +162,10 @@
           "y": 13
         },
         {
-          "propId": "prop_barrel",
+          "propId": "prop_wooden_barrel",
           "x": 3,
-          "y": 8
+          "y": 8,
+          "layer": "prop"
         },
         {
           "propId": "prop_fish_barrel",
@@ -261,6 +262,41 @@
           "x": 2,
           "y": 19,
           "frame": "view_90"
+        },
+        {
+          "propId": "prop_wooden_dock",
+          "x": 11,
+          "y": 20,
+          "layer": "decor",
+          "frame": "view_0"
+        },
+        {
+          "propId": "prop_palm_tree",
+          "x": 1,
+          "y": 19,
+          "layer": "prop",
+          "frame": "view_0"
+        },
+        {
+          "propId": "prop_palm_tree",
+          "x": 22,
+          "y": 18,
+          "layer": "prop",
+          "frame": "view_0"
+        },
+        {
+          "propId": "prop_rock_pile",
+          "x": 1,
+          "y": 14,
+          "layer": "prop",
+          "frame": "view_0"
+        },
+        {
+          "propId": "prop_rock_pile",
+          "x": 22,
+          "y": 12,
+          "layer": "prop",
+          "frame": "view_0"
         }
       ]
     }
