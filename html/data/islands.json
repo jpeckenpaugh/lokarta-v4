@@ -202,7 +202,8 @@
           "y1": 25,
           "pool": [
             "drowned_crawler",
-            "salt_hound"
+            "salt_hound",
+            "river_rat"
           ],
           "maxAlive": 5,
           "respawn": "deterministic"
@@ -215,7 +216,8 @@
           "y1": 25,
           "pool": [
             "drowned_crawler",
-            "salt_hound"
+            "salt_hound",
+            "river_rat"
           ],
           "maxAlive": 5,
           "respawn": "deterministic"
@@ -260,6 +262,34 @@
           "maxAlive": 1,
           "respawn": "deterministic",
           "note": "Landmark elite: a single Barnacle Brute holds the eastern shoals between the shrine road and the wilds."
+        },
+        {
+          "id": "wreck_shallows",
+          "x0": 3,
+          "y0": 16,
+          "x1": 7,
+          "y1": 24,
+          "pool": [
+            "river_piranha"
+          ],
+          "nearTile": "WATER",
+          "maxAlive": 3,
+          "respawn": "deterministic",
+          "note": "Sessile piranha ambushers on the water-adjacent tiles of the western channel by the Wreck of the Lantern."
+        },
+        {
+          "id": "south_tide_pools",
+          "x0": 3,
+          "y0": 40,
+          "x1": 15,
+          "y1": 45,
+          "pool": [
+            "river_eel"
+          ],
+          "nearTile": "WATER",
+          "maxAlive": 2,
+          "respawn": "deterministic",
+          "note": "Sessile eel ambushers on the tide-pool sand tiles adjacent to the southwest shore, outside the Havenreach safe apron."
         }
       ],
       "groundItems": [

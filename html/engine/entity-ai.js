@@ -84,6 +84,15 @@ const AI_HANDLERS = {
     EntityAI.updateCatalogCombatant(monster, player, gridMap, monsters, mData),
   charger: (monster, player, gridMap, monsters, mData) =>
     EntityAI.updateCharger(monster, player, gridMap, monsters, mData),
+  // Sessile ambusher (docs/art/3d-sprite-mapping.md §4.2): never moves, faces the
+  // player, and fires its catalog `attacks[]` from a fixed tile. The
+  // `noIdleWander` marker tells `updateMonsters` to skip the pre-aggro wander so
+  // a stationary monster holds its tile even before it aggros.
+  stationary: Object.assign(
+    (monster, player, gridMap, monsters, mData) =>
+      EntityAI.updateStationary(monster, player, gridMap, monsters, mData),
+    { noIdleWander: true }
+  ),
 };
 
 /** Cardinal-first adjacent offsets a summon can occupy (static, no per-tick alloc). */
@@ -222,8 +231,16 @@ export class EntityAI {
       }
       monster.moveCooldown = Math.max(0, (monster.moveCooldown || 0) - deltaSec);
 
-      // If not yet aggroed, wander idly in darkness
+      // Catalog personality is resolved up front (aliases resolve through the
+      // catalog) so a sessile ambusher can suppress the pre-aggro idle wander.
+      const mData = resolveMonsterDefinition(monster.type);
+      const aiType = mData?.aiType || 'chase';
+      const handler = AI_HANDLERS[aiType] || AI_HANDLERS.chase;
+
+      // If not yet aggroed, wander idly in darkness. A personality flagged
+      // `noIdleWander` (stationary ambushers) holds its tile unprovoked.
       if (!monster.isAggroed) {
+        if (handler.noIdleWander) continue;
         if ((monster.moveCooldown || 0) <= 0) {
           monster.moveCooldown = 3.0 + Math.random() * 2.5;
           EntityAI.idleWander(monster, gridMap, monsters);
@@ -231,11 +248,7 @@ export class EntityAI {
         continue;
       }
 
-      // Dispatch via AI_HANDLERS map driven by catalog metadata (aliases resolve
-      // through the catalog, so no per-type branches live here).
-      const mData = resolveMonsterDefinition(monster.type);
-      const aiType = mData?.aiType || 'chase';
-      const handler = AI_HANDLERS[aiType] || AI_HANDLERS.chase;
+      // Dispatch via AI_HANDLERS map driven by catalog metadata.
       const action = handler(monster, target, gridMap, monsters, mData);
       if (action) {
         action.target = action.target || target;
@@ -554,6 +567,20 @@ export class EntityAI {
       monster.y = nextStep.y;
     }
     return null;
+  }
+
+  /**
+   * Sessile-ambusher personality (docs/art/3d-sprite-mapping.md §4.2): the
+   * monster never moves. It faces the engaged target and fires the first catalog
+   * attack whose range/LOS/cooldown gates pass, reusing the shared attack
+   * dispatch (`tryAttack`) — no bespoke attack math. `moveCadence` is ignored
+   * (usually authored as 0 for this class).
+   */
+  static updateStationary(monster, player, gridMap, monsters, mData) {
+    const dist = Math.hypot(player.x - monster.x, player.y - monster.y);
+    const hasLOS = LightingSystem.hasLineOfSight(gridMap, monster.x, monster.y, player.x, player.y);
+    monster.facing = EntityAI.getFacing(monster.x, monster.y, player.x, player.y);
+    return EntityAI.tryAttack(monster, player, gridMap, monsters, mData, dist, hasLOS);
   }
 
   /** Builds the shared action result from a damage-intercept seam result. */

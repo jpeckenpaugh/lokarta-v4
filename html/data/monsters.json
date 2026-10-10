@@ -1358,5 +1358,121 @@
         "stat_bonus": 40
       }
     ]
+  },
+  "river_piranha": {
+    "type": "river_piranha",
+    "faction": "monsters",
+    "name": "River Piranha",
+    "baseHp": 18,
+    "baseAttack": 10,
+    "baseDefense": 1,
+    "moveCadence": 0,
+    "attackCadence": 1.4,
+    "damageMin": 9,
+    "damageMax": 13,
+    "damageType": "physical",
+    "aiType": "stationary",
+    "baseXp": 22,
+    "xpFloorScale": 4,
+    "svgCode": "1F41F",
+    "lore": "A glass-jawed ambusher that never leaves its shallows. Step onto the wrong shoreline tile and it lunges; read the still water and it is easy prey.",
+    "attacks": [
+      {
+        "key": "piranha_lunge",
+        "kind": "melee",
+        "label": "Piranha Lunge",
+        "cooldownSec": 1.4,
+        "range": 1,
+        "minRange": 1,
+        "requiresLOS": true,
+        "damageMin": 9,
+        "damageMax": 13,
+        "damageType": "physical"
+      }
+    ],
+    "lootTable": [
+      {
+        "minRoll": 0.0,
+        "maxRoll": 0.4,
+        "item_id": "health_potion",
+        "name": "Health Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 30
+      }
+    ]
+  },
+  "river_eel": {
+    "type": "river_eel",
+    "faction": "monsters",
+    "name": "River Eel",
+    "baseHp": 26,
+    "baseAttack": 9,
+    "baseDefense": 2,
+    "moveCadence": 0,
+    "attackCadence": 1.8,
+    "damageMin": 6,
+    "damageMax": 10,
+    "damageType": "physical",
+    "aiType": "stationary",
+    "baseXp": 28,
+    "xpFloorScale": 5,
+    "svgCode": "1F3A3",
+    "lore": "A longer-reach shoreline ambusher. Its grab roots the greedy traveller in the open — punish it only after the reach has spent itself.",
+    "attacks": [
+      {
+        "key": "eel_grab",
+        "kind": "melee",
+        "label": "Eel Grab",
+        "cooldownSec": 1.8,
+        "range": 2,
+        "minRange": 1,
+        "requiresLOS": true,
+        "damageMin": 6,
+        "damageMax": 10,
+        "damageType": "physical",
+        "onHit": { "status": "root", "durationSec": 1 }
+      }
+    ],
+    "lootTable": [
+      {
+        "minRoll": 0.0,
+        "maxRoll": 1.0,
+        "item_id": "mana_potion",
+        "name": "Mana Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 40
+      }
+    ]
+  },
+  "river_rat": {
+    "type": "river_rat",
+    "faction": "monsters",
+    "name": "River Rat",
+    "baseHp": 22,
+    "baseAttack": 6,
+    "baseDefense": 1,
+    "moveCadence": 0.5,
+    "attackCadence": 1.0,
+    "damageMin": 4,
+    "damageMax": 8,
+    "damageType": "physical",
+    "aiType": "chase",
+    "baseXp": 18,
+    "xpFloorScale": 4,
+    "svgCode": "1F407",
+    "lore": "A roaming shoreline skirmisher of the grass wilds. Faster and leaner than a drowned crawler, it closes the gap before you can read the fight.",
+    "lootTable": [
+      {
+        "minRoll": 0.0,
+        "maxRoll": 0.35,
+        "item_id": "health_potion",
+        "name": "Health Potion",
+        "type": "consumable",
+        "quantity": 1,
+        "stat_bonus": 30
+      }
+    ]
   }
 }

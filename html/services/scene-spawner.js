@@ -16,7 +16,7 @@
 import { MONSTERS_CATALOG, getQuestDefinition } from '../data/index.js';
 import { MONSTER_FACTION } from '../engine/faction.js';
 import { createPRNG } from './floor-generator.js';
-import { isCodeWalkable } from './scene-composer.js';
+import { isCodeWalkable, tileCodeForName } from './scene-composer.js';
 import { QUEST_STATUS, getQuestStatus, getObjectiveCount } from '../engine/quest-system.js';
 
 /** djb2 string hash -> unsigned 32-bit seed (deterministic scene placement). */
@@ -75,6 +75,21 @@ function walkableHash(scene, x, y) {
   const row = scene.tiles[y];
   if (!row || !isCodeWalkable(row[x])) return null;
   return y * scene.width + x;
+}
+
+/**
+ * True when a walkable tile is orthogonally adjacent to any tile of `code`.
+ * Used by a spawn zone's optional `nearTile` filter (LIV-135) so shoreline
+ * ambushers only take tiles that actually border the named tile type (e.g.
+ * `WATER`) — the "don't step in the shallows" placement, data-driven.
+ */
+function adjacentToTile(scene, x, y, code) {
+  const { tiles, width, height } = scene;
+  if (x > 0 && tiles[y][x - 1] === code) return true;
+  if (x < width - 1 && tiles[y][x + 1] === code) return true;
+  if (y > 0 && tiles[y - 1][x] === code) return true;
+  if (y < height - 1 && tiles[y + 1][x] === code) return true;
+  return false;
 }
 
 /**
@@ -168,11 +183,15 @@ export function planSceneMonsters(scene, questState, opts = {}) {
     if (pool.length === 0) continue;
 
     // Collect free walkable tiles in the zone, then deterministically shuffle.
+    // An optional `nearTile` (tile-type name) restricts candidates to tiles that
+    // border that type, so a shoreline zone only seeds water-adjacent perches.
+    const nearCode = zone.nearTile ? tileCodeForName(zone.nearTile) : null;
     const candidates = [];
     for (let y = Math.max(0, zone.y0); y <= zone.y1 && y < scene.height; y++) {
       for (let x = Math.max(0, zone.x0); x <= zone.x1 && x < width; x++) {
         const hash = walkableHash(scene, x, y);
         if (hash === null || occupied.has(hash)) continue;
+        if (nearCode !== null && !adjacentToTile(scene, x, y, nearCode)) continue;
         candidates.push(hash);
       }
     }

@@ -76,7 +76,10 @@
     "shrine_warden": { "min": 35, "max": 55 },
     "salt_hound": { "min": 3, "max": 8 },
     "mudlark_wrecker": { "min": 6, "max": 14 },
-    "barnacle_brute": { "min": 30, "max": 50 }
+    "barnacle_brute": { "min": 30, "max": 50 },
+    "river_piranha": { "min": 3, "max": 9 },
+    "river_eel": { "min": 5, "max": 12 },
+    "river_rat": { "min": 3, "max": 8 }
   },
   "chestGold": {
     "copper": { "min": 5, "max": 12 },

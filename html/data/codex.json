@@ -26,6 +26,10 @@
       "name": "Summoner",
       "summary": "Calls reinforcements. Prioritise it before the field fills up."
     },
+    "ambusher": {
+      "name": "Ambusher",
+      "summary": "Never leaves its post; it strikes the tile you step onto. Read the still silhouette and either avoid the ground it guards or kill it at reach."
+    },
     "unknown": {
       "name": "Uncatalogued",
       "summary": "No field notes recorded yet."
@@ -192,6 +196,24 @@
       "tier": "elite",
       "silhouette": "Barnacle-crusted brute, heavy and slow.",
       "telegraph": "Telegraphed tide-slam AoE with knockback; leave the ring, then punish."
+    },
+    "river_piranha": {
+      "role": "ambusher",
+      "tier": "normal",
+      "silhouette": "Still, toothy shape waiting in the shallows.",
+      "telegraph": "Never moves; lunges the instant you step beside it. Give the water edge a wide berth or kill it at reach."
+    },
+    "river_eel": {
+      "role": "ambusher",
+      "tier": "normal",
+      "silhouette": "Coiled, narrow form half-hidden at the water's edge.",
+      "telegraph": "Grabs from two tiles and roots you in the open. Strike it after the reach has spent itself, never from point-blank."
+    },
+    "river_rat": {
+      "role": "chaser",
+      "tier": "normal",
+      "silhouette": "Lean, wet-furred rat that breaks from the grass at a run.",
+      "telegraph": "No wind-up but fast on its feet; backpedal while you strike so it never closes clean."
     }
   }
 }
