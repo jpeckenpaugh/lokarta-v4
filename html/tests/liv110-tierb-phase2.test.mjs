@@ -160,12 +160,11 @@ test('LIV-110 Tier B baked Phase 2', async (t) => {
     }
   });
 
-  await t.test('8. Tier A defaults are untouched: runtime defs stay indexed at cap 16', () => {
+  await t.test('8. Tier A defaults are untouched (archer is the one integrated Tier B actor)', () => {
     const runtime = [
       'html/assets/sprites/vocations/magician.json',
       'html/assets/sprites/vocations/paladin.json',
       'html/assets/sprites/vocations/fighter.json',
-      'html/assets/sprites/vocations/archer.json',
       'html/assets/sprites/monsters/abyssal_overlord.json',
     ];
     for (const rel of runtime) {
@@ -175,6 +174,11 @@ test('LIV-110 Tier B baked Phase 2', async (t) => {
       assert.ok(Object.keys(def.palette).length <= 16, `${rel} palette stays <= 16`);
       assert.deepEqual(validateSpriteDef(def, { label: rel }).errors, []);
     }
+    // archer is the board-requested runtime integration: the live actor is the
+    // baked rukiya sprite (Tier B, <=32 palette).
+    const archer = JSON.parse(fs.readFileSync(path.join(ROOT, 'html/assets/sprites/vocations/archer.json'), 'utf8'));
+    assert.equal(resolveRenderTier(archer), 'baked', 'live archer is the Tier B rukiya bake');
+    assert.ok(Object.keys(archer.palette).length <= 32);
   });
 
   await t.test('9. deriveTierB keeps source geometry and is reusable for a new source', () => {

@@ -679,10 +679,18 @@ test('Tier B sprite contract (LIV-108)', async t => {
     assert.equal(paletteCapFor({ renderTier: 'indexed' }), 16);
     assert.equal(paletteCapFor({ renderTier: 'baked' }), 32);
 
-    // Every committed actor stays Tier A at the ≤16 cap.
+    // Tier A is the default: every committed actor stays indexed at the ≤16 cap
+    // unless it is an explicit opt-in Tier B asset (LIV-110 integrated the baked
+    // rukiya archer into the live catalog).
+    const TIERB_ACTORS = new Set(['archer']);
     for (const [id, def] of Object.entries(SPRITE_CATALOG)) {
-      assert.equal(resolveRenderTier(def), 'indexed', `${id} must stay Tier A`);
-      assert.ok(Object.keys(def.palette).length <= 16, `${id} indexed cap`);
+      if (TIERB_ACTORS.has(id)) {
+        assert.equal(resolveRenderTier(def), 'baked', `${id} opts into Tier B`);
+        assert.ok(Object.keys(def.palette).length <= 32, `${id} baked cap`);
+      } else {
+        assert.equal(resolveRenderTier(def), 'indexed', `${id} must stay Tier A`);
+        assert.ok(Object.keys(def.palette).length <= 16, `${id} indexed cap`);
+      }
     }
 
     // A 22-entry baked palette validates; the same def fails as indexed.
