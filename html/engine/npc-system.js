@@ -51,6 +51,10 @@ export function makeNpcRuntime(def) {
     portraits: def.portraits ? { ...def.portraits } : null,
     vocation: def.vocation || null,
     renderTheme: def.renderTheme ? { ...def.renderTheme } : null,
+    // LIV-145: per-actor render-scale multiplier (authored per NPC). Generic
+    // passthrough — the renderer normalizes a scalar or `{ w, h }` spec and
+    // defaults to 1:1, so no per-NPC branch is needed here.
+    renderScale: def.renderScale ?? null,
     aiType: def.aiType || 'stationary',
     wanderRadius: Math.max(0, Number(def.wanderRadius) || 0),
     blocks: def.blocks !== false,

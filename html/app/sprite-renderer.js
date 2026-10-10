@@ -83,16 +83,56 @@ export const HUMANOID_RENDER_BOX = Object.freeze({ w: 72, h: 96 });
 /** Reference tile the humanoid box is authored against (the default GRID_SIZE). */
 const HUMANOID_BOX_REF_TILE = 64;
 
+/** Shared 1:1 render-scale singleton (no per-frame allocation for the default). */
+export const UNIT_RENDER_SCALE = Object.freeze({ w: 1, h: 1 });
+
+/**
+ * One axis of a raw render-scale spec as a positive multiplier (allocation-free).
+ * A spec may be a single number/string applied to both axes or a `{ w, h }` pair;
+ * anything missing, non-finite, or <= 0 falls back to 1.
+ */
+function renderScaleMultiplier(spec, axis) {
+  if (spec == null) return 1;
+  const raw = (typeof spec === 'number' || typeof spec === 'string') ? Number(spec) : Number(spec[axis]);
+  return Number.isFinite(raw) && raw > 0 ? raw : 1;
+}
+
+/**
+ * Resolves an actor's per-actor render-scale multiplier (LIV-145). Data-driven:
+ * the value is authored per actor/NPC (e.g. `renderScale` in `npcs.json`) and
+ * forwarded onto the runtime entity by `makeNpcRuntime`. Accepts either a single
+ * positive multiplier applied to both axes or an explicit `{ w, h }` pair.
+ * Missing/invalid values fall back to the frozen 1:1 singleton so an unauthored
+ * actor keeps the LIV-142 humanoid box unchanged. Pure, no DOM.
+ * @param {object} [actor]
+ * @returns {{w:number,h:number}}
+ */
+export function resolveRenderScale(actor) {
+  const rs = actor && actor.renderScale;
+  if (rs == null) return UNIT_RENDER_SCALE;
+  const w = renderScaleMultiplier(rs, 'w');
+  const h = renderScaleMultiplier(rs, 'h');
+  return w === 1 && h === 1 ? UNIT_RENDER_SCALE : { w, h };
+}
+
 /**
  * Resolves an actor def's display box, or null when it keeps the tile scale.
  * Only 3D-baked single-tile actor defs (vocations, NPCs, opponents) opt in.
+ * `renderScale` (LIV-145) multiplies the box on each axis, so a taller/wider
+ * character reads correctly while the caller's centre-bottom anchor, ground
+ * shadow and HP/quest anchors all track the scaled box.
+ * @param {object} def
+ * @param {number} [size]
+ * @param {{w:number,h:number}|number|string|null} [renderScale] resolved pair or raw spec
  * @returns {{w:number,h:number}|null}
  */
-export function actorRenderBox(def, size = CONFIG.GRID_SIZE) {
+export function actorRenderBox(def, size = CONFIG.GRID_SIZE, renderScale = null) {
   if (!def || def.baked3d !== true || def.tiles) return null;
   const rb = def.renderBox;
-  const bw = rb && Number(rb.w) > 0 ? Number(rb.w) : HUMANOID_RENDER_BOX.w;
-  const bh = rb && Number(rb.h) > 0 ? Number(rb.h) : HUMANOID_RENDER_BOX.h;
+  const sw = renderScaleMultiplier(renderScale, 'w');
+  const sh = renderScaleMultiplier(renderScale, 'h');
+  const bw = (rb && Number(rb.w) > 0 ? Number(rb.w) : HUMANOID_RENDER_BOX.w) * sw;
+  const bh = (rb && Number(rb.h) > 0 ? Number(rb.h) : HUMANOID_RENDER_BOX.h) * sh;
   return {
     w: Math.round((size * bw) / HUMANOID_BOX_REF_TILE),
     h: Math.round((size * bh) / HUMANOID_BOX_REF_TILE),
@@ -1537,8 +1577,11 @@ export class SpriteRenderer {
 
     // LIV-142: a 3D-baked humanoid renders in a larger-than-tile box (72x96 at
     // the default tile), centre-bottom aligned to its tile. `null` keeps the
-    // legacy tile-scale geometry for hand-authored actors.
-    const box = actorRenderBox(def, size);
+    // legacy tile-scale geometry for hand-authored actors. LIV-145: a per-actor
+    // `renderScale` multiplier (authored per NPC) scales that box on each axis;
+    // the centre-bottom anchor, ground shadow and HP/quest anchors all track it.
+    const renderScale = resolveRenderScale(actor);
+    const box = actorRenderBox(def, size, renderScale);
     const nw = box ? box.w : def.native.w * scale;
     const nh = box ? box.h : def.native.h * scale;
     const dx = Math.round(screenX + (size - nw) / 2);

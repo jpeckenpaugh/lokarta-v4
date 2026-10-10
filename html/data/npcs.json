@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "LIV-143 Havenreach town (`town_havenreach`) NPC roster — unique 3D models only, no tinting. The board (rejected confirmation on LIV-141) directed that NPC variety must come from the source 3D models themselves, not colour tints used to stretch a small mesh set into a bigger cast. The town therefore ships exactly one NPC per unique rigged human GLB: `villager_m`, `deckhand_walk`, `first_fisher`, `villager_f`, `young_fisher`, `child_white_hair` (six models -> six NPCs). The three primary quest givers (Captain Halden, Wick, The Weigher) stay stationary in front of the three structures at the top of the town; the three remaining cast members are ambient wanderers spread across the districts. Every sprite is a genuine render of its own model in the model's own colours — `renderTheme` tint fallbacks are removed, and no NPC is a recolour of another. Each NPC still declares `npcSpriteId > spriteId > type` resolve order; `spriteId`, `svgCode` and `portraitEmoji` stay as the harmless migration fallbacks (they are only used if an authored asset is ever missing). `aiType` remains the neutral-entity dispatch key (stationary|wander). Quest wiring is unchanged: `quests.json` `giverNpcId`/`turnInNpcId` resolve, and every retained NPC's dialogue id resolves in `dialogues.json`.",
+  "description": "LIV-143 Havenreach town (`town_havenreach`) NPC roster — unique 3D models only, no tinting. The board (rejected confirmation on LIV-141) directed that NPC variety must come from the source 3D models themselves, not colour tints used to stretch a small mesh set into a bigger cast. The town therefore ships exactly one NPC per unique rigged human GLB: `villager_m`, `deckhand_walk`, `first_fisher`, `villager_f`, `young_fisher`, `child_white_hair` (six models -> six NPCs). The three primary quest givers (Captain Halden, Wick, The Weigher) stay stationary in front of the three structures at the top of the town; the three remaining cast members are ambient wanderers spread across the districts. Every sprite is a genuine render of its own model in the model's own colours — `renderTheme` tint fallbacks are removed, and no NPC is a recolour of another. Each NPC still declares `npcSpriteId > spriteId > type` resolve order; `spriteId`, `svgCode` and `portraitEmoji` stay as the harmless migration fallbacks (they are only used if an authored asset is ever missing). `aiType` remains the neutral-entity dispatch key (stationary|wander). Quest wiring is unchanged: `quests.json` `giverNpcId`/`turnInNpcId` resolve, and every retained NPC's dialogue id resolves in `dialogues.json`. LIV-145 adds an optional per-NPC `renderScale` (`{ w, h }` multiplier, default 1) applied to the LIV-142 humanoid render box so a short/tall character reads correctly while staying centre-bottom anchored (shadow + HP/quest-marker anchors track the scaled box).",
   "npcs": [
     {
       "id": "captain_halden",
@@ -12,6 +12,7 @@
       "facing": "down",
       "npcSpriteId": "npc_captain_halden",
       "spriteId": "fighter",
+      "renderScale": { "w": 1.5, "h": 1.5 },
       "aiType": "stationary",
       "blocks": true,
       "svgCode": "1F6E1",
@@ -56,6 +57,7 @@
       "facing": "down",
       "npcSpriteId": "npc_elder_rowan_vane",
       "spriteId": "magician",
+      "renderScale": { "w": 1.5, "h": 1.5 },
       "aiType": "stationary",
       "blocks": true,
       "svgCode": "1F4D6",
@@ -101,6 +103,7 @@
       "facing": "down",
       "npcSpriteId": "npc_pilgrims_apprentice_tam",
       "spriteId": "archer",
+      "renderScale": { "w": 0.75, "h": 0.75 },
       "aiType": "wander",
       "wanderRadius": 2,
       "blocks": true,
@@ -124,6 +127,7 @@
       "facing": "down",
       "npcSpriteId": "npc_child_kes",
       "spriteId": "magician",
+      "renderScale": { "w": 0.5, "h": 0.5 },
       "aiType": "wander",
       "wanderRadius": 2,
       "blocks": true,
