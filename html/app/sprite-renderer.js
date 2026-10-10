@@ -1191,6 +1191,26 @@ export function resolveSpriteId(actor) {
   return null;
 }
 
+/**
+ * Resolve the tint wash to bake into an actor's frame at draw time.
+ *
+ * LIV-144: a neutral town NPC renders its authored 3D-baked art **unmodified**.
+ * `npcId` is the data-driven runtime marker set by `makeNpcRuntime`; when it is
+ * present the actor never receives a tint — no `renderTheme`/caller wash, and an
+ * unknown/missing `npcSpriteId` that resolves through the shared `spriteId`
+ * fallback cannot become a tinted duplicate either. Non-NPC actors keep the
+ * caller status tint (LIV-45/49 downed grey-out) and the hit flash.
+ *
+ * @param {object} actor
+ * @param {{ tint?: object|null }} opts
+ * @param {object|null} [hitTint] pre-resolved hit-flash tint (non-NPC only)
+ * @returns {object|null} the tint spec to bake, or null for no tint
+ */
+export function resolveActorTint(actor, opts = {}, hitTint = null) {
+  if (actor && actor.npcId != null) return null;
+  return opts.tint || hitTint || null;
+}
+
 export function resolveSpriteFrame(def, anim) {
   const state = anim && def.animations[anim.state] ? anim.state : 'idle';
   let dir = (anim && anim.dir) || 'down';
@@ -1534,11 +1554,11 @@ export class SpriteRenderer {
     // Hit feedback: a static tint under reduced motion, otherwise the same tint
     // baked into the frame (no per-frame shake, no alpha edge fades). An explicit
     // caller tint (the LIV-45/49 downed grey-out) wins and is baked the same way.
-    // LIV-81: a bespoke NPC sprite already carries its own palette, so the
-    // migration `renderTheme` tint is skipped once the NPC's own asset resolves.
-    const bespoke = !!(actor.npcSpriteId && actor.npcSpriteId === id);
+    // LIV-144: a neutral town NPC (runtime `npcId`) is never tinted — its authored
+    // 3D-baked art always renders unmodified, even when an unknown/missing
+    // `npcSpriteId` falls through to the shared `spriteId` (no tinted duplicate).
     const hitTint = (!reduced && state === 'hit') ? { hex: HIT_TINT, amount: 0.35 } : null;
-    const tint = bespoke ? null : (opts.tint || hitTint);
+    const tint = resolveActorTint(actor, opts, hitTint);
 
     // LIV-49 on-back pose: rotate the baked frame about the tile centre. One
     // translate/rotate pair plus a pivot-relative blit keeps the per-frame path

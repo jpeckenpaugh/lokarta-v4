@@ -8,7 +8,10 @@
  *   - `wander`     — ambles one tile at a time within `wanderRadius` of home.
  *
  * The module is pure: no DOM, no canvas, no storage. The renderer draws each NPC
- * through the existing `drawActor` pipeline using its `spriteId` + `renderTheme`.
+ * through the existing `drawActor` pipeline using its own 3D-baked `npcSpriteId`
+ * art. LIV-144: town NPCs are never recoloured — the runtime `renderTheme`
+ * passthrough is retained only as inert catalog data; `drawActor` ignores it for
+ * any actor carrying `npcId`.
  */
 
 import { listNpcDefinitions } from '../data/index.js';

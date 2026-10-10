@@ -718,13 +718,13 @@ export class CanvasRenderer {
           break;
         }
         case 'npc': {
-          // Scene-only, culled off-screen; the shared actor pipeline carries the
-          // catalog `renderTheme` tint so no bespoke art is required (LIV-60 P2).
+          // Scene-only, culled off-screen. LIV-144: town NPCs render their
+          // authored 3D-baked `npcSpriteId` art unmodified — no `renderTheme`
+          // tint wash, so per-NPC variety can never come from recolouring.
           if (screenX < -CONFIG.GRID_SIZE || screenY < -CONFIG.GRID_SIZE
             || screenX > width || screenY > height) break;
           const geo = SpriteRenderer.drawActor(ctx, actor, screenX, screenY, {
             size: CONFIG.GRID_SIZE,
-            tint: actor.renderTheme || undefined,
           });
           // Quest marker (LIV-55 P5): `available` (!) / `turnin` (?). Anchored
           // above the sprite box so it clears the taller LIV-142 humanoid render.
