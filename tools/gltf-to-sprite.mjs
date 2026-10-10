@@ -20,7 +20,14 @@
  *
  * Usage:
  *     node tools/gltf-to-sprite.mjs <input.glb> [--id rukiya] [--out docs/art/3d-poc]
- *         [--size 32] [--views 0,90,180,270] [--colors 14] [--rise 10] [--flat]
+ *         [--size 32] [--views 0,90,180,270] [--colors 14] [--rise 60] [--yaw 45] [--flat]
+ *
+ * Camera baseline (LIV-127): the default `rise` is the 60-degree Top-Down
+ * Oblique "3/4" pitch the board adopted, measured FROM THE HORIZON (rise=0 is a
+ * flat side elevation, rise=90 is a straight top-down plan). Pass `--rise` to
+ * override, or `--yaw <deg>` to rotate every view azimuth by a fixed offset
+ * (e.g. 45 for the isometric read) so items break perfect N/S/E/W alignment.
+ * Projection stays orthographic throughout.
  */
 
 import fs from 'node:fs';
@@ -67,6 +74,10 @@ export const BAKED_PALETTE_CAP = BAKED_OPAQUE_BUDGET + 1;
 // native and display must stay an integer (SCALE), so multi-tile bitmaps are
 // upscaled by the same integer SCALE as single-tile sprites (LIV-106).
 const NATIVE_TILE = 32;
+// LIV-127: board-adopted 3D camera baseline — a Top-Down Oblique "3/4" pitch of
+// 60 degrees measured FROM THE HORIZON (rise=0 = flat side elevation, rise=90 =
+// straight top-down). See docs/art/3d-camera-baseline.md.
+const DEFAULT_CAMERA_RISE = 60;
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
 
@@ -138,7 +149,7 @@ function sampleBilinear(tex, u, v) {
 }
 
 /* ---------------- orthographic software rasteriser ---------------- */
-export function render(glb, tex, { azimuth = 0, rise = 10, targetH = 512, ambient = 0.30, light = [-0.45, 0.72, 0.53], rim = 0, bounce = 0, fitProjected = false } = {}) {
+export function render(glb, tex, { azimuth = 0, rise = DEFAULT_CAMERA_RISE, targetH = 512, ambient = 0.30, light = [-0.45, 0.72, 0.53], rim = 0, bounce = 0, fitProjected = false } = {}) {
   const j = glb.json; const prim = j.meshes[0].primitives[0];
   const pos = readAccessor(glb, prim.attributes.POSITION);
   const nrm = prim.attributes.NORMAL != null ? readAccessor(glb, prim.attributes.NORMAL) : null;
@@ -867,13 +878,17 @@ function chopSheet(slices, scale, bg = [10, 11, 14, 255], pad = 6) {
   return { w: W, h: H, buf };
 }
 
-export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 90, 180, 270], colors = 14, rise = 10, flat = false, renderRes = 512, tiles = null, kind = null, tier = 'indexed', families = 5, steps = 15, stretchX = false, margin = 0, outline = tier !== 'baked', pxPerTile = NATIVE_TILE }) {
+export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 90, 180, 270], colors = 14, rise = DEFAULT_CAMERA_RISE, yaw = 0, flat = false, renderRes = 512, tiles = null, kind = null, tier = 'indexed', families = 5, steps = 15, stretchX = false, margin = 0, outline = tier !== 'baked', pxPerTile = NATIVE_TILE }) {
   const baked = tier === 'baked';
   const glb = parseGLB(glbPath);
   const tex = flat ? null : await loadBaseColor(glb, glb.json.meshes[0].primitives[0].material);
   const multiTile = !!tiles;
   const viewPix = [];
-  for (const az of views) {
+  // `yaw` rotates every view's azimuth by a fixed offset so an asset can be
+  // authored on a 45-degree diagonal (LIV-127). yaw=0 leaves the byte-stable
+  // axis-aligned path (views 0/90/180/270) untouched.
+  const effViews = views.map((az) => (((az + yaw) % 360) + 360) % 360);
+  for (const az of effViews) {
     // Tier B bakes the 135-degree key (upper-left `light`) plus a rim term and a
     // cool bounce; Tier A stays flat Lambert (LIV-109 / art-direction-target §5).
     const hi = render(glb, tex, { azimuth: az * Math.PI / 180, rise, targetH: renderRes, rim: baked ? 0.7 : 0, bounce: baked ? 0.35 : 0, fitProjected: multiTile });
@@ -940,7 +955,7 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
     // consumes it. `mode: multi-tile-blit` == one blitted bitmap, NOT per-tile
     // slicing (LIV-106).
     def.tiles = { w: tiles.w, h: tiles.h };
-    def.placement = { mode: 'multi-tile-blit', footprint: footprintFor(0, 0, tiles), defaultFrame: `view_${views[0]}` };
+    def.placement = { mode: 'multi-tile-blit', footprint: footprintFor(0, 0, tiles), defaultFrame: `view_${effViews[0]}` };
   }
   fs.writeFileSync(path.join(outDir, `${id}.sprite.json`), JSON.stringify(def, null, 2) + '\n');
   if (multiTile) {
@@ -964,7 +979,7 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
  * path (LIV-111).
  */
 export async function buildAnimatedAsset({
-  glbPath, id, outDir, clip = null, size = 32, views = [0, 90, 180, 270], rise = 8,
+  glbPath, id, outDir, clip = null, size = 32, views = [0, 90, 180, 270], rise = DEFAULT_CAMERA_RISE,
   flat = false, renderRes = 512, tier = 'baked', families = 5, steps = 15,
   times = null, frameCount = 8, poseList = null, write = true, rim = null,
   ambient = 0.30, exposure = 1, outline = tier !== 'baked',
@@ -1068,7 +1083,7 @@ export async function buildAnimatedAsset({
 }
 
 function parseArgs(argv) {
-  const a = { views: [0, 90, 180, 270], size: 32, colors: 14, rise: 10, flat: false, renderRes: 512, tiles: null, kind: null, tier: 'indexed', families: 5, steps: 15, margin: 0, pxPerTile: undefined, outline: undefined, ambient: undefined, exposure: undefined };
+  const a = { views: [0, 90, 180, 270], size: 32, colors: 14, rise: DEFAULT_CAMERA_RISE, yaw: 0, flat: false, renderRes: 512, tiles: null, kind: null, tier: 'indexed', families: 5, steps: 15, margin: 0, pxPerTile: undefined, outline: undefined, ambient: undefined, exposure: undefined };
   const rest = [];
   for (let i = 0; i < argv.length; i++) {
     const t = argv[i];
@@ -1078,6 +1093,7 @@ function parseArgs(argv) {
     else if (t === '--px-per-tile') a.pxPerTile = +argv[++i];
     else if (t === '--colors') a.colors = +argv[++i];
     else if (t === '--rise') a.rise = +argv[++i];
+    else if (t === '--yaw') a.yaw = +argv[++i];
     else if (t === '--render-res') a.renderRes = +argv[++i];
     else if (t === '--views') a.views = argv[++i].split(',').map(Number);
     else if (t === '--tiles') { const [tw, th] = argv[++i].split('x').map(Number); a.tiles = { w: tw, h: th }; }
@@ -1112,7 +1128,7 @@ if (isMain) {
     console.log(`${res.id}: ${res.frames} skinned frames, ${res.palette.length}-colour palette (${res.renderTier}), clip=${a.anim}, ${a.views.length} views x ${res.sampleTimes.length} phases -> ${path.relative(ROOT, outDir)}`);
     process.exit(0);
   }
-  const res = await buildAsset({ glbPath, id, outDir, size: a.size, views: a.views, colors: a.colors, rise: a.rise, flat: a.flat, renderRes: a.renderRes, tiles: a.tiles, kind: a.kind, tier: a.tier, families: a.families, steps: a.steps, stretchX: a.stretchX, margin: a.margin, ...(a.pxPerTile === undefined ? {} : { pxPerTile: a.pxPerTile }), ...(a.outline === undefined ? {} : { outline: a.outline }) });
+  const res = await buildAsset({ glbPath, id, outDir, size: a.size, views: a.views, colors: a.colors, rise: a.rise, yaw: a.yaw, flat: a.flat, renderRes: a.renderRes, tiles: a.tiles, kind: a.kind, tier: a.tier, families: a.families, steps: a.steps, stretchX: a.stretchX, margin: a.margin, ...(a.pxPerTile === undefined ? {} : { pxPerTile: a.pxPerTile }), ...(a.outline === undefined ? {} : { outline: a.outline }) });
   const shape = res.tiles ? `${res.tiles.w}x${res.tiles.h} tiles` : `${a.size}px`;
   console.log(`${res.id}: ${res.opaquePixels} opaque px, ${res.palette.length}-colour palette (${res.renderTier}), textured=${res.textured}, ${shape} -> ${path.relative(ROOT, outDir)}`);
 }

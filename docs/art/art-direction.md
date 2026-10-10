@@ -188,6 +188,14 @@ longhouse / fishers-house / net GLBs in `lokarta-private`. The bake **must hit t
 tier's native size** (§6.2.1): a 64-native actor at `scale = 1` is what removes the
 $2\times2$ source blocks the board flagged.
 
+**Camera baseline ([LIV-126](/LIV/issues/LIV-126) / [LIV-127](/LIV/issues/LIV-127)).**
+Every 3D-rendered artifact uses a **Top-Down Oblique "3/4" orthographic** projection
+at a **60° camera pitch measured from the horizon** (`rise=60`), optionally rotated
+**~45° yaw** for an isometric read. Hand-pixelled / 2D-derived art is grandfathered.
+Full model, per-asset conformance table, and the re-render plan:
+[3d-camera-baseline.md](3d-camera-baseline.md). This does not change any runtime
+contract; it constrains the 3D bake camera only.
+
 ### 6.4 Authoring artifacts & tests (implementation = [LIV-121](/LIV/issues/LIV-121))
 
 * The bake pipeline (`tools/gltf-to-sprite.mjs`, `tools/bake-rigged-archer.mjs`,
