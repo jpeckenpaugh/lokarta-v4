@@ -585,11 +585,11 @@ test('NPC identity atlas (LIV-81)', async t => {
     }
   });
 
-  await t.test('26. NPC identity holds: distinct palettes for the baked set (silhouette-exempt)', () => {
-    // docs/art/3d-sprite-mapping.md §2.3: 13 cast over 6 rigged meshes means 7
-    // roles necessarily share a silhouette, so the recolour palette is the
-    // identity carrier for the 3D-baked set and the mask-uniqueness rule is
-    // superseded there. Non-baked NPC art still keeps distinct silhouettes.
+  await t.test('26. NPC identity holds: distinct palettes for the baked set', () => {
+    // LIV-143: the town ships one NPC per unique source model, rendered in the
+    // model's own colours — so every 3D-baked NPC has its own palette and the
+    // silhouette is no longer a shared constraint. (Before LIV-143 two NPCs
+    // could share a mesh, and the recolour palette carried the identity.)
     const palettes = new Map();
     const masks = new Map();
     for (const npc of npcs) {

@@ -20,8 +20,9 @@ test('LIV-81 NPC identity surfaces', async (t) => {
       spriteIds.add(npc.npcSpriteId);
       // Migration fallbacks must remain until every sprite/portrait lands.
       assert.ok(npc.spriteId, `${npc.id} must keep spriteId as the migration fallback`);
-      // LIV-144: tinting is not a valid way to diversify town NPCs, so
-      // `renderTheme` is no longer a required fallback (inert if still present).
+      // LIV-143: town NPCs are original 3D renders, one per unique model — the
+      // roster must not carry a `renderTheme` tint field at all.
+      assert.equal(npc.renderTheme, undefined, `${npc.id} must not carry a renderTheme tint`);
       assert.ok(npc.svgCode && npc.portraitEmoji, `${npc.id} must keep the emoji fallback`);
     }
   });

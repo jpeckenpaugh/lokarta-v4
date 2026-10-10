@@ -1,16 +1,21 @@
 #!/usr/bin/env node
 /**
- * Lokarta 3D-baked Havenreach NPC actors (LIV-134, Phase 1 of LIV-132).
+ * Lokarta 3D-baked Havenreach NPC actors (LIV-134; curated by LIV-143).
  *
- * Bakes the 13 `html/data/npcs.json` cast from the six rigged human GLBs the
- * board shipped in `lokarta-private` (origin/main @ 0412020) into the actor
- * contract from docs/art/3d-sprite-mapping.md §1-§2:
+ * Bakes the `html/data/npcs.json` cast from the rigged human GLBs the board
+ * shipped in `lokarta-private` (origin/main @ 0412020) into the actor contract
+ * from docs/art/3d-sprite-mapping.md §1-§2:
  *
  *   - 64 px/tile native, 1:1, N64 density; 64x64 canvas per actor
  *   - actor-exception pitch (rise < 60, §12.1) — NOT the 60° building baseline
  *   - no outline; data-driven silhouette ground shadow (renderer-derived)
  *   - directional idle (x1) + walk (x2, step-driven) per dir, side mirrored
- *   - per-NPC recolor palette so a reused mesh wears a distinct identity
+ *
+ * LIV-143 (board direction on LIV-141): the cast is **one NPC per unique source
+ * model**, rendered in the model's OWN colours. The former per-NPC recolor ramp
+ * ("reuse a mesh, repaint it a different hue") is retired — variety must come
+ * from the models themselves, never from tinting. Each spec therefore carries
+ * only `id` + `glb`; there is no `palette`.
  *
  * Authoring-only + deterministic: identical GLB inputs -> byte-identical
  * artifacts. Writes the committed authoring artifacts under
@@ -55,25 +60,18 @@ export const ACTOR_AMBIENT = 0.62;
 export const ACTOR_EXPOSURE = 1.28;
 
 /**
- * The 13-NPC bake table (docs/art/3d-sprite-mapping.md §2). `palette` is the
- * NPC's garment / accent / rim-highlight tokens; `recolor()` folds them into the
- * baked pixels so two NPCs sharing a mesh never share colours. Only `glb` +
- * `palette` are authored here — no per-NPC branch anywhere in the pipeline.
+ * The curated Havenreach bake table (LIV-143): **one NPC per unique source
+ * model**, no recolour. Six rigged human GLBs -> six NPCs, so the town reads as
+ * six genuinely different people rather than one mesh repainted. `glb` is the
+ * only authored field; the model's own texture colours are the identity.
  */
 export const NPC_SPECS = [
-  { id: 'npc_villager_m_odon', glb: 'villager_m_optimized.glb', palette: ['#6b4423', '#2f6f73', '#d1b48c'] },
-  { id: 'npc_villager_f_lena', glb: 'villager_f_optimized.glb', palette: ['#9a5b2a', '#b04a3a', '#f5e6cf'] },
-  { id: 'npc_young_fisher_ilo', glb: 'young_fisher_optimized.glb', palette: ['#2f6f73', '#b45309', '#cfe8e6'] },
-  { id: 'npc_deckhand_brann', glb: 'deckhand_walk_optimized.glb', palette: ['#47536e', '#9a4a3a', '#cbd5e1'] },
-  { id: 'npc_child_kes', glb: 'child_white_hair_optimized.glb', palette: ['#b3763c', '#5a4632', '#f0d0b8'] },
-  { id: 'npc_old_sailor_doran', glb: 'first_fisher_optimized.glb', palette: ['#33415c', '#9a4a3a', '#cbd5e1'] },
-  { id: 'npc_elder_rowan_vane', glb: 'first_fisher_optimized.glb', palette: ['#3b4a6b', '#d4af37', '#e2e8f0'] },
-  { id: 'npc_captain_halden', glb: 'villager_m_optimized.glb', palette: ['#5b6470', '#2f6f73', '#cbd5e1'] },
-  { id: 'npc_wick', glb: 'deckhand_walk_optimized.glb', palette: ['#5a4632', '#b45309', '#facc15'] },
-  { id: 'npc_high_dawnkeeper_aurel', glb: 'villager_f_optimized.glb', palette: ['#e2e8f0', '#d4af37', '#fbe6c8'] },
-  { id: 'npc_mara', glb: 'villager_f_optimized.glb', palette: ['#7c4a21', '#b45309', '#d9a441'] },
-  { id: 'npc_innkeep_bessa', glb: 'villager_m_optimized.glb', palette: ['#9a5b2a', '#b04a3a', '#f5e6cf'] },
-  { id: 'npc_pilgrims_apprentice_tam', glb: 'young_fisher_optimized.glb', palette: ['#3f6a33', '#6b4e2e', '#e8dcc0'] },
+  { id: 'npc_captain_halden', glb: 'villager_m_optimized.glb' },
+  { id: 'npc_wick', glb: 'deckhand_walk_optimized.glb' },
+  { id: 'npc_elder_rowan_vane', glb: 'first_fisher_optimized.glb' },
+  { id: 'npc_mara', glb: 'villager_f_optimized.glb' },
+  { id: 'npc_pilgrims_apprentice_tam', glb: 'young_fisher_optimized.glb' },
+  { id: 'npc_child_kes', glb: 'child_white_hair_optimized.glb' },
 ];
 
 const SPEC_BY_ID = Object.fromEntries(NPC_SPECS.map((s) => [s.id, s]));
@@ -151,7 +149,9 @@ export async function bakeNpc(spec) {
     clip: null, size: PX_PER_TILE, rise: ACTOR_RISE, tier: 'baked',
     poseList: poseListFor(duration), renderRes: 512, write: false,
     rim: ACTOR_RIM, ambient: ACTOR_AMBIENT, exposure: ACTOR_EXPOSURE,
-    outline: false, recolor: makeRecolor(spec.palette),
+    outline: false,
+    // LIV-143: no recolor — the model renders in its own colours.
+    recolor: null,
   });
   return res;
 }

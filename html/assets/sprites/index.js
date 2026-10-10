@@ -24,16 +24,9 @@ import riverRat from './monsters/river_rat.json' with { type: 'json' };
 import npcElderRowanVane from './npc/npc_elder_rowan_vane.json' with { type: 'json' };
 import npcCaptainHalden from './npc/npc_captain_halden.json' with { type: 'json' };
 import npcWick from './npc/npc_wick.json' with { type: 'json' };
-import npcHighDawnkeeperAurel from './npc/npc_high_dawnkeeper_aurel.json' with { type: 'json' };
 import npcMara from './npc/npc_mara.json' with { type: 'json' };
-import npcInnkeepBessa from './npc/npc_innkeep_bessa.json' with { type: 'json' };
-import npcOldSailorDoran from './npc/npc_old_sailor_doran.json' with { type: 'json' };
 import npcPilgrimsApprenticeTam from './npc/npc_pilgrims_apprentice_tam.json' with { type: 'json' };
-import npcDeckhandBrann from './npc/npc_deckhand_brann.json' with { type: 'json' };
-import npcYoungFisherIlo from './npc/npc_young_fisher_ilo.json' with { type: 'json' };
 import npcChildKes from './npc/npc_child_kes.json' with { type: 'json' };
-import npcVillagerMOdon from './npc/npc_villager_m_odon.json' with { type: 'json' };
-import npcVillagerFLena from './npc/npc_villager_f_lena.json' with { type: 'json' };
 import buildingFishingHut from './buildings/fishing_hut.json' with { type: 'json' };
 import buildingFishingHutBack from './buildings/fishing_hut_back.json' with { type: 'json' };
 import buildingFishingHutRight from './buildings/fishing_hut_right.json' with { type: 'json' };
@@ -60,16 +53,9 @@ export const SPRITE_CATALOG = {
   npc_elder_rowan_vane: npcElderRowanVane,
   npc_captain_halden: npcCaptainHalden,
   npc_wick: npcWick,
-  npc_high_dawnkeeper_aurel: npcHighDawnkeeperAurel,
   npc_mara: npcMara,
-  npc_innkeep_bessa: npcInnkeepBessa,
-  npc_old_sailor_doran: npcOldSailorDoran,
   npc_pilgrims_apprentice_tam: npcPilgrimsApprenticeTam,
-  npc_deckhand_brann: npcDeckhandBrann,
-  npc_young_fisher_ilo: npcYoungFisherIlo,
   npc_child_kes: npcChildKes,
-  npc_villager_m_odon: npcVillagerMOdon,
-  npc_villager_f_lena: npcVillagerFLena,
 };
 
 // Prop/tile art (keys, chests, gated doors) lives in a separate catalog so it

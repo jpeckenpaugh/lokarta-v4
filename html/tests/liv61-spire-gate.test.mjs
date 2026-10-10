@@ -177,7 +177,7 @@ test('LIV-61 quest markers: available/turn-in flags derive from quest data', () 
     npcs: [
       { npcId: 'captain_halden' },   // Q1 giver, not yet accepted -> available
       { npcId: 'elder_rowan_vane' }, // Q3 turn-in, complete -> turn-in
-      { npcId: 'innkeep_bessa' },    // no quest role -> none
+      { npcId: 'mara' },         // no quest role -> none
     ],
   });
   app.refreshQuestMarkers();

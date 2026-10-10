@@ -242,34 +242,6 @@
       ]
     },
 
-    "high_dawnkeeper_aurel": {
-      "npcId": "high_dawnkeeper_aurel",
-      "speaker": "Tidekeeper Aurel",
-      "fallback": "lore",
-      "stages": [
-        {
-          "id": "beacon_lit",
-          "when": { "flag": "beaconLit" },
-          "expression": "warm",
-          "lines": [
-            "The beacon is kindled — I can feel it warm the slatted floor, even from here.",
-            "Rest. The Dawn will mend you, and the Spire will take everything else."
-          ],
-          "actions": [ { "type": "open_temple", "templeId": "temple_of_the_dawn" } ]
-        },
-        {
-          "id": "lore",
-          "when": {},
-          "expression": "urgent",
-          "lines": [
-            "Three nights the beacon has been dark, and three nights the boats have not come back. The Drowned Dark is patient.",
-            "The Weigher keeps the rite; I keep the fire. Between us the reach holds — but only if the light comes home. A body should not be a toll. Rest here and be whole."
-          ],
-          "actions": [ { "type": "open_temple", "templeId": "temple_of_the_dawn" } ]
-        }
-      ]
-    },
-
     "mara": {
       "npcId": "mara",
       "speaker": "Mara the Fishmonger",
@@ -295,53 +267,6 @@
             "A weapon for every hand — you'll not be caught empty on my account."
           ],
           "actions": [ { "type": "open_shop", "shopId": "merchant_stall" } ]
-        }
-      ]
-    },
-
-    "innkeep_bessa": {
-      "npcId": "innkeep_bessa",
-      "speaker": "Innkeep Bessa",
-      "fallback": "greet",
-      "stages": [
-        {
-          "id": "greet",
-          "when": {},
-          "expression": "warm",
-          "lines": [
-            "Wayfarer's Rest — the only warm hearth left on the reach. Sit, and let the tide fall off you.",
-            "Old Doran holds his corner most nights, if you want the sea told straight. For now — a bed, a bowl, and a roof that does not leak.",
-            "Square and Space are your interact keys, and the pause menu will hold the world still."
-          ],
-          "actions": [ { "type": "rest", "healPct": 1.0 } ]
-        }
-      ]
-    },
-
-    "old_sailor_doran": {
-      "npcId": "old_sailor_doran",
-      "speaker": "Old Doran",
-      "fallback": "flavor",
-      "stages": [
-        {
-          "id": "flag",
-          "when": { "flag": "beaconLit" },
-          "expression": "warm",
-          "lines": [
-            "The beacon's lit, and the horizon's changed. I saw a shore out past the fog — one I'd no name for.",
-            "There's three more lights out there, Pilgrim. You relit one. That leaves three."
-          ],
-          "actions": []
-        },
-        {
-          "id": "flavor",
-          "when": {},
-          "expression": "neutral",
-          "lines": [
-            "I've hauled nets on this reach forty year. Forty year, and the water was never so hungry as it is now.",
-            "Halden's watch can't be everywhere, and I'm too old to go where it isn't. Get that beacon lit, and I'll die a happy liar. Fail, and I'll die a truthful one."
-          ],
-          "actions": []
         }
       ]
     },
@@ -404,62 +329,6 @@
       ]
     },
 
-    "deckhand_brann": {
-      "npcId": "deckhand_brann",
-      "speaker": "Brann the Deckhand",
-      "fallback": "shore",
-      "stages": [
-        {
-          "id": "beacon",
-          "when": { "flag": "beaconLit" },
-          "expression": "warm",
-          "lines": [
-            "The beacon's up and the tide's gone kind. Haul's the best it's been since I was a lad.",
-            "Go on, Keeper — the rest of us will keep the boats ready for when you bring the other lights home."
-          ],
-          "actions": []
-        },
-        {
-          "id": "shore",
-          "when": {},
-          "expression": "neutral",
-          "lines": [
-            "Mind the wet planks — the quay's slick at low water, and the boats come in heavier than they look.",
-            "Basket or net, it's all the same work. You take what the water gives and you give it back to the village."
-          ],
-          "actions": []
-        }
-      ]
-    },
-
-    "young_fisher_ilo": {
-      "npcId": "young_fisher_ilo",
-      "speaker": "Ilo the Young Fisher",
-      "fallback": "idle",
-      "stages": [
-        {
-          "id": "beacon",
-          "when": { "flag": "beaconLit" },
-          "expression": "warm",
-          "lines": [
-            "You lit it! The gulls went quiet and everything smelled like light.",
-            "When I'm grown I'll take a boat past the Tide Gate and see what's out there. You'll have made it safe by then, won't you?"
-          ],
-          "actions": []
-        },
-        {
-          "id": "idle",
-          "when": {},
-          "expression": "neutral",
-          "lines": [
-            "I can bait a whole basket before the sun's over the wall. First Fisher says that's fast for my age.",
-            "One day I'll bring in the Sacred First Fish. Then they'll stop calling me young."
-          ],
-          "actions": []
-        }
-      ]
-    },
-
     "child_kes": {
       "npcId": "child_kes",
       "speaker": "Kes",
@@ -476,43 +345,8 @@
           "actions": []
         }
       ]
-    },
-
-    "villager_m_odon": {
-      "npcId": "villager_m_odon",
-      "speaker": "Odon",
-      "fallback": "market",
-      "stages": [
-        {
-          "id": "market",
-          "when": {},
-          "expression": "neutral",
-          "lines": [
-            "Morning haul's in and the market's got its scales up. Mara weighs what she likes and argues the rest.",
-            "No one eats alone here — the Long Table fills at dusk. You'll want a seat before the smoked fish runs out."
-          ],
-          "actions": []
-        }
-      ]
-    },
-
-    "villager_f_lena": {
-      "npcId": "villager_f_lena",
-      "speaker": "Lena",
-      "fallback": "market",
-      "stages": [
-        {
-          "id": "market",
-          "when": {},
-          "expression": "neutral",
-          "lines": [
-            "You can smell the smokehouse clear across the village — that's how you know the catch is good.",
-            "We mend the nets by the racks every afternoon. Any hand that's willing is welcome; the work goes faster with stories."
-          ],
-          "actions": []
-        }
-      ]
     }
+
   },
 
   "ambience": {
@@ -545,15 +379,6 @@
           "night": "Even the Weigher keeps the dark hours. Rest while you can."
         }
       },
-      "high_dawnkeeper_aurel": {
-        "quips": [
-          "The Tide asks nothing you cannot give.",
-          "Breathe. The fire will still be here."
-        ],
-        "scheduleLines": {
-          "night": "Night is only the Dawn waiting its turn."
-        }
-      },
       "mara": {
         "quips": [
           "Coin first, questions second — but only just.",
@@ -561,24 +386,6 @@
         ],
         "scheduleLines": {
           "night": "Stall's shuttered. Even fishmongers need dark to sleep in."
-        }
-      },
-      "innkeep_bessa": {
-        "quips": [
-          "Wipe your boots and warm your hands.",
-          "There's always chowder on, whatever the sky's doing."
-        ],
-        "scheduleLines": {
-          "night": "Last call's long past, but the hearth's yours."
-        }
-      },
-      "old_sailor_doran": {
-        "quips": [
-          "Sea's a liar with a lovely voice.",
-          "I've outlived three captains. Mind you don't make it four."
-        ],
-        "scheduleLines": {
-          "night": "Aye, I'm still up. The tide talks louder after dark."
         }
       },
       "pilgrims_apprentice_tam": {
@@ -590,24 +397,6 @@
           "night": "The harbor lanterns are lovely at night. I write them down so I don't forget."
         }
       },
-      "deckhand_brann": {
-        "quips": [
-          "Rope, tar, and a strong back. That's the whole trade.",
-          "Boats don't sink in bad weather. They sink in bad knots."
-        ],
-        "scheduleLines": {
-          "night": "Boats are moored and the nets are hung. I'll sleep when the tide turns."
-        }
-      },
-      "young_fisher_ilo": {
-        "quips": [
-          "First Fisher says I'll make a deckhand yet!",
-          "I already know twelve kinds of knot. Twelve!"
-        ],
-        "scheduleLines": {
-          "night": "They let me stay up to watch the smoker, but I always fall asleep first."
-        }
-      },
       "child_kes": {
         "quips": [
           "Wanna see my best shell? It's THIS big.",
@@ -615,24 +404,6 @@
         ],
         "scheduleLines": {
           "night": "Mam says the tide comes in while I'm sleeping. I never catch it."
-        }
-      },
-      "villager_m_odon": {
-        "quips": [
-          "The Long Table's set if you're hungry.",
-          "Mara's scales are honest. Mostly."
-        ],
-        "scheduleLines": {
-          "night": "Village goes quiet after the Sharing. Best hour on the shore."
-        }
-      },
-      "villager_f_lena": {
-        "quips": [
-          "Any hand that mends a net eats first at the Long Table.",
-          "Smell that? Catch was good today."
-        ],
-        "scheduleLines": {
-          "night": "The racks are covered and the fires are banked. Rest well, traveller."
         }
       }
     }

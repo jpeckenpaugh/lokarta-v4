@@ -154,7 +154,7 @@ test('LIV-63/LIV-66 bump talk', async (t) => {
   await t.test('every Havenreach NPC opens when its tile is bumped', () => {
     const scene = composeSceneById('town_havenreach');
     const npcs = spawnNpcsForScene(scene);
-    assert.ok(npcs.length >= 7, 'town exposes >= 7 NPCs');
+    assert.ok(npcs.length >= 6, 'town exposes >= 6 NPCs');
     for (const target of npcs) {
       const player = createPartyPlayer('fighter');
       const app = fakeApp({ player, npcs });

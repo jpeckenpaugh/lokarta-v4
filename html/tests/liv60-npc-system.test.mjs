@@ -34,7 +34,7 @@ test('LIV-60 NPC system', async (t) => {
     assert.ok(scene, 'town composes');
     const npcs = spawnNpcsForScene(scene);
     assert.equal(npcs.length, scene.npcs.length);
-    assert.ok(npcs.length >= 7, 'town exposes >= 7 NPCs');
+    assert.ok(npcs.length >= 6, 'town exposes >= 6 NPCs (one per unique source 3D model, LIV-143)');
     const ids = new Set(npcs.map((n) => n.npcId));
     assert.equal(ids.size, npcs.length, 'unique ids');
   });

@@ -95,7 +95,7 @@ test('LIV-60 scene spawner', async (t) => {
     const town = composeSceneById('town_havenreach');
     const townApp = fakeApp();
     townApp.applySceneData(town);
-    assert.ok(townApp.npcs.length >= 7, 'town NPCs spawned');
+    assert.ok(townApp.npcs.length >= 6, 'town NPCs spawned');
     assert.equal(townApp.monsters.length, 0, 'no roamers in town');
     assert.deepEqual(townApp.player.questState, { version: 1, quests: {} });
   });

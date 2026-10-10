@@ -1027,39 +1027,46 @@ per-building branch. The **Longhouse** opts into the per-building `silhouette:
 | Building | Footprint | Door | Opens | NPC |
 | :--- | :--- | :--- | :--- | :--- |
 | Fish Market | `3–7, 3–6` | `(5,7)` | existing shop UI | Mara the Fishmonger |
-| The Tidehall | `9–15, 2–6` | `(12,7)` | existing temple UI (heal) | Tidekeeper Aurel |
+| The Tidehall | `9–15, 2–6` | `(12,7)` | existing temple UI (heal) | *(temple NPC curated out, LIV-143)* |
 | The Longhouse (Ark Hull) | `17–21, 3–6` | `(19,7)` | dialogue | The Weigher |
 | Boatwright's Shed | `18–22, 9–12` | `(18,11)` | dialogue | Wick the Boatwright |
 | Watchtower | `1–5, 9–12` | `(5,11)` | dialogue (combat) | Captain Halden |
-| The Wayfarer's Rest | `17–21, 15–19` | `(19,15)` | rest / dialogue | Innkeep Bessa |
+| The Wayfarer's Rest | `17–21, 15–19` | `(19,15)` | rest / dialogue | *(inn NPC curated out, LIV-143)* |
 
 Town spawn `(12,21)` on the quay; the south gate `(12,23)` returns to the island just
 **south** of the town footprint at `(24,44)`. Water is the only solid added by the
 re-skin and it borders the map edge, so every building door, the spawn, the return spot,
 and the portal stay reachable (`sceneAccessReport`, no soft-locks).
 
-**NPC roster (13 authored, `npcs.json`).** The 8 named cast keep their catalog **ids**
-so `quests.json` `giverNpcId`/`turnInNpcId` wiring is untouched; **LIV-101** re-frames
-their display names/titles/dialogue to the fishing village and adds **5 wander-only
-Shore folk**. Each NPC carries `npcSpriteId` (own 32×32 sprite), a `renderTheme` tint
-fallback, `aiType` (`stationary|wander`), `blocks`, `svgCode` (committed OpenMoji), a
-three-expression `portraits` map, and `interact` (`dialogue`/`shop`/`temple`).
+**NPC roster (6 authored, `npcs.json` — LIV-143).** The board (rejected confirmation
+on [LIV-141](/LIV/issues/LIV-141)) directed that town variety must come from the
+**source 3D models**, not colour tints used to stretch a small mesh set into a bigger
+cast. The roster is therefore curated to **one NPC per unique rigged human GLB** — six
+models, six NPCs — and every `renderTheme` tint fallback is removed. The three primary
+quest givers keep their catalog **ids** so `quests.json` `giverNpcId`/`turnInNpcId`
+wiring is untouched and stand **stationary in front of the three structures at the top
+of the town**; the three remaining cast members are ambient wanderers spread across the
+districts. Each NPC carries `npcSpriteId` (its own 3D-baked sprite, rendered in the
+model's own colours), `aiType` (`stationary|wander`), `blocks`, `svgCode` (committed
+OpenMoji), a three-expression `portraits` map, and `interact`
+(`dialogue`/`shop`/`temple`).
 
-| NPC (id) | Tile | Role |
-| :--- | :--- | :--- |
-| **The Weigher** (`elder_rowan_vane`) | `(19,8)` | Story hub; gives Q3, names the Spire unlock |
-| **Captain Halden** (`captain_halden`) | `(6,11)` | Combat tutorial; gives/turns in Q1 |
-| **Wick the Boatwright** (`wick`) | `(17,11)` | Gives/turns in Q2; the Dawn Lantern |
-| **Tidekeeper Aurel** (`high_dawnkeeper_aurel`) | `(12,8)` | Tidehall heal/lore ("the Tide returns you, free") |
-| **Mara the Fishmonger** (`mara`) | `(5,8)` | Vendor (existing shop) |
-| **Innkeep Bessa** (`innkeep_bessa`) | `(19,14)` | Optional free rest + control tips (cozy delighter) |
-| **Old Doran** (`old_sailor_doran`) | `(11,12)` | Flavor; foreshadows three more lights (Islands 2–4) |
-| **Young Tam** (`pilgrims_apprentice_tam`) | `(13,12)` | Diegetic quest journal; restates the current objective |
-| **Brann the Deckhand** (`deckhand_brann`) | `(4,20)` | Ambient Shore folk — wander-only flavor |
-| **Ilo the Young Fisher** (`young_fisher_ilo`) | `(10,20)` | Ambient Shore folk — wander-only flavor |
-| **Kes** (`child_kes`) | `(14,20)` | Ambient Shore folk — wander-only flavor |
-| **Odon** (`villager_m_odon`) | `(8,13)` | Ambient Shore folk — wander-only flavor |
-| **Lena** (`villager_f_lena`) | `(16,14)` | Ambient Shore folk — wander-only flavor |
+| NPC (id) | Source 3D model | Tile | `aiType` | Role |
+| :--- | :--- | :--- | :--- | :--- |
+| **Captain Halden** (`captain_halden`) | `villager_m` | `(3,5)` | stationary | Combat tutorial; gives/turns in Q1; front of the Fish Market |
+| **Wick the Boatwright** (`wick`) | `deckhand_walk` | `(20,5)` | stationary | Gives/turns in Q2; the Dawn Lantern; front of the Tidehall |
+| **The Weigher** (`elder_rowan_vane`) | `first_fisher` | `(12,7)` | stationary | Story hub; gives Q3, names the Spire unlock; front of the Longhouse |
+| **Mara the Fishmonger** (`mara`) | `villager_f` | `(5,6)` | wander | Vendor (existing shop) — the one retained sustain service |
+| **Young Tam** (`pilgrims_apprentice_tam`) | `young_fisher` | `(14,10)` | wander | Diegetic quest journal; restates the current objective |
+| **Kes** (`child_kes`) | `child_white_hair` | `(10,20)` | wander | Ambient Shore folk — wander-only flavor |
+
+**Service tradeoff (LIV-143).** With one NPC per model, only one of the three
+service NPCs can survive (the temple keeper and innkeep each shared a mesh with a
+retained quest giver). The **shop (Mara)** is kept because it is the gold sink and
+the only between-run supply of potions/arrows; healing stays reachable through shop
+potions. The Tidehall temple and Wayfarer's Rest inn NPCs are cut rather than kept
+as recoloured twins — a knowingly accepted regression in exchange for art integrity.
+
 
 NPC behavior is data-driven (`engine/npc-system.js`): each entry declares `aiType` (`stationary|wander`), `blocks`, and an `interact` dispatch key (`dialogue | shop | temple`) — never a per-NPC branch. Walking into a blocking NPC opens its dialogue (**bump-to-talk**, LIV-63/66); the text renders in a bubble anchored above the speaker with keyboard beat advance (LIV-67). World objects flagged `autoTrigger` (the Drowned Shrine) fire on first approach (LIV-71).
 

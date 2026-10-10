@@ -115,8 +115,8 @@ test('LIV-59 scene composer', async (t) => {
     const scene = composeSceneById(DEFAULT_TOWN_ID);
     assert.equal(scene.sceneKind, 'town');
     assert.equal(scene.lighting, 'ambient');
-    // LIV-101: the town roster carries the 8 named cast + 5 ambient Shore folk.
-    assert.ok(scene.npcs.length >= 8, 'town keeps the full named cast');
+    // LIV-143: the town roster is curated to one NPC per unique source 3D model.
+    assert.ok(scene.npcs.length >= 6, 'town keeps the curated cast');
     assert.equal(scene.npcs.length, listNpcDefinitions(DEFAULT_TOWN_ID).length, 'every scene NPC is emitted');
     // LIV-110: town buildings are decorative baked huts — carried as footprinted
     // silhouettes with no door/activator (the board asked to drop the old house

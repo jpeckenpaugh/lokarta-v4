@@ -29,7 +29,7 @@ function alphaMask(rows, palette) {
 }
 
 test('LIV-136 3D-baked NPC dialogue portraits', async (t) => {
-  await t.test('1. all 13 NPCs ship a 3D-baked 48x48 head still per expression', () => {
+  await t.test('1. every retained NPC ships a 3D-baked 48x48 head still per expression', () => {
     const artifacts = listPortraitArtifacts();
     assert.equal(artifacts.length, npcs.length, 'one baked portrait artifact per NPC');
     for (const npc of npcs) {
@@ -95,7 +95,7 @@ test('LIV-136 3D-baked NPC dialogue portraits', async (t) => {
 
   await t.test('5. the bake is deterministic and the pose table is data (no per-NPC branch)', () => {
     // The expression poses are declared once for the whole cast; the per-NPC
-    // difference is the mesh + the catalog renderTheme tint, not code.
+    // difference is the source mesh, not code and not a tint (LIV-143).
     assert.deepEqual(EXPRESSIONS, EXPRESSION_KEYS, 'expression order is the catalog key order');
     for (const expression of EXPRESSION_KEYS) {
       assert.ok(Array.isArray(EXPRESSION_POSES[expression]), `${expression} pose is declared`);

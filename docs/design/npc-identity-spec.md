@@ -1,6 +1,6 @@
 # Havenreach NPC Identity Spec
 
-**Per-NPC sprite, portrait & personality contract for the 8 named Havenreach NPCs (I1 of the enrichment report).**
+**Per-NPC sprite, portrait & personality contract for the Havenreach NPC cast. As of [LIV-143](/LIV/issues/LIV-143) the town roster is curated to one NPC per unique 3D model (six NPCs).**
 
 | | |
 | :--- | :--- |
@@ -197,9 +197,9 @@ Every NPC gains two fields; **all previous fields are retained as fallbacks**:
 ```jsonc
 {
   "id": "captain_halden",
-  "npcSpriteId": "npc_captain_halden",      // NEW: own 32x32 actor sprite id
+  "npcSpriteId": "npc_captain_halden",      // NEW: own 64x64 actor sprite id
   "spriteId": "fighter",                    // kept: shared fallback
-  "renderTheme": { "hex": "#5b6470", "amount": 0.35 }, // kept: tint fallback
+  // renderTheme REMOVED (LIV-143): no tint on town NPCs.
   "svgCode": "1F6E1", "portraitEmoji": "🛡️", // kept: emoji fallback
   "portraits": {                            // NEW: 48x48 bust per expression
     "neutral": "portrait_captain_halden_neutral",
@@ -272,42 +272,53 @@ condition in game logic fails acceptance.
 
 ---
 
-## 7. N64 3D-baked identities (LIV-133 — supersedes §2/§6 for the baked set)
+## 7. N64 3D-baked identities (LIV-133, curated by LIV-143)
 
 The board directed ([LIV-133](/LIV/issues/LIV-133), 2026-10-10) that the Havenreach
-cast is **baked from the six rigged human GLBs in `lokarta-private`**, using
-**reuse + recolor**: six cast members map 1:1 to a mesh, the other seven reuse the
-nearest mesh with a distinct palette. The full per-NPC mesh + recolor table lives in
-[3d-sprite-mapping.md](../art/3d-sprite-mapping.md) §2; this section records what
-changes here and what is retired.
+cast is **baked from the rigged human GLBs in `lokarta-private`**. The first pass used
+**reuse + recolor** (13 cast over 6 meshes). The board then **rejected** that on
+[LIV-141](/LIV/issues/LIV-141): recolouring a shared mesh to stretch it into a bigger
+cast is a tinted duplicate, not a new character. **LIV-143** therefore curates the
+roster to **one NPC per unique model** (six models → six NPCs), each rendered in the
+model's **own colours** — no recolor ramp, no `renderTheme`. The mesh + role table
+lives in [3d-sprite-mapping.md](../art/3d-sprite-mapping.md) §2; this section records
+what changed here and what is retired.
 
 ### 7.1 What supersedes
 
-| §2/§6 rule (hand-authored N32) | **N64 baked rule (LIV-133)** |
+| §2/§6 rule (hand-authored N32) | **N64 baked rule (LIV-133 + LIV-143)** |
 | :--- | :--- |
-| Own $32\times32$ sprite, silhouette-changing signature prop | **Baked from a mesh**; 6 direct + 7 reuse (recolor). Signature props become *optional recolour overlays*, not required outline changes. |
-| **No two NPC `idle_down` masks identical** | **Relaxed** — 13 cast / 6 meshes guarantees shared silhouettes. Identity = distinct palette + spatial separation + name/title/dialogue. |
+| Own $32\times32$ sprite, silhouette-changing signature prop | **Baked from a mesh**; one NPC per unique model (LIV-143). |
+| **No two NPC `idle_down` masks identical** | **Restored** — with one NPC per mesh, every silhouette is unique again (the LIV-133 reuse+recolor relaxation is retired). |
 | $32\times32$ native, integer 2× | **$64\times64$ native (N64), 1:1** ([art-direction.md](../art/art-direction.md) §6, §13.1) |
 | ≤16-colour indexed palette + `#0b0d12` outline | **≤256 entries (≤255 opaque), `outline:false`** (art-direction §11, §2/§11.5) |
 | Renderer ellipse ground shadow | **Silhouette ground shadow** (art-direction §7) |
-| Idle-only render (wanderers slide) | **Directional idle ×1 + walk ×2**, wired via `npc.anim` (§7.3) |
+| Idle-only render (wanderers slide) | **Directional idle ×1 + walk ×2**, wired via `npc.anim` (§7.4) |
 | Camera: N/A (2D) | **Actor exception pitch** `< 60°` from horizon, cardinals, no yaw (art-direction §12.1, §13.2) |
+| Per-NPC `renderTheme` tint fallback | **Retired (LIV-143)** — no town NPC carries `renderTheme`; the renderer also guarantees no tint at draw time ([LIV-144](/LIV/issues/LIV-144)). |
 
 Unchanged: the §3 portrait/expression contract (48×48 busts, `neutral|warm|urgent`,
 stage `expression`), the §5 `npcs.json` catalog fields (`npcSpriteId`, `spriteId`
-fallback, `renderTheme` tint fallback, `portraits`), the resolve order
-`npcSpriteId > spriteId > type`, and the §4 personality/ambience hooks. Portraits
-were out of scope for the LIV-134 actor bake; **LIV-136** (Phase 3) now renders
-them as stills of the same 3D heads (§3), so the bust art is 3D-baked too.
+fallback, `portraits`), the resolve order `npcSpriteId > spriteId > type`, and the §4
+personality/ambience hooks. **LIV-136** renders the busts as stills of the same 3D
+heads (§3); with the tint retired they are the model's real texture colours.
 
-### 7.2 The 13 identities (mesh → palette)
+### 7.2 The six identities (one model each)
 
-Six direct meshes: `villager_m` (Odon), `villager_f` (Lena), `young_fisher` (Ilo),
-`first_fisher` (Old Doran), `deckhand` (Brann), `child_white_hair` (Kes). Seven
-reuse with a distinct palette: The Weigher (`first_fisher`), Capt. Halden
-(`villager_m`), Wick (`deckhand`), Tidekeeper Aurel (`villager_f`), Mara
-(`villager_f`), Innkeep Bessa (`villager_m`), Young Tam (`young_fisher`). Exact
-recolor hexes, `aiType`, and rationale: [3d-sprite-mapping.md](../art/3d-sprite-mapping.md) §2.
+| NPC | Source mesh |
+| :--- | :--- |
+| Captain Halden | `villager_m` |
+| Wick | `deckhand_walk` |
+| The Weigher | `first_fisher` |
+| Mara | `villager_f` |
+| Young Tam | `young_fisher` |
+| Kes | `child_white_hair` |
+
+The other seven names from the LIV-133 cast (Tidekeeper Aurel, Innkeep Bessa, Old
+Doran, Brann, Ilo, Odon, Lena) are **cut** because each shared a mesh with a retained
+NPC. Only one service figure can survive the one-per-model rule; the **shop (Mara)** is
+kept as the gold sink and potion source. Exact roles and rationale:
+[3d-sprite-mapping.md](../art/3d-sprite-mapping.md) §2.
 
 ### 7.3 Quest-giver placement (board answer 2)
 

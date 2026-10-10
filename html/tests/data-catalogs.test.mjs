@@ -582,7 +582,7 @@ test('JSON Data Catalogs', async (t) => {
     // (no per-scene branches). Deep referential checks live in liv59-scene-catalog.
     assert.ok(Array.isArray(ISLANDS_CATALOG.islands) && ISLANDS_CATALOG.islands.length >= 1);
     assert.ok(Array.isArray(TOWNS_CATALOG.towns) && TOWNS_CATALOG.towns.length >= 1);
-    assert.ok(Array.isArray(NPCS_CATALOG.npcs) && NPCS_CATALOG.npcs.length >= 7);
+    assert.ok(Array.isArray(NPCS_CATALOG.npcs) && NPCS_CATALOG.npcs.length >= 6);
     assert.ok(Array.isArray(QUESTS_CATALOG.quests) && QUESTS_CATALOG.quests.length === 3);
     assert.ok(DIALOGUES_CATALOG.dialogues && typeof DIALOGUES_CATALOG.dialogues === 'object');
     assert.ok(getIslandDefinition(DEFAULT_ISLAND_ID), 'default island resolves');

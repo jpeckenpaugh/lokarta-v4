@@ -47,93 +47,69 @@ vocations — this issue extends it to all baked NPC/creature actors.
 
 ---
 
-## 2. NPC mapping table — all 13 `html/data/npcs.json` cast
+## 2. NPC mapping table — the curated 6 `html/data/npcs.json` cast (LIV-143)
 
-Board direction (2026-10-10): **reuse + recolor the closest mesh per role.** Six
-rigged human meshes ship (`villager_m`, `villager_f`, `young_fisher`,
-`first_fisher`, `deckhand`, `child_white_hair`); six cast members map 1:1, the
-other seven reuse the nearest mesh with a **distinct recolor palette**. All six
-meshes are **rigged walk models** (per the `lokarta-private` optimization guide), so
-every NPC can carry the full directional **idle + walk** contract.
+**Board direction (rejected confirmation on [LIV-141](/LIV/issues/LIV-141), 2026-10-10):**
+town NPC variety must come from the **source 3D models themselves** — no colour
+tinting or other "cheats". The former **reuse + recolor** approach (13 cast over 6
+meshes) is retired: a recoloured twin is a tinted duplicate, not a new character.
 
-**Recolor palette columns** carry the NPC's garment, accent, and highlight hexes —
-extending the [npc-identity-spec.md](../design/npc-identity-spec.md) §2.1 token set.
-The **★** entry is the high-luminance rim that must clear ≥3:1 vs floor; the others
-are the material ramp. Palettes are the identity carrier where two NPCs share a mesh.
+The roster is curated to **one NPC per unique rigged human GLB** — six models, six
+NPCs — each rendered in the model's **own colours** (no recolor ramp, no
+`renderTheme`). All six meshes are rigged walk models (per the `lokarta-private`
+optimization guide), so every NPC carries the full directional **idle + walk**
+contract.
 
-### 2.1 Six direct meshes (mesh used as-authored)
+### 2.1 The six NPCs (one model each)
 
-| NPC (`id`) | Role | Mesh GLB | `aiType` | Recolor palette (garment / accent / ★rim-highlight) |
-| :--- | :--- | :--- | :--- | :--- |
-| Odon (`villager_m_odon`) | Ambient Shore folk | `villager_m_optimized.glb` | `wander` | `#6b4423` / `#2f6f73` / **`#d1b48c`** |
-| Lena (`villager_f_lena`) | Ambient Shore folk | `villager_f_optimized.glb` | `wander` | `#9a5b2a` / `#b04a3a` / **`#f5e6cf`** |
-| Ilo (`young_fisher_ilo`) | Ambient Shore folk | `young_fisher_optimized.glb` | `wander` | `#2f6f73` / `#b45309` / **`#cfe8e6`** |
-| Brann (`deckhand_brann`) | Ambient Shore folk | `deckhand_walk_optimized.glb` | `wander` | `#47536e` / `#9a4a3a` / **`#cbd5e1`** |
-| Kes (`child_kes`) | Ambient Shore folk | `child_white_hair_optimized.glb` | `wander` | `#b3763c` / `#5a4632` / **`#f0d0b8`** |
-| Old Doran (`old_sailor_doran`) | Flavor (foreshadows Islands 2–4) | `first_fisher_optimized.glb` | `wander` | `#33415c` / `#9a4a3a` / **`#cbd5e1`** |
+| NPC (`id`) | Role | Source mesh GLB | `aiType` |
+| :--- | :--- | :--- | :--- |
+| Captain Halden (`captain_halden`) | Q1 giver; front of the Fish Market | `villager_m_optimized.glb` | `stationary` |
+| Wick (`wick`) | Q2 giver; front of the Tidehall | `deckhand_walk_optimized.glb` | `stationary` |
+| The Weigher (`elder_rowan_vane`) | Q3 giver; front of the Longhouse | `first_fisher_optimized.glb` | `stationary` |
+| Mara (`mara`) | Vendor (shop) — the one retained service | `villager_f_optimized.glb` | `wander` |
+| Young Tam (`pilgrims_apprentice_tam`) | Diegetic quest journal | `young_fisher_optimized.glb` | `wander` |
+| Kes (`child_kes`) | Ambient Shore folk | `child_white_hair_optimized.glb` | `wander` |
 
-> **Mesh-assignment note.** Old Doran (retired deckhand, elder, stooped) takes the
-> `first_fisher` mesh (an older, limping fisher body) rather than `deckhand`, so the
-> two shore workmen (Brann, Doran) read as different generations instead of twins.
-> The board enumerated the six direct meshes by name; this is the one role whose
-> name→mesh binding is inferred, and it follows the "nearest body read" rule.
-
-### 2.2 Seven reuse meshes (nearest mesh + distinct palette)
-
-| NPC (`id`) | Role / body read | Reused mesh | `aiType` | Recolor palette (garment / accent / ★rim-highlight) |
-| :--- | :--- | :--- | :--- | :--- |
-| The Weigher (`elder_rowan_vane`) | Tall, stooped authority | `first_fisher` | `stationary` | `#3b4a6b` / `#d4af37` / **`#e2e8f0`** (lantern glass) |
-| Captain Halden (`captain_halden`) | Broad, upright, mid-30s | `villager_m` | `stationary` | `#5b6470` / `#2f6f73` / **`#cbd5e1`** (plate shine) |
-| Wick (`wick`) | Stocky workman, forward lean | `deckhand` | `stationary` | `#5a4632` / `#b45309` / **`#facc15`** (flame) |
-| Tidekeeper Aurel (`high_dawnkeeper_aurel`) | Tall, mature, layered vestments | `villager_f` | `stationary` | `#e2e8f0` / `#d4af37` / **`#fbe6c8`** |
-| Mara (`mara`) | Petite/wiry, asymmetric stance | `villager_f` | `stationary` | `#7c4a21` / `#b45309` / **`#d9a441`** (brass) |
-| Innkeep Bessa (`innkeep_bessa`) | Broad, welcoming, 40s | `villager_m` | `stationary` | `#9a5b2a` / `#b04a3a` / **`#f5e6cf`** (cream) |
-| Young Tam (`pilgrims_apprentice_tam`) | Lithe young teen | `young_fisher` | `stationary` | `#3f6a33` / `#6b4e2e` / **`#e8dcc0`** (parchment) |
-
-### 2.3 Mesh-usage census & the relaxed silhouette rule
+### 2.2 Mesh-usage census & the restored silhouette rule
 
 | Mesh | Used by | Count |
 | :--- | :--- | :--- |
-| `villager_m` | Odon, Halden, Bessa | 3 |
-| `villager_f` | Lena, Aurel, Mara | 3 |
-| `young_fisher` | Ilo, Tam | 2 |
-| `first_fisher` | Doran, Weigher | 2 |
-| `deckhand` | Brann, Wick | 2 |
+| `villager_m` | Halden | 1 |
+| `deckhand_walk` | Wick | 1 |
+| `first_fisher` | The Weigher | 1 |
+| `villager_f` | Mara | 1 |
+| `young_fisher` | Tam | 1 |
 | `child_white_hair` | Kes | 1 |
 
-**Reconciliation with [npc-identity-spec.md](../design/npc-identity-spec.md) §2.**
-That spec required *no two NPCs share an `idle_down` alpha mask* — achievable when
-each NPC was hand-drawn. The board's **reuse + recolor** direction makes that rule
-unachievable: 13 cast, 6 meshes, so 7 roles necessarily share a silhouette with a
-recolored twin. This spec **supersedes the mask-uniqueness rule for the 3D-baked
-set** and replaces it with the softer identity carriers below. *Balance lever: the
-smallest lever that keeps identity is the recolour palette + spatial separation, not
-new meshes (which do not exist).*
+With one NPC per mesh, the [npc-identity-spec.md](../design/npc-identity-spec.md) §2
+rule — **no two NPCs share an `idle_down` alpha mask** — is restored and holds again:
+every silhouette is unique because every model is. `sprite-assets.test.mjs` still
+asserts **distinct palettes** for the baked set, which now follows directly from
+distinct models rather than from a recolour palette.
 
-* **Distinct palette per NPC** (the table above) — hue-separated garment + accent +
-  rim, so the same silhouette never wears the same colours twice.
-* **Spatial separation** — no two same-mesh twins stand on the same screen edge
-  (verified against the fixed town tiles in §3 and the ambient wander radii).
-* **Name/title/dialogue** carry the rest. The §2.1 **signature-prop overlays**
-  (Vane's staff+lantern, Halden's tricorn+sword, etc.) stay as *optional* recolour
-  overlays the Tech Lead may composite over the baked base if a twin pair still
-  reads ambiguously at 1:1 — they are no longer required to change the outline.
+### 2.3 Service tradeoff (design call)
 
-### 2.4 Animation & engine contract (handoff to [LIV-134](/LIV/issues/LIV-134))
+One NPC per model means only one of the three service figures can survive (the temple
+keeper `high_dawnkeeper_aurel` and innkeep `innkeep_bessa` each shared a mesh with a
+retained quest giver). The **shop (Mara)** is kept: it is the gold sink and the only
+between-run source of potions/arrows, and healing stays reachable via shop potions.
+The temple and inn NPCs are cut rather than kept as tinted twins — a knowingly accepted
+regression in exchange for art integrity.
 
-* **Ambient NPCs (`aiType:"wander"`, the 5 Shore folk + Doran):** board answer (3)
-  requires **full directional walk + idle**. Today `updateNpcs`
-  (`html/engine/npc-system.js:119-147`) moves `npc.x/y/facing` but never touches
-  `npc.anim`, so every wanderer renders `idle_down` while sliding. The bake must
-  ship `walk_down/up/side` (×2) + `idle_down/up/side` (×1); the Tech Lead wires
+### 2.4 Animation & engine contract
+
+* **Ambient NPCs (`aiType:"wander"` — Mara, Tam, Kes):** full directional walk + idle.
+  The bake ships `walk_down/up/side` (×2) + `idle_down/up/side` (×1); the engine wires
   `npc.anim = createAnimState(npc.facing)` and calls `setAnimState(npc,'walk')` on a
   step / `'idle'` when stationary — no per-NPC branch.
-* **Stationary NPCs (the 7 quest/shop figures):** `aiType:"stationary"` — idle only
-  is sufficient; the walk frames still ship so a future schedule/bustle pass
-  (LIV-85) can animate them for free.
-* **Sprite resolve order is unchanged** (`npcSpriteId > spriteId > …`,
-  `sprite-renderer.js:1134`); `npcSpriteId` keeps resolving to the bespoke def, so
-  `renderTheme` remains the fallback tint only (`sprite-renderer.js:1477-1481`).
+* **Stationary NPCs (the 3 quest givers):** `aiType:"stationary"` — idle only is
+  sufficient; the walk frames still ship so a future schedule/bustle pass (LIV-85) can
+  animate them for free.
+* **Sprite resolve order is unchanged** (`npcSpriteId > spriteId > …`). Town NPCs
+  render their authored `npcSpriteId` art **unmodified** — no `renderTheme` tint and no
+  tint fallback ([LIV-144](/LIV/issues/LIV-144)); the roster no longer carries a
+  `renderTheme` field at all (LIV-143).
 * **Asset location:** one baked def per `npcSpriteId` under
   `html/assets/sprites/npc/` (kind `npc`), registered in `manifest.json` +
   `assets/sprites/index.js`. Full 5-state × 3-dir shape is legal; only idle+walk are
@@ -323,11 +299,13 @@ leave the other 2D props for now.
 
 | Consumer | Applies |
 | :--- | :--- |
-| [LIV-134](/LIV/issues/LIV-134) (Tech Lead, Phase 1) | §2 NPC bake + recolor + walk wiring; §3 giver relocations + `sceneAccessReport`; §5 props |
+| [LIV-134](/LIV/issues/LIV-134) (Tech Lead, Phase 1) | §2 NPC bake + walk wiring; §3 giver relocations + `sceneAccessReport`; §5 props |
 | [LIV-135](/LIV/issues/LIV-135) (Tech Lead, Phase 2) | §4 creature bake + 3 monster entries + `stationary` handler + `spawnZones`; §5 isle props |
+| [LIV-143](/LIV/issues/LIV-143) (Game Designer) | §2 curated to one NPC per unique model, no recolor/tint; roster + placement + docs |
 
 **Phase 0 acceptance (this issue).** All five docs committed to `main`; mapping
 tables complete (13 NPCs + 3 creatures + 4 props). No code or catalog changes here.
+**LIV-143 superseded the 13-NPC roster with the curated 6 (one per model).**
 
 *Lenses cited (§§1–5): readability & legibility, game feel / juice, enemy role
 taxonomy, difficulty curve & flow, theme coherence, Kano, MDA, balance levers,

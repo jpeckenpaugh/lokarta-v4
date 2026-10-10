@@ -17,16 +17,9 @@
     "npc_elder_rowan_vane": { "kind": "npc", "file": "./npc/npc_elder_rowan_vane.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
     "npc_captain_halden": { "kind": "npc", "file": "./npc/npc_captain_halden.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
     "npc_wick": { "kind": "npc", "file": "./npc/npc_wick.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
-    "npc_high_dawnkeeper_aurel": { "kind": "npc", "file": "./npc/npc_high_dawnkeeper_aurel.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
     "npc_mara": { "kind": "npc", "file": "./npc/npc_mara.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
-    "npc_innkeep_bessa": { "kind": "npc", "file": "./npc/npc_innkeep_bessa.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
-    "npc_old_sailor_doran": { "kind": "npc", "file": "./npc/npc_old_sailor_doran.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
     "npc_pilgrims_apprentice_tam": { "kind": "npc", "file": "./npc/npc_pilgrims_apprentice_tam.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
-    "npc_deckhand_brann": { "kind": "npc", "file": "./npc/npc_deckhand_brann.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
-    "npc_young_fisher_ilo": { "kind": "npc", "file": "./npc/npc_young_fisher_ilo.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
-    "npc_child_kes": { "kind": "npc", "file": "./npc/npc_child_kes.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
-    "npc_villager_m_odon": { "kind": "npc", "file": "./npc/npc_villager_m_odon.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
-    "npc_villager_f_lena": { "kind": "npc", "file": "./npc/npc_villager_f_lena.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } }
+    "npc_child_kes": { "kind": "npc", "file": "./npc/npc_child_kes.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } }
   },
   "props": {
     "key_copper": { "kind": "item", "tier": "copper", "file": "./items/key_copper.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 26 }, "frames": ["icon"] },

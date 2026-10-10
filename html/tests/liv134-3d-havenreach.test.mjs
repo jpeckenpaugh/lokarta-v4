@@ -17,7 +17,7 @@ import {
 } from '../../tools/validate-sprite-def.mjs';
 
 test('LIV-134 3D-baked Havenreach NPCs & props', async (t) => {
-  await t.test('1. all 13 NPCs ship a 3D-baked N64 runtime def (baked artifact linked)', () => {
+  await t.test('1. every retained NPC ships a 3D-baked N64 runtime def (baked artifact linked)', () => {
     const artifacts = listNpcArtifacts();
     assert.equal(artifacts.length, NPCS_CATALOG.npcs.length, 'one baked artifact per NPC');
     for (const npc of NPCS_CATALOG.npcs) {
