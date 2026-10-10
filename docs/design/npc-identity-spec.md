@@ -120,6 +120,16 @@ bar) in a committed **portrait sheet**, with **three expressions** selected by
 dialogue stage. Catalog ids follow `portrait_{npcId}_{expression}` and live in
 the NPC's `portraits` map in `npcs.json`.
 
+> **LIV-136 update (2026-10-10):** the busts are no longer hand-authored. They
+> are **stills of the NPC's own 3D model head**, rendered from the same rigged
+> GLBs the overworld actors bake from (LIV-134). `tools/bake-npc-portraits.mjs`
+> frames the head with a joint-derived orthographic crop (front azimuth), applies
+> the baked light model and the NPC's catalog `renderTheme` identity tint, then
+> box-downscales to 48×48 and median-cuts to ≤256 colours with **no outline**
+> (Tier B, LIV-115); `tools/integrate-npc-portraits.mjs` is the GLB-free step
+> that assembles `portraits.json`. The id scheme, the three expression keys, and
+> the stage→`expression` resolution are unchanged.
+
 **Expression rubric.** Writers pick the *cheapest honest read*:
 
 | Expression | Meaning | Face direction | Use for |
@@ -147,6 +157,13 @@ dialogue carries a resolvable expression so the bubble *always* has a portrait.
 alone — a raised brow, open mouth, or shifted shoulder — not only from a color
 shift. "A quest-giver's urgency should show on their face, not only in the
 text" (report §3.2).
+
+Since the bust is a still of a static 3D head, the face itself cannot emote;
+LIV-136 realises the three reads by **posing the head on the rig** (data-declared
+in `tools/bake-npc-portraits.mjs` → `EXPRESSION_POSES`): `warm` tilts and lifts
+the head, `urgent` sets it forward. The silhouette therefore still changes per
+expression, honouring the readability rule, while every still stays a genuine
+render of the model's own head.
 
 ---
 
@@ -280,7 +297,8 @@ Unchanged: the §3 portrait/expression contract (48×48 busts, `neutral|warm|urg
 stage `expression`), the §5 `npcs.json` catalog fields (`npcSpriteId`, `spriteId`
 fallback, `renderTheme` tint fallback, `portraits`), the resolve order
 `npcSpriteId > spriteId > type`, and the §4 personality/ambience hooks. Portraits
-are **out of scope** for the 3D bake (they stay authored busts).
+were out of scope for the LIV-134 actor bake; **LIV-136** (Phase 3) now renders
+them as stills of the same 3D heads (§3), so the bust art is 3D-baked too.
 
 ### 7.2 The 13 identities (mesh → palette)
 

@@ -1,10 +1,12 @@
 /**
- * Lokarta: Portrait Renderer (LIV-81/LIV-91)
+ * Lokarta: Portrait Renderer (LIV-81/LIV-91, LIV-136)
  *
  * Resolves and draws the 48x48 dialogue busts authored in
  * `html/assets/portraits/`. Mirrors the sprite-renderer pixel pipeline
- * (outline pass + integer nearest-neighbour scale) so a portrait reads with the
- * same outline/rim language as the actor sprites.
+ * (integer nearest-neighbour scale) so a portrait reads with the same language
+ * as the actor sprites. Since LIV-136 the busts are 3D-baked head stills, so a
+ * def declaring `outline:false` drops the hand outline (Tier B, LIV-115); legacy
+ * hand-authored busts keep the outline pass.
  *
  * Pure/headless-safe: `drawPortrait` works against any 2D context, so the T0
  * suite exercises it with a fake context. `portraitDataUrl` returns null when no
@@ -38,7 +40,10 @@ function renderPortraitPixels(assetId, scale) {
   if (!def) return null;
   const rows = def.frames.bust;
   if (!rows) return null;
-  const outlined = applyOutline(parseFrame(rows, def.palette), def.palette['0'] || OUTLINE_COLOR);
+  const pix = parseFrame(rows, def.palette);
+  // LIV-136: a 3D-baked portrait (`outline:false`) drops the hand outline, exactly
+  // like the Tier B actor bake (LIV-115). Legacy hand-authored busts keep it.
+  const outlined = def.outline === false ? pix : applyOutline(pix, def.palette['0'] || OUTLINE_COLOR);
   return scalePixels(outlined, scale);
 }
 

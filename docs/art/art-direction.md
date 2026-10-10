@@ -126,11 +126,14 @@ systems — every element rides an existing contract.
   catalog data (walk-over; no per-prop JS). The **Longhouse** opts into the
   data-driven `BUILDING_SILHOUETTE_RENDERERS` hook (`ark_hull`) for its inverted-keel
   roof-ridge; silhouette selection is a catalog value, not a per-building branch.
-* **NPC cast:** 13 distinct `npc_*` silhouettes (8 named + 5 ambient Shore folk),
-  each one outline-changing signature prop and a 48×48 × 3-expression portrait set,
-  authored by `tools/author-npc-assets.mjs` to [npc-identity-spec.md](../design/npc-identity-spec.md)
-  §2. New fishing-flavored OpenMoji icons committed under `html/assets/openmoji/`
-  (`1F3A3` fishing pole, `1F41F` fish, `1F9FA` basket, `1F9D1` person).
+* **NPC cast:** 13 distinct `npc_*` actors, baked from the `lokarta-private` GLBs
+  ([npc-identity-spec.md](../design/npc-identity-spec.md) §7) with a 48×48 ×
+  3-expression portrait set rendered from the same 3D heads (LIV-136). Baked by
+  `tools/bake-npc-actors.mjs` + `tools/bake-npc-portraits.mjs`, integrated GLB-free
+  by `tools/integrate-npc-bake.mjs` + `tools/integrate-npc-portraits.mjs` to
+  [npc-identity-spec.md](../design/npc-identity-spec.md) §3. New fishing-flavored
+  OpenMoji icons committed under `html/assets/openmoji/` (`1F3A3` fishing pole,
+  `1F41F` fish, `1F9FA` basket, `1F9D1` person).
 
 ---
 
