@@ -61,9 +61,9 @@ test('LIV-115 fix 1 — Tier B outline opt-out (buildings + archer)', async (t) 
       assert.ok(def, `${id} registered`);
       assert.equal(def.renderTier, 'baked', `${id} is Tier B`);
       assert.equal(def.outline, false, `${id} opts out of the outline pass`);
-      // LIV-122: 3D-baked palettes now spend all 75 opaque slots including the
-      // glyph '0', so "no outline" is proven by the absence of the outline
-      // colour, not by the absence of the '0' glyph.
+      // LIV-125: 3D-baked palettes spend all 255 opaque slots (the `0` glyph is
+      // no longer reserved), so "no outline" is proven by the absence of the
+      // outline colour, not by the absence of the '0' glyph.
       assert.ok(!Object.values(def.palette).includes('#0b0d12'), `${id} carries no outline colour`);
     }
   });
@@ -98,9 +98,9 @@ test('LIV-115 fix 2 — archer tonal range matches flat vocations', async (t) =>
   await t.test('2. the archer rig bake records the brighter ambient/exposure and rim contrast holds', () => {
     const art = JSON.parse(fs.readFileSync(path.join(ROOT, 'docs/art/3d-poc/rukiya_archer_rigged.sprite.json'), 'utf8'));
     assert.equal(art.outline, false);
-    // LIV-122: the rigged archer is 3D-baked -> <=96 entries (~75 opaque).
-    assert.equal(paletteCapFor(art), 96);
-    assert.ok(Object.keys(art.palette).length <= 96);
+    // LIV-125: the rigged archer is 3D-baked -> <=256 entries (255 opaque).
+    assert.equal(paletteCapFor(art), 256);
+    assert.ok(Object.keys(art.palette).length <= 256);
     const best = Math.max(0, ...Object.values(art.palette).filter(Boolean).map((v) => {
       const la = luminance(v), lb = luminance(FLOOR);
       return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);

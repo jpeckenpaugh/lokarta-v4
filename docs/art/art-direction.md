@@ -515,8 +515,34 @@ this contract requirement (Phase B owns the concrete implementation):
    `palette`/`frames` serialize. Phase B MUST verify: (a) decoded row width
    $=$ `native.w`; (b) no palette key is more than one code unit; (c) JSON size
    and runtime draw cost are acceptable; (d) the preview/drift byte-compares still
-   pass. **Recommended: $255$ opaque $+$ $1$ transparent**, because that fits one
-   byte cleanly, whereas $256$ opaque cannot (the transparent slot needs a code).
+    pass. **Recommended: $255$ opaque $+$ $1$ transparent**, because that fits one
+    byte cleanly, whereas $256$ opaque cannot (the transparent slot needs a code).
+
+#### 11.3.1 Concrete encoding (Phase B, LIV-125)
+
+The implementation is the fixed 256-code alphabet exported as `BAKED_ALPHABET`
+(+ `BAKED_TRANSPARENT_KEY = '.'`) from `tools/gltf-to-sprite.mjs`:
+
+* **Code 0–80: 1-byte JSON-safe ASCII** (glyph range `!`–`~`, excluding `.`,
+  `"`, `\`, and the ASCII digits — digits are integer-like JS object keys and
+  would be reordered ahead of the rest, breaking canonical palette order).
+* **Code 81–254: 2-byte BMP code units** `U+0100`–`U+01AD` (Latin Extended).
+* No code is a C0 control, `"`, or `\`, so **nothing is JSON-escaped** and every
+  code serializes as raw UTF-8 (1 or 2 bytes). Every code is exactly **one UTF-16
+  code unit**, so a frame row is `native.w` code units and the renderer's
+  `palette[row[x]]` lookup needs no change.
+* `palette` is emitted in **canonical ascending-Rec.601-luma order** (ties by hex)
+  with `BAKED_ALPHABET[i]` assigned to the i-th entry, so the cheap 1-byte codes
+  carry a render's shadow bulk and re-bakes are byte-identical.
+* The concrete quantizer is **direct median-cut** (up to 255 opaque colours,
+  deduped) — the ramp-family budget is not used for 3D bakes; the legacy
+  `rampPalette`/`quantizeRamp` helpers remain for the 2D-derived path.
+* Measured result (all 11 scoped defs): palette ≤ 256 entries, used colours
+  253–255, runtime JSON $776\ \text{KB} \to 1{,}035\ \text{KB}$ ($\times1.33$)
+  with the mixed 1-/2-byte alphabet, versus the naive $\times2$ for all-2-byte
+  codes. Runtime per-pixel draw cost is unchanged; only the palette-map length
+  grows.
+
 
 ### 11.4 Preview & memory implications
 

@@ -175,10 +175,10 @@ test('LIV-110 Tier B baked Phase 2', async (t) => {
       assert.deepEqual(validateSpriteDef(def, { label: rel }).errors, []);
     }
     // archer is the board-requested runtime integration: the live actor is the
-    // baked rukiya sprite (3D-baked Tier B, LIV-122 <=96 / ~75 opaque).
+    // baked rukiya sprite (3D-baked Tier B, LIV-125 <=256 / 255 opaque).
     const archer = JSON.parse(fs.readFileSync(path.join(ROOT, 'html/assets/sprites/vocations/archer.json'), 'utf8'));
     assert.equal(resolveRenderTier(archer), 'baked', 'live archer is the Tier B rukiya bake');
-    assert.ok(Object.keys(archer.palette).length <= 96);
+    assert.ok(Object.keys(archer.palette).length <= 256);
   });
 
   await t.test('9. deriveTierB keeps source geometry and is reusable for a new source', () => {

@@ -29,16 +29,38 @@ import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 const OUTLINE = '#0b0d12';
-/* LIV-122 §10.3: the fixed single-byte key alphabet for 3D-baked palettes. The
- * '.' transparent slot is separate, so these 75 glyphs are the opaque palette
- * keys (digits, lowercase, uppercase, then 13 punctuation). One char per key is
- * mandatory — a two-char key would break the renderer's char indexing and the
- * row alignment — so indices >= 36 must NOT spill into `toString(36)` output.
- * Order is normative: `0` is a normal opaque colour for 3D bakes (LIV-115 drops
- * the reserved outline slot), and it leads the alphabet. */
-export const BAKED_ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()-_+';
-/** LIV-122 §10.1: 3D-baked opaque-colour budget (25 -> 75, capacity x3). */
-export const BAKED_OPAQUE_BUDGET = 75;
+/* LIV-125 §11.3: the fixed 256-code single-code-unit alphabet for 3D-baked
+ * frames. `'.'` is the one transparent code; the 255 opaque codes below split
+ * into a 1-byte JSON-safe ASCII tier (91 codes) and a 2-byte BMP tier (164
+ * codes), so frame JSON stays as small as the 256-colour contract allows while
+ * every code remains exactly ONE UTF-16 code unit. `"`, `\`, and the C0 controls
+ * are excluded so nothing is JSON-escaped; a row is therefore exactly `native.w`
+ * code units and `palette[row[x]]` is a direct lookup (no multi-char key spill).
+ * Order is normative: code index 0 is the canonical darkest palette entry
+ * (§11.2 luma order), so the cheap 1-byte codes carry a render's shadow bulk. */
+export const BAKED_TRANSPARENT_KEY = '.';
+const BAKED_ASCII_OPAQUE = (() => {
+  const out = [];
+  for (let cp = 0x21; cp <= 0x7e; cp++) {
+    const ch = String.fromCharCode(cp);
+    // Drop `.` (transparent), the two JSON-escaped glyphs, and the ASCII digits:
+    // digit keys are integer-like JS object keys, which V8 would reorder ahead of
+    // the rest and spoil the canonical (§11.2) palette insertion order.
+    if (ch === BAKED_TRANSPARENT_KEY || ch === '"' || ch === '\\' || (cp >= 0x30 && cp <= 0x39)) continue;
+    out.push(ch);
+  }
+  return out;
+})();
+const BAKED_BMP_OPAQUE = (() => {
+  const out = [];
+  for (let cp = 0x100; out.length < 255 - BAKED_ASCII_OPAQUE.length; cp++) out.push(String.fromCharCode(cp));
+  return out;
+})();
+export const BAKED_ALPHABET = [...BAKED_ASCII_OPAQUE, ...BAKED_BMP_OPAQUE];
+/** LIV-125 §11.1: 3D-baked opaque-colour budget = full 8-bit palette (255). */
+export const BAKED_OPAQUE_BUDGET = BAKED_ALPHABET.length;
+/** LIV-125 §11.1: total palette slots = 255 opaque + the `.` transparent code. */
+export const BAKED_PALETTE_CAP = BAKED_OPAQUE_BUDGET + 1;
 // Native tile grid: 32px == ONE tile. Actors/props are authored at 1 tile
 // (32x32); buildings/landmarks are authored at NxM tiles (e.g. 128x64 = 4x2).
 // The display grid is CONFIG.GRID_SIZE=64 == 32 * SCALE(2). The ratio between
@@ -479,14 +501,16 @@ export function medianCut(pixels, k) {
   }
   return buckets.filter(b => b.length).map(b => { const s = [0, 0, 0]; for (const p of b) for (let c = 0; c < 3; c++) s[c] += p[c]; return s.map(v => Math.round(v / b.length)); });
 }
-export function quantize(sprite, palette) {
+export function quantize(sprite, palette, keys = null) {
   const { w, h, rgba } = sprite; const idx = [];
   for (let y = 0; y < h; y++) { let row = ''; for (let x = 0; x < w; x++) {
     const i = (y * w + x) * 4;
     if (rgba[i + 3] < 128) { row += '.'; continue; }
     let bi = 0, bd = 1e9;
     for (let p = 0; p < palette.length; p++) { const d = (rgba[i] - palette[p][0]) ** 2 + (rgba[i + 1] - palette[p][1]) ** 2 + (rgba[i + 2] - palette[p][2]) ** 2; if (d < bd) { bd = d; bi = p; } }
-    row += bi.toString(16);
+    // `keys` gives the single-code-unit alphabet for 3D-baked frames (LIV-125
+    // §11.3); the legacy base-16 key stays for the <=16-colour Tier A path.
+    row += keys ? keys[bi] : bi.toString(16);
   } idx.push(row); }
   return idx;
 }
@@ -507,6 +531,26 @@ const BAYER2X2 = [0, 2, 3, 1];
 
 /** Rec.601 luma — the ramp axis a reviewer perceives. */
 export function luma(r, g, b) { return 0.299 * r + 0.587 * g + 0.114 * b; }
+
+/**
+ * LIV-125 §11.2.2: canonical 3D-baked palette. Dedupe the direct quantizer's
+ * entries and order them by ascending Rec.601 luma (ties by hex string) so code
+ * assignment — and therefore the emitted `palette` order and every frame key —
+ * is deterministic across re-bakes and drift/preview byte-compares. Returns the
+ * ordered RGB triples; the caller assigns `BAKED_ALPHABET[i]` to entry i.
+ */
+export function canonicalPaletteOrder(colors) {
+  const seen = new Set(); const uniq = [];
+  for (const c of colors) {
+    const k = `${c[0]},${c[1]},${c[2]}`;
+    if (seen.has(k)) continue;
+    seen.add(k); uniq.push(c);
+  }
+  return uniq
+    .map((c) => ({ c, l: luma(c[0], c[1], c[2]), h: hex(c[0], c[1], c[2]) }))
+    .sort((a, b) => a.l - b.l || (a.h < b.h ? -1 : a.h > b.h ? 1 : 0))
+    .map((e) => e.c);
+}
 
 /**
  * Builds a Tier B "baked" palette: `families` chromaticity clusters (materials),
@@ -840,18 +884,18 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
   }
   const all = [];
   for (const v of viewPix) for (let i = 0; i < v.px.w * v.px.h; i++) if (v.px.rgba[i * 4 + 3] > 128) all.push([v.px.rgba[i * 4], v.px.rgba[i * 4 + 1], v.px.rgba[i * 4 + 2]]);
-  // 3D bakes (art §10) drop the reserved `0` outline slot and spend the full
-  // 75-opaque budget on the ramp, keyed from BAKED_ALPHABET. Non-baked keeps the
-  // legacy `0` outline + base-16 indexed keys.
+  // 3D bakes (art §11) drop the reserved `0` outline slot and spend the full
+  // 255-opaque budget on a direct median-cut palette keyed from BAKED_ALPHABET.
+  // Non-baked keeps the legacy `0` outline + base-16 indexed keys.
   const palette = baked ? { '.': null } : { '0': OUTLINE, '.': null };
-  let palRGB, ramp = null, quantizeFn;
+  let palRGB, quant = null, quantizeFn;
   if (baked) {
-    // Family clamp is the 75-opaque budget for 3D bakes, not the old <=32 clamp.
-    const fam = Math.max(1, Math.min(families, Math.floor(BAKED_OPAQUE_BUDGET / steps)));
-    ramp = rampPalette(all, { families: fam, steps, keys: BAKED_ALPHABET });
-    palRGB = ramp.colors;
+    // LIV-125 §11.2: direct quantization to the full 8-bit budget (255 opaque),
+    // no ramp families. Canonical luma order fixes code assignment (§11.3).
+    palRGB = canonicalPaletteOrder(medianCut(all, BAKED_OPAQUE_BUDGET));
     palRGB.forEach((c, i) => { palette[BAKED_ALPHABET[i]] = hex(...c); });
-    quantizeFn = (px) => quantizeRamp(px, ramp);
+    quantizeFn = (px) => quantize(px, palRGB, BAKED_ALPHABET);
+    quant = { method: 'median-cut', budget: BAKED_OPAQUE_BUDGET };
   } else {
     palRGB = medianCut(all, colors);
     palRGB.forEach((c, i) => { palette[i.toString(16)] = hex(...c); });
@@ -874,7 +918,7 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
   fs.mkdirSync(outDir, { recursive: true });
   const outlineNote = outline ? '1px outline' : 'no outline (Tier B)';
   const pipeline = baked
-    ? `${ramp.families}x${ramp.steps}-ramp palettes + 2x2 Bayer dither + baked 135deg key/rim -> ${outlineNote}`
+    ? `${palRGB.length}-colour direct median-cut (<=${BAKED_OPAQUE_BUDGET}) + baked 135deg key/rim -> ${outlineNote}`
     : `${palRGB.length}-colour median-cut -> ${outlineNote}`;
   const def = {
     id, kind: kind || (multiTile ? 'building' : 'actor'),
@@ -886,7 +930,7 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
       : `ortho-software-raster@${renderRes} -> ${size}px box-downscale -> ${pipeline}`,
     native: multiTile ? { w: tiles.w * pxPerTile, h: tiles.h * pxPerTile } : { w: size, h: size },
     anchor: multiTile ? { x: Math.floor((tiles.w * pxPerTile) / 2), y: tiles.h * pxPerTile - 2 } : { x: Math.floor(size / 2), y: size - 2 },
-    ...(ramp ? { ramp: { families: ramp.families, steps: ramp.steps } } : {}),
+    ...(quant ? { quantize: quant } : {}),
     palette, frames,
   };
   if (multiTile) {
@@ -909,7 +953,7 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
     const s = sheet(frameRgba.map((f) => f.rgba), size, 8);
     fs.writeFileSync(path.join(outDir, `${id}_${size}px_x8.png`), encodePNG(s.w, s.h, s.buf));
   }
-  return { id, palette: palRGB, opaquePixels: all.length, textured: !!tex, tiles: multiTile ? tiles : null, renderTier: baked ? 'baked' : 'indexed', ramp: ramp ? { families: ramp.families, steps: ramp.steps } : null };
+  return { id, palette: palRGB, opaquePixels: all.length, textured: !!tex, tiles: multiTile ? tiles : null, renderTier: baked ? 'baked' : 'indexed', quantize: quant };
 }
 
 /**
@@ -971,13 +1015,13 @@ export async function buildAnimatedAsset({
   const all = [];
   for (const v of viewPix) for (let i = 0; i < v.px.w * v.px.h; i++) if (v.px.rgba[i * 4 + 3] > 128) all.push([v.px.rgba[i * 4], v.px.rgba[i * 4 + 1], v.px.rgba[i * 4 + 2]]);
   const palette = baked ? { '.': null } : { '0': OUTLINE, '.': null };
-  let palRGB, ramp = null, quantizeFn;
+  let palRGB, quant = null, quantizeFn;
   if (baked) {
-    const fam = Math.max(1, Math.min(families, Math.floor(BAKED_OPAQUE_BUDGET / steps)));
-    ramp = rampPalette(all, { families: fam, steps, keys: BAKED_ALPHABET });
-    palRGB = ramp.colors;
+    // LIV-125 §11.2: direct 256-colour quantization for the rigged actor too.
+    palRGB = canonicalPaletteOrder(medianCut(all, BAKED_OPAQUE_BUDGET));
     palRGB.forEach((c, i) => { palette[BAKED_ALPHABET[i]] = hex(...c); });
-    quantizeFn = (px) => quantizeRamp(px, ramp);
+    quantizeFn = (px) => quantize(px, palRGB, BAKED_ALPHABET);
+    quant = { method: 'median-cut', budget: BAKED_OPAQUE_BUDGET };
   } else {
     palRGB = medianCut(all, 14);
     palRGB.forEach((c, i) => { palette[i.toString(16)] = hex(...c); });
@@ -998,7 +1042,7 @@ export async function buildAnimatedAsset({
   }
   const outlineNote = outline ? '1px outline' : 'no outline (Tier B)';
   const pipeline = baked
-    ? `${ramp.families}x${ramp.steps}-ramp palettes + 2x2 Bayer dither + baked 135deg key/rim -> ${outlineNote}`
+    ? `${palRGB.length}-colour direct median-cut (<=${BAKED_OPAQUE_BUDGET}) + baked 135deg key/rim -> ${outlineNote}`
     : `${palRGB.length}-colour median-cut -> ${outlineNote}`;
   const def = {
     id, kind: 'actor',
@@ -1009,7 +1053,7 @@ export async function buildAnimatedAsset({
     clip: anim ? anim.name : null,
     native: { w: size, h: size },
     anchor: { x: Math.floor(size / 2), y: size - 2 },
-    ...(ramp ? { ramp: { families: ramp.families, steps: ramp.steps } } : {}),
+    ...(quant ? { quantize: quant } : {}),
     palette, frames,
   };
   if (write) {
@@ -1020,7 +1064,7 @@ export async function buildAnimatedAsset({
     const s = sheet(frameRgba.map((f) => f.rgba), size, 6, [10, 11, 14, 255], 4, previewCols);
     fs.writeFileSync(path.join(outDir, `${id}_${size}px_x6.png`), encodePNG(s.w, s.h, s.buf));
   }
-  return { id, palette: palRGB, opaquePixels: all.length, textured: !!tex, frames: Object.keys(frames).length, renderTier: baked ? 'baked' : 'indexed', sampleTimes, def, ramp: ramp ? { families: ramp.families, steps: ramp.steps } : null };
+  return { id, palette: palRGB, opaquePixels: all.length, textured: !!tex, frames: Object.keys(frames).length, renderTier: baked ? 'baked' : 'indexed', sampleTimes, def, quantize: quant };
 }
 
 function parseArgs(argv) {

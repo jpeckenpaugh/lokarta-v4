@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   BAKED_ALPHABET,
   BAKED_OPAQUE_BUDGET,
+  BAKED_PALETTE_CAP,
   rampPalette,
   quantizeRamp,
   luma,
@@ -19,10 +20,13 @@ import {
 } from '../../tools/validate-sprite-def.mjs';
 import { BUILDING_CATALOG, PROP_CATALOG, SPRITE_CATALOG } from '../assets/sprites/index.js';
 
-// LIV-123 (Phase B of LIV-116 rev 3): triple the 3D-baked palette capacity
-// (25 -> 75 opaque) and regenerate the 11 scoped defs, preserving the 1:1 (N64)
-// native render and the silhouette ground shadow. Tier A (indexed) and
-// 2D-derived Tier B stay untouched. Art contract: art-direction.md §10 (LIV-122).
+// LIV-123 (Phase B of LIV-116) raised the 3D-baked palette 25 -> 75. LIV-125
+// (Phase B of LIV-116 rev 4, art-direction.md §11) takes it the rest of the way
+// to the full 8-bit palette: up to 255 opaque colours (256 slots) via direct
+// quantization, replacing the retired 5x15 ramp-family model. This file keeps
+// the "the 11 scoped defs ship the richer palette, 1:1 N64 + non-3D unchanged"
+// regression; the concrete 256-code encoding is locked in
+// `liv125-palette-256.test.mjs`.
 
 const BUILDINGS = [
   'fishing_hut', 'fishing_hut_back', 'fishing_hut_large', 'fishing_hut_left',
@@ -48,52 +52,37 @@ function usedChars(def) {
   return used.size;
 }
 
-/** Adjacent relative-luma deltas across each family ramp of a 3D-baked def. */
-function adjacentDeltas(def) {
-  const steps = def.ramp.steps, families = def.ramp.families;
-  const deltas = [];
-  for (let f = 0; f < families; f++) {
-    for (let s = 1; s < steps; s++) {
-      const a = def.palette[BAKED_ALPHABET[f * steps + s - 1]];
-      const b = def.palette[BAKED_ALPHABET[f * steps + s]];
-      if (!a || !b) continue;
-      const la = luma(...hexRGB(a)), lb = luma(...hexRGB(b));
-      deltas.push(Math.abs(lb - la) / Math.max(1, la));
-    }
-  }
-  return deltas;
-}
-
-test('LIV-123 3D-baked palette capacity ×3', async (t) => {
-  await t.test('1. the fixed 76-slot key alphabet is single-char and >= the 75-opaque budget', () => {
-    assert.equal(BAKED_OPAQUE_BUDGET, 75);
-    assert.equal(BAKED_ALPHABET.length, 75, '75 opaque keys');
-    assert.equal(new Set(BAKED_ALPHABET).size, 75, 'keys are unique');
+test('LIV-123/LIV-125 3D-baked palette capacity (75 -> 255 opaque)', async (t) => {
+  await t.test('1. the fixed alphabet is single-code-unit, unique, and covers the full 8-bit budget', () => {
+    assert.equal(BAKED_OPAQUE_BUDGET, 255);
+    assert.equal(BAKED_ALPHABET.length, 255, '255 opaque codes');
+    assert.equal(new Set(BAKED_ALPHABET).size, 255, 'codes are unique');
+    assert.equal(BAKED_PALETTE_CAP, 256, '255 opaque + the transparent slot');
     assert.ok(!BAKED_ALPHABET.includes('.'), 'the transparent slot is separate');
-    for (const ch of BAKED_ALPHABET) assert.equal(ch.length, 1, `key "${ch}" is one char`);
-    assert.equal(BAKED_3D_PALETTE_CAP, 96, 'the 3D-baked ceiling is 96');
+    for (const ch of BAKED_ALPHABET) assert.equal(ch.length, 1, `code ${JSON.stringify(ch)} is one code unit`);
+    assert.equal(BAKED_3D_PALETTE_CAP, 256, 'the 3D-baked ceiling is the full 8-bit palette');
   });
 
-  await t.test('2. each of the 11 scoped defs ships ~75 opaque colours (3x the prior 25)', () => {
+  await t.test('2. each of the 11 scoped defs ships ~255 opaque colours (far above the prior 75)', () => {
     for (const [kind, id] of SCOPE) {
       const def = defFor(kind, id);
       assert.ok(def, `${id} registered`);
       assert.equal(resolveRenderTier(def), 'baked', `${id} is Tier B`);
       assert.equal(isBaked3d(def), true, `${id} declares the 3D-baked source`);
-      assert.equal(paletteCapFor(def), 96, `${id} uses the 3D-baked ceiling`);
+      assert.equal(paletteCapFor(def), 256, `${id} uses the full 8-bit 3D-baked ceiling`);
       const entries = Object.keys(def.palette).length;
-      assert.ok(entries <= 96, `${id} palette ${entries} <= 96`);
+      assert.ok(entries <= 256, `${id} palette ${entries} <= 256`);
       const opaque = opaqueColors(def);
-      assert.ok(opaque.length >= 75, `${id} ships ~75 opaque colours (got ${opaque.length})`);
-      assert.ok(new Set(opaque.map(([, v]) => v)).size >= 75, `${id} has >=75 distinct colours`);
-      // The visible used-colour count is measurably higher than the old 25.
-      assert.ok(usedChars(def) > 25, `${id} uses more than the prior 24/25 colours (got ${usedChars(def)})`);
+      assert.ok(opaque.length >= 250, `${id} ships ~255 opaque colours (got ${opaque.length})`);
+      assert.ok(new Set(opaque.map(([, v]) => v)).size >= 250, `${id} has >=250 distinct colours`);
+      // The visible used-colour count is far above the retired 75-colour cap.
+      assert.ok(usedChars(def) >= 250, `${id} uses >=250 colours (got ${usedChars(def)})`);
       assert.deepEqual(validateSpriteDef(def, { label: id }).errors, [], id);
-      assert.deepEqual(def.ramp, { families: 5, steps: 15 }, `${id} default 5x15 ramp`);
+      assert.deepEqual(def.quantize, { method: 'median-cut', budget: 255 }, `${id} declares direct quantization`);
     }
   });
 
-  await t.test('3. the 1:1 (N64) native render + geometry are unchanged; the ramp is finer not coarser', () => {
+  await t.test('3. the 1:1 (N64) native render + geometry are unchanged', () => {
     for (const [kind, id] of SCOPE) {
       const def = defFor(kind, id);
       if (def.tiles) {
@@ -106,20 +95,18 @@ test('LIV-123 3D-baked palette capacity ×3', async (t) => {
         assert.equal(rows.length, def.native.h, `${id} frame rows`);
         assert.ok(rows.every((r) => r.length === def.native.w), `${id} frame width`);
       }
-      assert.ok(def.ramp.steps >= 12, `${id} has >= 12 steps/family (was 4)`);
-      assert.ok(def.ramp.families >= 5, `${id} has >= 5 families`);
     }
   });
 
-  await t.test('4. banding improved: adjacent-step luma deltas are far smaller than the old 4-step ramps', () => {
+  await t.test('4. the palette is emitted in canonical ascending-luma order (deterministic re-bakes)', () => {
     for (const [kind, id] of SCOPE) {
       const def = defFor(kind, id);
-      const d = adjacentDeltas(def).sort((a, b) => a - b);
-      const mean = d.reduce((a, b) => a + b, 0) / d.length;
-      const p90 = d[Math.floor(d.length * 0.9)];
-      // The old 4-step ramps averaged 33-60% adjacent jumps (and peaked 70-115%).
-      assert.ok(mean <= 0.15, `${id} mean adjacent luma delta ${(mean * 100).toFixed(1)}% <= 15%`);
-      assert.ok(p90 <= 0.30, `${id} p90 adjacent luma delta ${(p90 * 100).toFixed(1)}% <= 30%`);
+      let prev = -1;
+      for (const [, v] of opaqueColors(def)) {
+        const L = luma(...hexRGB(v));
+        assert.ok(L >= prev - 1e-6, `${id} palette not in ascending-luma order`);
+        prev = L;
+      }
     }
   });
 
@@ -142,7 +129,7 @@ test('LIV-123 3D-baked palette capacity ×3', async (t) => {
     }
   });
 
-  await t.test('6. rampPalette keys drive quantizeRamp; a sparse family still fills a strict ramp', () => {
+  await t.test('6. the legacy ramp helpers still work (used by the unchanged 2D-derived path)', () => {
     // A sparse single-material ramp: only two luma clusters present.
     const px = [];
     for (let i = 0; i < 40; i++) px.push([60, 30, 20]);
@@ -153,7 +140,6 @@ test('LIV-123 3D-baked palette capacity ×3', async (t) => {
     assert.equal(ramp.keys[0], BAKED_ALPHABET[0], 'keys come from the baked alphabet');
     const lum = ramp.colors.map((c) => luma(...c));
     for (let i = 0; i < lum.length; i++) assert.ok(i === 0 || lum[i] > lum[i - 1], `step ${i} strictly increasing`);
-    // quantizeRamp emits the alphabet keys (indices >= 36 never spill to 2 chars).
     const sprite = { w: 4, h: 1, rgba: new Float32Array([220, 150, 110, 255, 60, 30, 20, 255, 0, 0, 0, 0, 220, 150, 110, 255]) };
     const rows = quantizeRamp(sprite, ramp);
     assert.equal(rows[0].length, 4, 'one char per pixel');

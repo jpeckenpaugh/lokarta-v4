@@ -158,9 +158,9 @@ export async function bakeRiggedArcher() {
   const res = await buildAnimatedAsset({
     glbPath, id: 'rukiya_archer_rigged', outDir: path.dirname(ARTIFACT),
     clip: 'Walking', size: 64, rise: 8, tier: 'baked',
-    // LIV-122: 3D-baked ramp defaults are 5 families x 15 luma steps = 75 opaque
-    // colours (art-direction.md §10.2) unless a def opts into the allowed variant.
-    families: 5, steps: 15, poseList, renderRes: 1024, write: false, rim: ARCHER_RIM,
+    // LIV-125 §11.2: 3D-baked defs use direct 256-colour quantization (up to 255
+    // opaque colours, art-direction.md §11) — no ramp families.
+    poseList, renderRes: 1024, write: false, rim: ARCHER_RIM,
     ambient: ARCHER_AMBIENT, exposure: ARCHER_EXPOSURE, outline: false,
   });
   fs.writeFileSync(ARTIFACT, JSON.stringify(res.def, null, 2) + '\n');

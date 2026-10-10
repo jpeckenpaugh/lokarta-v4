@@ -8,7 +8,8 @@
  * scene-object shape from docs/art/art-direction.md §1:
  *
  *   - `renderTier`: `"indexed"` (Tier A, default) | `"baked"` (Tier B)
- *   - palette cap is tier-aware: <=16 for indexed, <=32 for baked
+ *   - palette cap is tier-aware: <=16 indexed, <=32 2D-derived baked,
+ *     <=256 for 3D-baked defs (`baked3d`, §11)
  *   - frame geometry equals `native`
  *   - single-character palette keys, valid `#rrggbb` (`.` may be `null`)
  *   - multi-tile objects declare `{ tiles, anchor, placement }`; `native`
@@ -66,12 +67,12 @@ export const RENDER_TIERS = ['indexed', 'baked'];
 export const DEFAULT_RENDER_TIER = 'indexed';
 export const PALETTE_CAP = { indexed: 16, baked: 32 };
 /**
- * LIV-122 §10.1: a **3D-baked** def (`renderTier:"baked"` AND the `baked3d`
- * declaration the GLB bake pipeline writes) raises the Tier B ceiling to 96
- * entries, targeting 76 slots (75 opaque + the `.` transparent). 2D-derived
- * baked defs (derive-tierb-from-2d.mjs) stay at 32; Tier A stays 16.
+ * LIV-125 §11.1: a **3D-baked** def (`renderTier:"baked"` AND the `baked3d`
+ * declaration the GLB bake pipeline writes) raises the Tier B ceiling to the
+ * full 8-bit palette: **256 entries** (255 opaque + the `.` transparent code).
+ * 2D-derived baked defs (derive-tierb-from-2d.mjs) stay at 32; Tier A stays 16.
  */
-export const BAKED_3D_PALETTE_CAP = 96;
+export const BAKED_3D_PALETTE_CAP = 256;
 
 /** Tier A when absent; validates the declared tier is known. */
 export function resolveRenderTier(def) {
@@ -87,7 +88,7 @@ export function isBaked3d(def) {
   return resolveRenderTier(def) === 'baked' && !!(def && def.baked3d);
 }
 
-/** Palette ceiling for a def: 96 for 3D-baked, else `baked ? 32 : 16`. */
+/** Palette ceiling for a def: 256 for 3D-baked, else `baked ? 32 : 16`. */
 export function paletteCapFor(def) {
   if (isBaked3d(def)) return BAKED_3D_PALETTE_CAP;
   const tier = resolveRenderTier(def);

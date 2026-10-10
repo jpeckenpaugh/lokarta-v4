@@ -58,15 +58,16 @@ export function buildArcherBaked() {
     id: 'archer',
     kind: 'vocation',
     renderTier: art.renderTier || 'baked',
-    // LIV-122: carry the 3D-baked declaration + ramp metadata into the runtime
-    // def so the shared validator resolves the 96-entry ceiling (75 opaque).
+    // LIV-122/LIV-125: carry the 3D-baked declaration + direct-quantization
+    // metadata into the runtime def so the shared validator resolves the
+    // 256-entry ceiling (255 opaque, §11).
     ...(art.baked3d ? { baked3d: true } : {}),
     // LIV-115 (Fix 1): propagate the bake's Tier B outline opt-out so the runtime
     // renderer ends colours at the silhouette instead of re-adding a 1px outline.
     ...(art.outline === false ? { outline: false } : {}),
     native: { ...art.native },
     anchor: { ...art.anchor },
-    ...(art.ramp ? { ramp: { ...art.ramp } } : {}),
+    ...(art.quantize ? { quantize: { ...art.quantize } } : {}),
     palette: { ...art.palette },
     animations: JSON.parse(JSON.stringify(ARCHER_ANIMATIONS)),
     frames: { ...art.frames },
