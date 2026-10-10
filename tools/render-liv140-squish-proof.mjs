@@ -133,7 +133,10 @@ function blitSquished(buf, pix, boxX, boxY, scale, progress, fade) {
 }
 
 function main() {
-  const out = process.argv[2] || path.join(ROOT, 'docs', 'art', 'preview', 'liv140-defeat-squish-framestrip.png');
+  // Defaults outside docs/art/preview: that directory is drift-checked against a
+  // fresh `exportPreviews` run (sprite-assets.test.mjs), so a proof strip must
+  // not be committed there.
+  const out = process.argv[2] || path.join(ROOT, 'docs', 'art', 'liv140-defeat-squish-framestrip.png');
   const def = SPRITE_CATALOG[SPRITE_ID];
   if (!def) throw new Error(`missing sprite ${SPRITE_ID}`);
   const pix = parseFrame(def.frames[FRAME_ID], def.palette);
