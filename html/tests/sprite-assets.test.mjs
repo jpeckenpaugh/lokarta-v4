@@ -31,6 +31,16 @@ import {
 } from '../app/portrait-renderer.js';
 import { exportPreviews } from '../../tools/render-sprite-preview.mjs';
 import { validatePropAssets } from '../../tools/validate-prop-assets.mjs';
+import {
+  paletteCapFor,
+  resolveRenderTier,
+  validateSpriteDef,
+  validateMultiTileDef,
+  isMultiTile,
+  validateCommittedMultiTileDefs,
+  NATIVE_TILE,
+  RENDER_TIERS,
+} from '../../tools/validate-sprite-def.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');
@@ -121,10 +131,11 @@ test('Sprite assets', async t => {
     }
   });
 
-  await t.test('3. palette integrity (<=16 entries, valid hex, used chars declared)', () => {
+  await t.test('3. palette integrity (tier-aware cap, valid hex, used chars declared)', () => {
     for (const [id, def] of Object.entries(SPRITE_CATALOG)) {
+      const cap = paletteCapFor(def);
       const entries = Object.entries(def.palette);
-      assert.ok(entries.length <= 16, `${id} palette has ${entries.length} entries`);
+      assert.ok(entries.length <= cap, `${id} palette has ${entries.length} entries > ${cap} (${resolveRenderTier(def)})`);
       for (const [k, v] of entries) {
         assert.equal(k.length, 1, `${id} palette key ${k}`);
         if (v === null) { assert.equal(k, '.'); continue; }
@@ -518,7 +529,7 @@ test('NPC identity atlas (LIV-81)', async t => {
         for (const row of rows) assert.equal(row.length, w, `${def.id}/${frameId} row width`);
       }
       const entries = Object.entries(def.palette);
-      assert.ok(entries.length <= 16, `${def.id} palette has ${entries.length} entries`);
+      assert.ok(entries.length <= paletteCapFor(def), `${def.id} palette has ${entries.length} entries`);
       assert.equal(def.palette['0'], OUTLINE_COLOR, `${def.id} must use the shared outline`);
       for (const [k, v] of entries) {
         assert.equal(k.length, 1, `${def.id} palette key ${k}`);
@@ -591,7 +602,7 @@ test('NPC identity atlas (LIV-81)', async t => {
         const rows = def.frames.bust;
         assert.equal(rows.length, PORTRAIT_NATIVE, `${assetId} row count`);
         for (const row of rows) assert.equal(row.length, PORTRAIT_NATIVE, `${assetId} row width`);
-        assert.ok(Object.keys(def.palette).length <= 16, `${assetId} palette > 16`);
+        assert.ok(Object.keys(def.palette).length <= paletteCapFor(def), `${assetId} palette > cap`);
         for (const row of rows) {
           for (const ch of row) assert.ok(ch === '.' || def.palette[ch], `${assetId} uses undeclared char "${ch}"`);
         }
@@ -637,5 +648,75 @@ test('NPC identity atlas (LIV-81)', async t => {
     // Migration safety: an unknown bespoke id falls back to the shared sprite.
     assert.equal(resolveSpriteId({ npcSpriteId: 'npc_not_authored', spriteId: 'fighter' }), 'fighter');
     assert.equal(resolveSpriteId({ npcSpriteId: 'npc_not_authored', vocation: 'paladin' }), 'paladin');
+  });
+});
+
+// LIV-108 (Phase 0): land the Tier B "baked" contract + multi-tile footprint
+// assertion so richer/bigger assets stay CI-validated. Tier A is unchanged.
+test('Tier B sprite contract (LIV-108)', async t => {
+  const hasErr = (def, re) => validateSpriteDef(def).errors.some(e => re.test(e));
+  const mtDef = (over = {}) => {
+    const tiles = over.tiles || { w: 4, h: 2 };
+    const native = over.native || { w: tiles.w * NATIVE_TILE, h: tiles.h * NATIVE_TILE };
+    return {
+      id: 'synthetic_building',
+      kind: 'building',
+      native,
+      anchor: { x: Math.floor(native.w / 2), y: Math.max(0, native.h - 2) },
+      palette: { '.': null, '0': OUTLINE_COLOR },
+      frames: { view_0: Array.from({ length: native.h }, () => '0'.repeat(native.w)) },
+      tiles,
+      placement: { mode: 'multi-tile-blit', footprint: [0, 0, tiles.w - 1, tiles.h - 1] },
+      ...over,
+    };
+  };
+
+  await t.test('33. palette cap is tier-aware (indexed 16 / baked 32); Tier A unchanged', () => {
+    assert.deepEqual(RENDER_TIERS, ['indexed', 'baked']);
+    assert.equal(resolveRenderTier({}), 'indexed', 'absent renderTier defaults to indexed');
+    assert.equal(resolveRenderTier({ renderTier: 'baked' }), 'baked');
+    assert.equal(paletteCapFor({}), 16);
+    assert.equal(paletteCapFor({ renderTier: 'indexed' }), 16);
+    assert.equal(paletteCapFor({ renderTier: 'baked' }), 32);
+
+    // Every committed actor stays Tier A at the ≤16 cap.
+    for (const [id, def] of Object.entries(SPRITE_CATALOG)) {
+      assert.equal(resolveRenderTier(def), 'indexed', `${id} must stay Tier A`);
+      assert.ok(Object.keys(def.palette).length <= 16, `${id} indexed cap`);
+    }
+
+    // A 22-entry baked palette validates; the same def fails as indexed.
+    const palette = { '.': null, '0': OUTLINE_COLOR };
+    for (let i = 0; i < 20; i++) palette[i.toString(36)] = '#101010';
+    const baked = { id: 'synthetic_baked', renderTier: 'baked', native: { w: 2, h: 2 }, palette, frames: { idle: ['00', '00'] } };
+    assert.deepEqual(validateSpriteDef(baked).errors, [], 'a ≤32 baked palette is valid');
+    const indexed = { ...baked, id: 'synthetic_indexed' };
+    delete indexed.renderTier;
+    assert.ok(hasErr(indexed, /palette \d+ > 16/), 'a >16 indexed palette is rejected');
+    // An unknown tier is rejected, never silently treated as baked.
+    assert.ok(hasErr({ ...baked, renderTier: 'ultra' }, /renderTier/), 'unknown renderTier is rejected');
+  });
+
+  await t.test('34. every catalog sprite validates through the shared schema', () => {
+    for (const [id, def] of Object.entries(SPRITE_CATALOG)) {
+      assert.deepEqual(validateSpriteDef(def, { label: id }).errors, [], id);
+    }
+  });
+
+  await t.test('35. multi-tile defs: whole-tile native, ≤128×128, footprint span == tile span', () => {
+    const { errors, count } = validateCommittedMultiTileDefs();
+    assert.equal(errors.length, 0, `committed multi-tile defs: ${errors.join('; ')}`);
+    assert.ok(count >= 2, `expected the committed 2×3 and 4×2 PoC defs, found ${count}`);
+
+    // A 4×2 (128×64) building with a matching footprint validates cleanly.
+    assert.deepEqual(validateMultiTileDef(mtDef()).errors, []);
+    // native not a multiple of 32 (also != tiles*32).
+    assert.ok(hasErr(mtDef({ native: { w: 100, h: 64 } }), /multiple of 32/), 'non-tile-multiple native rejected');
+    // native wider than the 128px ceiling.
+    assert.ok(hasErr(mtDef({ native: { w: 160, h: 32 }, tiles: { w: 5, h: 1 } }), /exceeds 128/), '>128px native rejected');
+    // footprint span disagrees with the canvas tile span.
+    assert.ok(hasErr(mtDef({ placement: { mode: 'multi-tile-blit', footprint: [0, 0, 1, 1] } }), /footprint span/), 'footprint mismatch rejected');
+    // A non-multi-tile def is not silently accepted by the multi-tile guard.
+    assert.ok(validateMultiTileDef({ id: 'one_tile', native: { w: 32, h: 32 }, palette: { '.': null } }).errors.length > 0);
   });
 });
