@@ -824,7 +824,7 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
 export async function buildAnimatedAsset({
   glbPath, id, outDir, clip = null, size = 32, views = [0, 90, 180, 270], rise = 8,
   flat = false, renderRes = 512, tier = 'baked', families = 6, steps = 4,
-  times = null, frameCount = 8, poseList = null, write = true,
+  times = null, frameCount = 8, poseList = null, write = true, rim = null,
 }) {
   const baked = tier === 'baked';
   const glb = parseGLB(glbPath);
@@ -866,7 +866,7 @@ export async function buildAnimatedAsset({
       ca: Math.cos(p.az * Math.PI / 180), sa: Math.sin(p.az * Math.PI / 180),
       cr: Math.cos(riseRad), sr: Math.sin(riseRad),
     };
-    const hi = renderWorld({ pos: poses[i].pos, nrm: poses[i].nrm, uv, idx, count, tex, proj, rim: baked ? 0.7 : 0, bounce: baked ? 0.35 : 0 });
+    const hi = renderWorld({ pos: poses[i].pos, nrm: poses[i].nrm, uv, idx, count, tex, proj, rim: baked ? (rim ?? 0.7) : 0, bounce: baked ? 0.35 : 0 });
     return { key: p.key, az: p.az, i, px: downscale(hi, size, size) };
   });
   const all = [];

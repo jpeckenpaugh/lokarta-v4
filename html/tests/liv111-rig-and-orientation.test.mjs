@@ -16,6 +16,7 @@ import {
   tileCanvasSize,
 } from '../../tools/gltf-to-sprite.mjs';
 import { buildArcherBaked, ARCHER_ANIMATIONS, RIGGED_ARTIFACT } from '../../tools/integrate-actor-bake.mjs';
+import { archerPoses } from '../../tools/bake-rigged-archer.mjs';
 import { getTownDefinition } from '../data/index.js';
 import { BUILDING_CATALOG, SPRITE_CATALOG } from '../assets/sprites/index.js';
 
@@ -156,6 +157,62 @@ test('LIV-111 rigged actor bake — skeleton sampling + animation helpers', asyn
       }
     }
     assert.equal(ids.size, Object.keys(c.frames).length, 'no orphan frames');
+  });
+
+  await t.test('8. LIV-112: upright frames fill the tile; every frame stays grounded + inside', () => {
+    // Regression: the rig bake normalized to the union pose bbox, which a
+    // sunk death pose inflated, shrinking the drawn character inside the 32x32
+    // canvas. The fix keeps the feet planted, so upright frames must read
+    // near full-tile height with the head near the top and feet on the anchor.
+    const c = SPRITE_CATALOG.archer;
+    const anchorY = c.anchor.y; // 30 (bottom-centre ground contact)
+    const bbox = (rows) => {
+      let minx = 99, maxx = -1, miny = 99, maxy = -1;
+      rows.forEach((r, y) => [...r].forEach((ch, x) => {
+        if (ch === '.') return;
+        if (x < minx) minx = x; if (x > maxx) maxx = x;
+        if (y < miny) miny = y; if (y > maxy) maxy = y;
+      }));
+      return { minx, maxx, miny, maxy, w: maxx - minx + 1, h: maxy - miny + 1 };
+    };
+    for (const state of ['idle', 'walk', 'attack', 'hit']) {
+      for (const dir of ['down', 'up', 'side']) {
+        for (const fid of c.animations[state][dir]) {
+          const b = bbox(c.frames[fid]);
+          assert.ok(b.h >= 28, `${fid} fills the tile height (h=${b.h})`);
+          assert.ok(b.miny <= 3, `${fid} head nears the tile top (miny=${b.miny})`);
+          assert.ok(b.maxy >= anchorY - 1 && b.maxy <= 31, `${fid} feet on the ground anchor (maxy=${b.maxy})`);
+          assert.ok(b.minx >= 0 && b.maxx <= 31, `${fid} stays inside the tile`);
+        }
+      }
+    }
+    // Death frames collapse low, but must not clip or float above the ground.
+    for (const dir of ['down', 'up', 'side']) {
+      for (const fid of c.animations.death[dir]) {
+        const b = bbox(c.frames[fid]);
+        assert.ok(b.minx >= 0 && b.maxx <= 31 && b.miny >= 0 && b.maxy <= 31, `${fid} must not clip`);
+        assert.ok(b.maxy >= anchorY - 2, `${fid} collapses onto the ground (maxy=${b.maxy})`);
+      }
+    }
+  });
+
+  await t.test('9. LIV-112: pose overrides are rotation-only so the rig stays planted', () => {
+    // The `Walking` clip carries the Hips translation that plants the feet on
+    // the ground. A pose override that set a Hips translation replaced it and
+    // dropped the rig below the foot plane (the LIV-112 shrink). Guard it.
+    const bones = {};
+    for (const n of [
+      'mixamorig:Spine1', 'mixamorig:Spine2', 'mixamorig:Hips',
+      'mixamorig:LeftArm', 'mixamorig:RightArm', 'mixamorig:LeftForeArm', 'mixamorig:RightForeArm',
+    ]) bones[n] = 0;
+    const rest = () => [0, 0, 0, 1];
+    const P = archerPoses(bones, rest);
+    const all = [P.draw, P.fire, P.settle, P.recoil, ...P.death];
+    for (const m of all) {
+      for (const [, pose] of m) {
+        assert.ok(!('translation' in pose), 'pose overrides must be rotation-only (no Hips translation clobber)');
+      }
+    }
   });
 });
 

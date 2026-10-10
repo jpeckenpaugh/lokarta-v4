@@ -52,6 +52,12 @@ export const DIR_AZ = { down: 0, up: 180, side: 90 };
 export const WALK_PHASES = [0.26, 0.781];
 export const IDLE_PHASE = 0;
 
+/* Rim-light strength for the bake. The default 0.7 left the full-tile archer's
+ * brightest green just under the 3:1 rim-contrast floor (the larger model's
+ * ramp top-step averages more mid-tones than the old shrunken bake did), so the
+ * bake raises it to keep the silhouette's lit edge readable against the floor. */
+export const ARCHER_RIM = 1.1;
+
 /* ---- small quaternion helpers for skeletal posing ---- */
 const qmul = (a, b) => [
   a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
@@ -82,11 +88,16 @@ export function archerPoses(bones, rest) {
     if (lean) m.set(bones['mixamorig:Spine1'], { rotation: rot('mixamorig:Spine1', [[1, 0, 0], lean]) });
     return m;
   };
-  const leanPose = (spine1, spine2, hipsDrop = 0) => {
+  // `leanPose` bends the torso about the waist. It deliberately does NOT touch
+  // the Hips node: the `Walking` clip carries the Hips translation that plants
+  // the feet on the ground (y ~= 0). Overriding it — as a naive "hip drop" did —
+  // dropped the whole rig below the foot plane, which inflated the union bounds
+  // used to scale/centre the bake and shrank every frame inside the tile
+  // (LIV-112). Folding the spine alone keeps the feet grounded at every frame.
+  const leanPose = (spine1, spine2) => {
     const m = new Map();
     m.set(bones['mixamorig:Spine1'], { rotation: rot('mixamorig:Spine1', [[1, 0, 0], spine1]) });
     if (spine2) m.set(bones['mixamorig:Spine2'], { rotation: rot('mixamorig:Spine2', [[1, 0, 0], spine2]) });
-    if (hipsDrop) m.set(bones['mixamorig:Hips'], { translation: [0, -hipsDrop, 0] });
     return m;
   };
   return {
@@ -94,7 +105,7 @@ export function archerPoses(bones, rest) {
     fire: armPose({ la: [-5, -10], ra: [20, 10], lf: -15, rf: 20 }),
     settle: armPose({ la: [-12, -22], ra: [2, 30], lf: -28, rf: 48, lean: -3 }),
     recoil: leanPose(-14, -8),
-    death: [leanPose(10, 4), leanPose(30, 12), leanPose(55, 24, 0.1), leanPose(80, 34, 0.2)],
+    death: [leanPose(10, 4), leanPose(30, 12), leanPose(55, 24), leanPose(80, 34)],
   };
 }
 
@@ -138,7 +149,7 @@ export async function bakeRiggedArcher() {
   const res = await buildAnimatedAsset({
     glbPath, id: 'rukiya_archer_rigged', outDir: path.dirname(ARTIFACT),
     clip: 'Walking', size: 32, rise: 8, tier: 'baked',
-    families: 6, steps: 4, poseList, renderRes: 512, write: false,
+    families: 6, steps: 4, poseList, renderRes: 512, write: false, rim: ARCHER_RIM,
   });
   fs.writeFileSync(ARTIFACT, JSON.stringify(res.def, null, 2) + '\n');
   return res;
