@@ -29,6 +29,16 @@ import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 const OUTLINE = '#0b0d12';
+/* LIV-122 §10.3: the fixed single-byte key alphabet for 3D-baked palettes. The
+ * '.' transparent slot is separate, so these 75 glyphs are the opaque palette
+ * keys (digits, lowercase, uppercase, then 13 punctuation). One char per key is
+ * mandatory — a two-char key would break the renderer's char indexing and the
+ * row alignment — so indices >= 36 must NOT spill into `toString(36)` output.
+ * Order is normative: `0` is a normal opaque colour for 3D bakes (LIV-115 drops
+ * the reserved outline slot), and it leads the alphabet. */
+export const BAKED_ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()-_+';
+/** LIV-122 §10.1: 3D-baked opaque-colour budget (25 -> 75, capacity x3). */
+export const BAKED_OPAQUE_BUDGET = 75;
 // Native tile grid: 32px == ONE tile. Actors/props are authored at 1 tile
 // (32x32); buildings/landmarks are authored at NxM tiles (e.g. 128x64 = 4x2).
 // The display grid is CONFIG.GRID_SIZE=64 == 32 * SCALE(2). The ratio between
@@ -509,8 +519,9 @@ export function luma(r, g, b) { return 0.299 * r + 0.587 * g + 0.114 * b; }
  * family index plus a continuous `pos` in [0,1] along that family's luma range
  * (the dither pass turns `pos` into a step).
  */
-export function rampPalette(pixels, { families = 6, steps = 4 } = {}) {
+export function rampPalette(pixels, { families = 6, steps = 4, keys = null } = {}) {
   if (!pixels.length || families < 1 || steps < 2) throw new Error('rampPalette: need pixels and families>=1, steps>=2');
+  if (keys && keys.length < families * steps) throw new Error(`rampPalette: need >= ${families * steps} keys, got ${keys.length}`);
   const pts = pixels.map(([r, g, b]) => { const s = r + g + b || 1; return [r / s, g / s]; });
   // Seed centroids across the chroma spread so initial assignment is not degenerate.
   const order = pts.map((_, i) => i).sort((i, j) => (pts[i][0] - pts[i][1]) - (pts[j][0] - pts[j][1]));
@@ -542,17 +553,35 @@ export function rampPalette(pixels, { families = 6, steps = 4 } = {}) {
     const a = fam[f].acc[st]; a[0] += pixels[i][0]; a[1] += pixels[i][1]; a[2] += pixels[i][2]; a[3]++;
   }
   const colors = [];
-  // Ramp factors used to synthesise a step that no pixel landed on (sparse
-  // texture): keeps every family a full shadow->rim ramp instead of a grey gap.
+  // Factors synthesise a step that no pixel landed on (sparse texture), keeping
+  // every family a full shadow->rim ramp instead of a grey gap.
   const factors = steps === 4 ? [0.55, 0.8, 1.05, 1.35] : Array.from({ length: steps }, (_, i) => 0.55 + 0.8 * (i / (steps - 1)));
   for (const f of fam) {
-    let mr = 0, mg = 0, mb = 0, mn = 0;
-    for (let st = 0; st < steps; st++) { const a = f.acc[st]; if (a[3] > 0) { mr += a[0]; mg += a[1]; mb += a[2]; mn += a[3]; } }
-    const mean = mn > 0 ? [mr / mn, mg / mn, mb / mn] : [128, 128, 128];
+    // Gather the averaged colour of each populated luma bin.
+    const raw = Array.from({ length: steps }, (_, st) => (f.acc[st][3] > 0 ? [f.acc[st][0] / f.acc[st][3], f.acc[st][1] / f.acc[st][3], f.acc[st][2] / f.acc[st][3]] : null));
+    if (steps === 4) {
+      // Legacy 4-step path (2D-derived, derive-tierb-from-2d.mjs) — byte-stable.
+      let mr = 0, mg = 0, mb = 0, mn = 0;
+      for (let st = 0; st < steps; st++) { const a = f.acc[st]; if (a[3] > 0) { mr += a[0]; mg += a[1]; mb += a[2]; mn += a[3]; } }
+      const mean = mn > 0 ? [mr / mn, mg / mn, mb / mn] : [128, 128, 128];
+      for (let st = 0; st < steps; st++) colors.push(raw[st] || [mean[0] * factors[st], mean[1] * factors[st], mean[2] * factors[st]]);
+      continue;
+    }
+    // LIV-122 §10.2 (3D-baked, steps>4): fill a family's empty luma bins by
+    // interpolating between the nearest populated bins, so adjacent steps stay
+    // close in luma (kills the flagged hard banding) instead of snapping to a
+    // fixed `mean * factor` guess. Leading/trailing gaps extrapolate from the
+    // nearest populated bin along the factor curve.
+    const below = new Array(steps).fill(-1), above = new Array(steps).fill(-1);
+    for (let st = 0, last = -1; st < steps; st++) { below[st] = last; if (raw[st]) last = st; }
+    for (let st = steps - 1, next = -1; st >= 0; st--) { above[st] = next; if (raw[st]) next = st; }
     for (let st = 0; st < steps; st++) {
-      const a = f.acc[st];
-      if (a[3] > 0) colors.push([a[0] / a[3], a[1] / a[3], a[2] / a[3]]);
-      else colors.push([mean[0] * factors[st], mean[1] * factors[st], mean[2] * factors[st]]);
+      if (raw[st]) { colors.push(raw[st]); continue; }
+      const a = below[st], b = above[st];
+      if (a >= 0 && b >= 0) { const t = (st - a) / (b - a); colors.push([0, 1, 2].map((k) => raw[a][k] + t * (raw[b][k] - raw[a][k]))); }
+      else if (b >= 0) { const r = factors[st] / factors[b]; colors.push(raw[b].map((v) => v * r)); }
+      else if (a >= 0) { const r = factors[st] / factors[a]; colors.push(raw[a].map((v) => v * r)); }
+      else { colors.push([128, 128, 128]); }
     }
   }
   for (let i = 0; i < colors.length; i++) colors[i] = colors[i].map((v) => Math.max(0, Math.min(255, Math.round(v))));
@@ -561,6 +590,19 @@ export function rampPalette(pixels, { families = 6, steps = 4 } = {}) {
     const slice = colors.slice(f * steps, (f + 1) * steps);
     const ord = slice.map((c, i) => [luma(...c), i]).sort((a, b) => a[0] - b[0]);
     for (let i = 0; i < steps; i++) colors[f * steps + i] = slice[ord[i][1]];
+  }
+  // 3D-baked ramps must read as a strictly-increasing ramp per family; nudge a
+  // coincident step lighter (hue-preserving) when interpolation collides two.
+  if (steps !== 4) {
+    for (let f = 0; f < families; f++) {
+      for (let s = 1; s < steps; s++) {
+        const cur = colors[f * steps + s], prev = colors[f * steps + s - 1];
+        if (luma(...cur) > luma(...prev)) continue;
+        const target = luma(...prev) * 1.06 + 1;
+        const k = target / (luma(...cur) || 1);
+        colors[f * steps + s] = cur.map((v) => Math.min(255, v * k));
+      }
+    }
   }
   const assign = (r, g, b) => {
     const s = r + g + b || 1; const x = r / s, y = g / s;
@@ -571,7 +613,12 @@ export function rampPalette(pixels, { families = 6, steps = 4 } = {}) {
     pos = Math.max(0, Math.min(1, pos));
     return { family: bf, pos };
   };
-  return { families, steps, colors, assign };
+  // Opaque key per ramp colour. Default keeps the legacy base-36 `1,2,...,9,a,b`
+  // assignment the 2D-derived path (derive-tierb-from-2d.mjs) relies on; a 3D
+  // bake passes the fixed 75-char `BAKED_ALPHABET` so indices >= 36 stay one
+  // char (art-direction.md §10.3).
+  const outKeys = keys ? colors.map((_, i) => keys[i]) : colors.map((_, i) => (i + 1).toString(36));
+  return { families, steps, colors, keys: outKeys, assign };
 }
 
 /**
@@ -593,7 +640,8 @@ export function quantizeRamp(sprite, ramp) {
       let step = Math.floor(scaled); const frac = scaled - step;
       if (frac > BAYER2X2[(y & 1) * 2 + (x & 1)] / 4) step++;
       if (step >= ramp.steps) step = ramp.steps - 1; if (step < 0) step = 0;
-      row += (family * ramp.steps + step + 1).toString(36);
+      const ci = family * ramp.steps + step;
+      row += ramp.keys ? ramp.keys[ci] : (ci + 1).toString(36);
     }
     rows.push(row);
   }
@@ -775,7 +823,7 @@ function chopSheet(slices, scale, bg = [10, 11, 14, 255], pad = 6) {
   return { w: W, h: H, buf };
 }
 
-export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 90, 180, 270], colors = 14, rise = 10, flat = false, renderRes = 512, tiles = null, kind = null, tier = 'indexed', families = 6, steps = 4, stretchX = false, margin = 0, outline = tier !== 'baked', pxPerTile = NATIVE_TILE }) {
+export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 90, 180, 270], colors = 14, rise = 10, flat = false, renderRes = 512, tiles = null, kind = null, tier = 'indexed', families = 5, steps = 15, stretchX = false, margin = 0, outline = tier !== 'baked', pxPerTile = NATIVE_TILE }) {
   const baked = tier === 'baked';
   const glb = parseGLB(glbPath);
   const tex = flat ? null : await loadBaseColor(glb, glb.json.meshes[0].primitives[0].material);
@@ -792,14 +840,17 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
   }
   const all = [];
   for (const v of viewPix) for (let i = 0; i < v.px.w * v.px.h; i++) if (v.px.rgba[i * 4 + 3] > 128) all.push([v.px.rgba[i * 4], v.px.rgba[i * 4 + 1], v.px.rgba[i * 4 + 2]]);
-  const palette = { '0': OUTLINE, '.': null };
+  // 3D bakes (art §10) drop the reserved `0` outline slot and spend the full
+  // 75-opaque budget on the ramp, keyed from BAKED_ALPHABET. Non-baked keeps the
+  // legacy `0` outline + base-16 indexed keys.
+  const palette = baked ? { '.': null } : { '0': OUTLINE, '.': null };
   let palRGB, ramp = null, quantizeFn;
   if (baked) {
-    // Keep the whole palette inside the Tier B ceiling (<=32 incl. '.'/'0').
-    const fam = Math.max(1, Math.min(families, Math.floor(30 / steps)));
-    ramp = rampPalette(all, { families: fam, steps });
+    // Family clamp is the 75-opaque budget for 3D bakes, not the old <=32 clamp.
+    const fam = Math.max(1, Math.min(families, Math.floor(BAKED_OPAQUE_BUDGET / steps)));
+    ramp = rampPalette(all, { families: fam, steps, keys: BAKED_ALPHABET });
     palRGB = ramp.colors;
-    palRGB.forEach((c, i) => { palette[(i + 1).toString(36)] = hex(...c); });
+    palRGB.forEach((c, i) => { palette[BAKED_ALPHABET[i]] = hex(...c); });
     quantizeFn = (px) => quantizeRamp(px, ramp);
   } else {
     palRGB = medianCut(all, colors);
@@ -827,7 +878,7 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
     : `${palRGB.length}-colour median-cut -> ${outlineNote}`;
   const def = {
     id, kind: kind || (multiTile ? 'building' : 'actor'),
-    ...(baked ? { renderTier: 'baked' } : {}),
+    ...(baked ? { renderTier: 'baked', baked3d: true } : {}),
     ...(outline ? {} : { outline: false }),
     source: `${path.basename(glbPath)} (glTF-Transform ${glb.json.asset && glb.json.asset.generator})`,
     method: multiTile
@@ -835,6 +886,7 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
       : `ortho-software-raster@${renderRes} -> ${size}px box-downscale -> ${pipeline}`,
     native: multiTile ? { w: tiles.w * pxPerTile, h: tiles.h * pxPerTile } : { w: size, h: size },
     anchor: multiTile ? { x: Math.floor((tiles.w * pxPerTile) / 2), y: tiles.h * pxPerTile - 2 } : { x: Math.floor(size / 2), y: size - 2 },
+    ...(ramp ? { ramp: { families: ramp.families, steps: ramp.steps } } : {}),
     palette, frames,
   };
   if (multiTile) {
@@ -869,7 +921,7 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
  */
 export async function buildAnimatedAsset({
   glbPath, id, outDir, clip = null, size = 32, views = [0, 90, 180, 270], rise = 8,
-  flat = false, renderRes = 512, tier = 'baked', families = 6, steps = 4,
+  flat = false, renderRes = 512, tier = 'baked', families = 5, steps = 15,
   times = null, frameCount = 8, poseList = null, write = true, rim = null,
   ambient = 0.30, exposure = 1, outline = tier !== 'baked',
 }) {
@@ -918,13 +970,13 @@ export async function buildAnimatedAsset({
   });
   const all = [];
   for (const v of viewPix) for (let i = 0; i < v.px.w * v.px.h; i++) if (v.px.rgba[i * 4 + 3] > 128) all.push([v.px.rgba[i * 4], v.px.rgba[i * 4 + 1], v.px.rgba[i * 4 + 2]]);
-  const palette = { '0': OUTLINE, '.': null };
+  const palette = baked ? { '.': null } : { '0': OUTLINE, '.': null };
   let palRGB, ramp = null, quantizeFn;
   if (baked) {
-    const fam = Math.max(1, Math.min(families, Math.floor(30 / steps)));
-    ramp = rampPalette(all, { families: fam, steps });
+    const fam = Math.max(1, Math.min(families, Math.floor(BAKED_OPAQUE_BUDGET / steps)));
+    ramp = rampPalette(all, { families: fam, steps, keys: BAKED_ALPHABET });
     palRGB = ramp.colors;
-    palRGB.forEach((c, i) => { palette[(i + 1).toString(36)] = hex(...c); });
+    palRGB.forEach((c, i) => { palette[BAKED_ALPHABET[i]] = hex(...c); });
     quantizeFn = (px) => quantizeRamp(px, ramp);
   } else {
     palRGB = medianCut(all, 14);
@@ -950,13 +1002,14 @@ export async function buildAnimatedAsset({
     : `${palRGB.length}-colour median-cut -> ${outlineNote}`;
   const def = {
     id, kind: 'actor',
-    ...(baked ? { renderTier: 'baked' } : {}),
+    ...(baked ? { renderTier: 'baked', baked3d: true } : {}),
     ...(outline ? {} : { outline: false }),
     source: `${path.basename(glbPath)} (glTF-Transform ${j.asset && j.asset.generator})`,
     method: `skinned-skeleton-sample(clip=${anim ? anim.name : 'rest'}, ${sampleTimes.length} frames) -> ortho-software-raster@${renderRes} -> ${size}px box-downscale -> ${pipeline}`,
     clip: anim ? anim.name : null,
     native: { w: size, h: size },
     anchor: { x: Math.floor(size / 2), y: size - 2 },
+    ...(ramp ? { ramp: { families: ramp.families, steps: ramp.steps } } : {}),
     palette, frames,
   };
   if (write) {
@@ -971,7 +1024,7 @@ export async function buildAnimatedAsset({
 }
 
 function parseArgs(argv) {
-  const a = { views: [0, 90, 180, 270], size: 32, colors: 14, rise: 10, flat: false, renderRes: 512, tiles: null, kind: null, tier: 'indexed', families: 6, steps: 4, margin: 0, pxPerTile: undefined, outline: undefined, ambient: undefined, exposure: undefined };
+  const a = { views: [0, 90, 180, 270], size: 32, colors: 14, rise: 10, flat: false, renderRes: 512, tiles: null, kind: null, tier: 'indexed', families: 5, steps: 15, margin: 0, pxPerTile: undefined, outline: undefined, ambient: undefined, exposure: undefined };
   const rest = [];
   for (let i = 0; i < argv.length; i++) {
     const t = argv[i];

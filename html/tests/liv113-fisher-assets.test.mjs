@@ -5,6 +5,7 @@ import {
   validateSpriteDef,
   validateMultiTileDef,
   nativePerTile,
+  paletteCapFor,
 } from '../../tools/validate-sprite-def.mjs';
 import { tileCanvasSize } from '../../tools/gltf-to-sprite.mjs';
 import { BUILDING_CATALOG, PROP_CATALOG } from '../assets/sprites/index.js';
@@ -21,12 +22,14 @@ import { GridMap } from '../engine/grid-map.js';
 const NEW_BUILDINGS = ['longhouse', 'fishers_house', 'fishers_house_large'];
 
 test('LIV-113 fisher assets — longhouse, fishers house, fishers net', async (t) => {
-  await t.test('1. each new building is a valid Tier B multi-tile def (baked cap 32)', () => {
+  await t.test('1. each new building is a valid Tier B multi-tile def (3D-baked cap 96)', () => {
     for (const id of NEW_BUILDINGS) {
       const def = BUILDING_CATALOG[id];
       assert.ok(def, `${id} is registered in BUILDING_CATALOG`);
       assert.equal(def.renderTier, 'baked', `${id} opts into Tier B`);
-      assert.ok(Object.keys(def.palette).length <= 32, `${id} respects the baked palette cap`);
+      // LIV-122: 3D-baked defs raise the ceiling to 96 (~75 opaque).
+      assert.equal(paletteCapFor(def), 96, `${id} uses the 3D-baked palette ceiling`);
+      assert.ok(Object.keys(def.palette).length <= 96, `${id} respects the baked palette cap`);
       assert.deepEqual(validateSpriteDef(def, { label: id }).errors, [], `${id} passes the sprite schema`);
       assert.deepEqual(validateMultiTileDef(def, { label: id }).errors, [], `${id} passes the multi-tile validator`);
       assert.equal(nativePerTile(def), 64, `${id} is 3D-baked N64`);
@@ -80,7 +83,8 @@ test('LIV-113 fisher assets — longhouse, fishers house, fishers net', async (t
     assert.ok(def && vert, 'both net orientation defs are registered');
     for (const d of [def, vert]) {
       assert.equal(d.renderTier, 'baked', 'Tier B');
-      assert.ok(Object.keys(d.palette).length <= 32, 'baked palette cap');
+      assert.equal(paletteCapFor(d), 96, 'Tier B 3D-baked palette ceiling');
+      assert.ok(Object.keys(d.palette).length <= 96, 'baked palette cap');
       assert.deepEqual(validateSpriteDef(d, { label: d.id }).errors, []);
     }
     const bakedAngles = new Set([...Object.keys(def.frames), ...Object.keys(vert.frames)]);

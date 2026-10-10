@@ -677,7 +677,10 @@ test('Tier B sprite contract (LIV-108)', async t => {
     assert.equal(resolveRenderTier({ renderTier: 'baked' }), 'baked');
     assert.equal(paletteCapFor({}), 16);
     assert.equal(paletteCapFor({ renderTier: 'indexed' }), 16);
-    assert.equal(paletteCapFor({ renderTier: 'baked' }), 32);
+    assert.equal(paletteCapFor({ renderTier: 'baked' }), 32, '2D-derived baked stays ≤32');
+    // LIV-122: a 3D-baked def (baked + the pipeline's `baked3d` marker) raises
+    // the ceiling to 96 (~75 opaque).
+    assert.equal(paletteCapFor({ renderTier: 'baked', baked3d: true }), 96);
 
     // Tier A is the default: every committed actor stays indexed at the ≤16 cap
     // unless it is an explicit opt-in Tier B asset (LIV-110 integrated the baked
@@ -686,7 +689,8 @@ test('Tier B sprite contract (LIV-108)', async t => {
     for (const [id, def] of Object.entries(SPRITE_CATALOG)) {
       if (TIERB_ACTORS.has(id)) {
         assert.equal(resolveRenderTier(def), 'baked', `${id} opts into Tier B`);
-        assert.ok(Object.keys(def.palette).length <= 32, `${id} baked cap`);
+        assert.equal(paletteCapFor(def), 96, `${id} is 3D-baked -> ≤96 cap`);
+        assert.ok(Object.keys(def.palette).length <= 96, `${id} baked cap`);
       } else {
         assert.equal(resolveRenderTier(def), 'indexed', `${id} must stay Tier A`);
         assert.ok(Object.keys(def.palette).length <= 16, `${id} indexed cap`);

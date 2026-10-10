@@ -65,14 +65,31 @@ export const MULTI_TILE_MAX_PX = NATIVE_TILE * MULTI_TILE_MAX_TILES;
 export const RENDER_TIERS = ['indexed', 'baked'];
 export const DEFAULT_RENDER_TIER = 'indexed';
 export const PALETTE_CAP = { indexed: 16, baked: 32 };
+/**
+ * LIV-122 §10.1: a **3D-baked** def (`renderTier:"baked"` AND the `baked3d`
+ * declaration the GLB bake pipeline writes) raises the Tier B ceiling to 96
+ * entries, targeting 76 slots (75 opaque + the `.` transparent). 2D-derived
+ * baked defs (derive-tierb-from-2d.mjs) stay at 32; Tier A stays 16.
+ */
+export const BAKED_3D_PALETTE_CAP = 96;
 
 /** Tier A when absent; validates the declared tier is known. */
 export function resolveRenderTier(def) {
   return def && def.renderTier != null ? def.renderTier : DEFAULT_RENDER_TIER;
 }
 
-/** Palette ceiling for a def's tier: `baked ? 32 : 16`. */
+/**
+ * True for a 3D-baked def: Tier B **and** the explicit `baked3d` declaration.
+ * Never inferred from prose/source strings — the flag is data the bake pipeline
+ * sets (art-direction.md §10.1, "opt-in by source").
+ */
+export function isBaked3d(def) {
+  return resolveRenderTier(def) === 'baked' && !!(def && def.baked3d);
+}
+
+/** Palette ceiling for a def: 96 for 3D-baked, else `baked ? 32 : 16`. */
 export function paletteCapFor(def) {
+  if (isBaked3d(def)) return BAKED_3D_PALETTE_CAP;
   const tier = resolveRenderTier(def);
   return PALETTE_CAP[tier] ?? PALETTE_CAP[DEFAULT_RENDER_TIER];
 }

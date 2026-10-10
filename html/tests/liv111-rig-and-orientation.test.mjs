@@ -15,7 +15,7 @@ import {
   unionBounds,
   tileCanvasSize,
 } from '../../tools/gltf-to-sprite.mjs';
-import { nativePerTile } from '../../tools/validate-sprite-def.mjs';
+import { nativePerTile, paletteCapFor } from '../../tools/validate-sprite-def.mjs';
 import { buildArcherBaked, ARCHER_ANIMATIONS, RIGGED_ARTIFACT } from '../../tools/integrate-actor-bake.mjs';
 import { archerPoses } from '../../tools/bake-rigged-archer.mjs';
 import { getTownDefinition } from '../data/index.js';
@@ -92,9 +92,10 @@ test('LIV-111 rigged actor bake — skeleton sampling + animation helpers', asyn
     // LIV-121: the live rigged archer artifact is N64 (64 px per tile, 1:1).
     assert.deepEqual(art.native, { w: 64, h: 64 });
     assert.equal(art.tiles, undefined, 'actor stays one tile');
-    // One frame per runtime id, and a palette inside the Tier B cap with a rim
-    // clearing the 3:1 floor contrast the art contract requires.
-    assert.ok(Object.keys(art.palette).length <= 32, 'Tier B palette cap');
+    // One frame per runtime id, and a palette inside the 3D-baked Tier B cap
+    // (LIV-122: <=96 / ~75 opaque) with a rim clearing the 3:1 floor contrast.
+    assert.equal(paletteCapFor(art), 96, 'Tier B 3D-baked palette ceiling');
+    assert.ok(Object.keys(art.palette).length <= 96, 'Tier B palette cap');
     const best = Math.max(0, ...Object.values(art.palette).filter(Boolean).map((v) => contrast(v, FLOOR)));
     assert.ok(best >= 3.0, `archer rim contrast ${best.toFixed(2)} >= 3`);
     for (const rows of Object.values(art.frames)) {
@@ -110,7 +111,8 @@ test('LIV-111 rigged actor bake — skeleton sampling + animation helpers', asyn
     const committed = JSON.parse(fs.readFileSync(ARCHER, 'utf8'));
     assert.deepEqual(committed, fresh, 'runtime archer must equal a fresh integration');
     assert.equal(committed.renderTier, 'baked');
-    assert.ok(Object.keys(committed.palette).length <= 32);
+    assert.equal(paletteCapFor(committed), 96, 'runtime archer is 3D-baked');
+    assert.ok(Object.keys(committed.palette).length <= 96);
     assert.deepEqual(committed.animations, ARCHER_ANIMATIONS);
   });
 

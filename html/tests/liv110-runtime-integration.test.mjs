@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { buildArcherBaked } from '../../tools/integrate-actor-bake.mjs';
-import { resolveRenderTier, validateSpriteDef } from '../../tools/validate-sprite-def.mjs';
+import { resolveRenderTier, validateSpriteDef, isBaked3d, paletteCapFor } from '../../tools/validate-sprite-def.mjs';
 import { DEFAULT_TOWN_ID, getTownDefinition } from '../data/index.js';
 import { composeSceneById, sceneAccessReport } from '../services/scene-composer.js';
 import { CanvasRenderer } from '../app/canvas-renderer.js';
@@ -39,7 +39,11 @@ test('LIV-110 runtime integration of the 3D-baked assets', async (t) => {
     const archer = SPRITE_CATALOG.archer;
     assert.ok(archer, 'archer is registered');
     assert.equal(resolveRenderTier(archer), 'baked');
-    assert.ok(Object.keys(archer.palette).length <= 32, 'Tier B palette cap');
+    // LIV-122: the live archer is a 3D-baked def -> the raised <=96 ceiling
+    // (~75 opaque) applies, not the base Tier B <=32 cap.
+    assert.equal(isBaked3d(archer), true, 'archer declares the 3D-baked source');
+    assert.equal(paletteCapFor(archer), 96);
+    assert.ok(Object.keys(archer.palette).length <= 96, 'Tier B 3D-baked palette cap');
     assert.deepEqual(validateSpriteDef(archer, { label: 'archer' }).errors, []);
     const best = Math.max(0, ...Object.values(archer.palette).filter(Boolean).map((v) => contrast(v, FLOOR)));
     assert.ok(best >= 3.0, `archer rim contrast ${best.toFixed(2)} >= 3`);

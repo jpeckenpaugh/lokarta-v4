@@ -15,6 +15,7 @@ import {
 import {
   validateSpriteDef,
   paletteCapFor,
+  isBaked3d,
   resolveRenderTier,
   footprintSpan,
   nativePerTile,
@@ -48,8 +49,15 @@ function contrast(a, b) {
   return (hi + 0.05) / (lo + 0.05);
 }
 function readDef(file) { return JSON.parse(fs.readFileSync(path.join(POC, file), 'utf8')); }
-/** Usable ramp chars in authored order: excludes the `.` transparent + `0` outline. */
-function rampChars(def) { return Object.keys(def.palette).filter((c) => def.palette[c] && c !== '.' && c !== '0'); }
+/**
+ * Usable ramp chars in authored order: excludes `.`, and the `0` outline glyph
+ * only for defs that still reserve it. LIV-122 3D-baked palettes spend all 75
+ * opaque slots including `0`, so the glyph is a legit ramp colour there.
+ */
+function rampChars(def) {
+  const reservesOutlineZero = !isBaked3d(def);
+  return Object.keys(def.palette).filter((c) => def.palette[c] && c !== '.' && !(reservesOutlineZero && c === '0'));
+}
 function hexRGB(hex) { const h = hex.replace('#', ''); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; }
 
 const ARCHER_BAKED = 'rukiya_archer_baked.sprite.json';
@@ -57,34 +65,45 @@ const HUT_BAKED = 'fisherman_hut_2x3.sprite.json';
 const HUT_INDEXED = 'fisherman_hut_2x3_indexed.sprite.json';
 
 test('LIV-109 Tier B baked Phase 1', async (t) => {
-  await t.test('1. baked defs validate as Tier B and stay within the <=32 palette cap', () => {
+  await t.test('1. baked defs validate as Tier B within their tier palette cap (3D-baked <=96)', () => {
     for (const file of [ARCHER_BAKED, HUT_BAKED]) {
       const def = readDef(file);
       assert.equal(resolveRenderTier(def), 'baked', `${file} declares renderTier baked`);
-      assert.equal(paletteCapFor(def), 32);
+      const cap = paletteCapFor(def);
       const entries = Object.keys(def.palette).length;
-      assert.ok(entries <= 32, `${file} palette ${entries} <= 32`);
+      assert.ok(entries <= cap, `${file} palette ${entries} <= ${cap}`);
       assert.deepEqual(validateSpriteDef(def, { label: file }).errors, [], file);
     }
+    // LIV-122: the live 3D-baked hut carries the tripled cap (75 opaque / <=96)
+    // and the `baked3d` declaration; the historical 32px Phase 1 archer proof is
+    // a legacy base-cap artifact and is left unchanged.
+    const hut = readDef(HUT_BAKED);
+    assert.equal(isBaked3d(hut), true, 'hut declares the 3D-baked source');
+    assert.equal(paletteCapFor(hut), 96, 'hut uses the raised 3D-baked ceiling');
+    assert.ok(rampChars(hut).length >= 75, 'hut ships the tripled opaque palette (~75)');
+    assert.equal(paletteCapFor(readDef(ARCHER_BAKED)), 32, 'legacy Phase 1 proof keeps the base cap');
     // The richer read is real: baked usable colours exceed the flat Tier A before.
     const before = readDef(HUT_INDEXED);
     assert.equal(resolveRenderTier(before), 'indexed', 'before art stays Tier A');
     assert.ok(rampChars(readDef(HUT_BAKED)).length > rampChars(before).length, 'baked hut has more usable colours than its Tier A before');
   });
 
-  await t.test('2. every baked family is a strictly-increasing >=4-step ramp with a rim clearing 3:1', () => {
+  await t.test('2. every baked family is a strictly-increasing ramp (>=4 steps) with a rim clearing 3:1', () => {
     for (const file of [ARCHER_BAKED, HUT_BAKED]) {
       const def = readDef(file);
       const chars = rampChars(def);
-      assert.equal(chars.length % 4, 0, `${file} usable colours form whole 4-step ramps`);
+      // LIV-122: the 3D-baked ramp depth is declared in `ramp.steps` (15); the
+      // historical proof artifact predates the field and stays 4-step.
+      const steps = (def.ramp && def.ramp.steps) || 4;
+      assert.equal(chars.length % steps, 0, `${file} usable colours form whole ${steps}-step ramps`);
       const best = Math.max(0, ...Object.values(def.palette).filter(Boolean).map((v) => contrast(v, FLOOR)));
       assert.ok(best >= 3.0, `${file} best rim contrast ${best.toFixed(2)} < 3.0`);
       let rimCarrier = false;
-      for (let f = 0; f < chars.length / 4; f++) {
-        const slice = chars.slice(f * 4, f * 4 + 4);
+      for (let f = 0; f < chars.length / steps; f++) {
+        const slice = chars.slice(f * steps, f * steps + steps);
         const lum = slice.map((c) => luma(...hexRGB(def.palette[c])));
         for (let i = 0; i < lum.length; i++) assert.ok(i === 0 || lum[i] > lum[i - 1], `${file} family ${f} ramp step ${i} not lighter than ${i - 1} (${lum.map((v) => v.toFixed(0)).join('<')})`);
-        if (contrast(def.palette[slice[3]], FLOOR) >= 3.0) rimCarrier = true;
+        if (contrast(def.palette[slice[steps - 1]], FLOOR) >= 3.0) rimCarrier = true;
       }
       assert.ok(rimCarrier, `${file} rim (brightest ramp step) must carry the 3:1 read`);
     }

@@ -18,6 +18,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { paletteCapFor } from './validate-sprite-def.mjs';
+
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const ROOT = path.resolve(HERE, '..');
 export const SPRITES_DIR = path.join(ROOT, 'html', 'assets', 'sprites');
@@ -77,10 +79,9 @@ export function validatePropAssets({ spritesDir = SPRITES_DIR } = {}) {
       for (const row of rows) if (row.length !== w) errors.push(`${id}/${fid}: row width ${row.length} != ${w}`);
     }
     const entries = Object.entries(def.palette);
-    // Tier-aware palette ceiling, matching the sprite-def contract: Tier B
-    // "baked" props cap at 32, Tier A stays at 16 (LIV-113 bakes the fisher's
-    // net, which needs the wider ramp palette).
-    const paletteCap = def.renderTier === 'baked' ? 32 : 16;
+    // Tier-aware palette ceiling from the shared sprite-def contract: 3D-baked
+    // props (LIV-122) cap at 96 / ~76 slots, 2D-derived baked at 32, Tier A 16.
+    const paletteCap = paletteCapFor(def);
     if (entries.length > paletteCap) errors.push(`${id}: palette ${entries.length} > ${paletteCap} (renderTier ${def.renderTier || 'indexed'})`);
     for (const [k, v] of entries) {
       if (k.length !== 1) errors.push(`${id}: palette key "${k}"`);
