@@ -110,7 +110,7 @@ test('LIV-59 scene composer', async (t) => {
     assert.deepEqual(composeSceneById(DEFAULT_ISLAND_ID).tiles, scene.tiles);
   });
 
-  await t.test('composes the Havenreach town and emits building interactables', () => {
+  await t.test('composes the Havenreach town with decorative hut buildings', () => {
     const def = getTownDefinition(DEFAULT_TOWN_ID);
     const scene = composeSceneById(DEFAULT_TOWN_ID);
     assert.equal(scene.sceneKind, 'town');
@@ -118,14 +118,19 @@ test('LIV-59 scene composer', async (t) => {
     // LIV-101: the town roster carries the 8 named cast + 5 ambient Shore folk.
     assert.ok(scene.npcs.length >= 8, 'town keeps the full named cast');
     assert.equal(scene.npcs.length, listNpcDefinitions(DEFAULT_TOWN_ID).length, 'every scene NPC is emitted');
-    const shop = scene.interactables.find((i) => i.interaction && i.interaction.type === 'shop');
-    const temple = scene.interactables.find((i) => i.interaction && i.interaction.type === 'temple');
-    assert.ok(shop, 'town exposes a shop building interaction');
-    assert.ok(temple, 'town exposes a temple building interaction');
-    // Building interactables sit on walkable doorway tiles.
-    for (const b of scene.interactables.filter((i) => i.kind === 'building')) {
-      assert.equal(isCodeWalkable(scene.tiles[b.y][b.x]), true, `door at ${b.x},${b.y} must be walkable`);
+    // LIV-110: town buildings are decorative baked huts — carried as footprinted
+    // silhouettes with no door/activator (the board asked to drop the old house
+    // doorways and their walk-on activators).
+    assert.equal(scene.buildings.length, def.buildings.length, 'every building is emitted');
+    for (const b of scene.buildings) {
+      assert.ok(b.silhouette, `${b.id} carries a silhouette`);
+      assert.ok(Array.isArray(b.footprint) && b.footprint.length === 4, `${b.id} carries a footprint`);
     }
+    assert.equal(
+      scene.interactables.filter((i) => i.kind === 'building').length,
+      0,
+      'no building doorway activators remain'
+    );
   });
 
   await t.test('no rotation soft-lock: spawn reaches the town and tower entrance', () => {

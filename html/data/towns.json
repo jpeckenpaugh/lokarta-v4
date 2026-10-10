@@ -25,21 +25,21 @@
         "W......................W",
         "W......................W",
         "W......................W",
-        "W...WW.....WW.....WW...W",
-        "W...WW.....WW.....WW...W",
-        "W...WW.....WW.....WW...W",
-        "W..==D======D======D==.W",
+        "W......................W",
+        "W......................W",
+        "W......................W",
+        "W..==================..W",
         "W...........=..........W",
-        "W...WW......=.....WW...W",
-        "W...WW......=.....WW...W",
-        "W...WW......=.....WW...W",
-        "W...WD......=.....WD...W",
+        "W...........=..........W",
+        "W...........=..........W",
+        "W...........=..........W",
+        "W...........=..........W",
         "W======================W",
         "W...........=..........W",
-        "W...........=.....WW...W",
-        "W...........=.....WW...W",
-        "W...........=.....WW...W",
-        "W...........=.....WD...W",
+        "W...........=..........W",
+        "W...........=..........W",
+        "W...........=..........W",
+        "W...........=..........W",
         "W...........=..........W",
         "W::::::::::_=_:::::::::W",
         "W~~~~~~~~~~___~~~~~~~~~W",
@@ -81,54 +81,29 @@
             5,
             6
           ],
-          "door": {
-            "x": 5,
-            "y": 7
-          },
-          "interaction": {
-            "type": "shop"
-          },
-          "npcId": "mara",
           "silhouette": "fishing_hut"
         },
         {
           "id": "temple_of_the_dawn",
           "name": "The Tidehall",
           "footprint": [
-            11,
-            4,
+            10,
+            3,
             12,
             6
           ],
-          "door": {
-            "x": 12,
-            "y": 7
-          },
-          "interaction": {
-            "type": "temple"
-          },
-          "npcId": "high_dawnkeeper_aurel",
-          "silhouette": "fishing_hut"
+          "silhouette": "fishing_hut_large"
         },
         {
           "id": "elders_hall",
           "name": "The Longhouse",
           "footprint": [
-            18,
+            17,
             4,
             19,
             6
           ],
-          "door": {
-            "x": 19,
-            "y": 7
-          },
-          "interaction": {
-            "type": "dialogue",
-            "dialogueId": "elder_rowan_vane"
-          },
-          "npcId": "elder_rowan_vane",
-          "silhouette": "fishing_hut"
+          "silhouette": "fishing_hut_side"
         },
         {
           "id": "beaconwrights_workshop",
@@ -139,36 +114,18 @@
             19,
             11
           ],
-          "door": {
-            "x": 19,
-            "y": 12
-          },
-          "interaction": {
-            "type": "dialogue",
-            "dialogueId": "wick"
-          },
-          "npcId": "wick",
-          "silhouette": "fishing_hut"
+          "silhouette": "fishing_hut_back"
         },
         {
           "id": "tidewatch_barracks",
           "name": "Watchtower",
           "footprint": [
-            4,
+            3,
             9,
             5,
             11
           ],
-          "door": {
-            "x": 5,
-            "y": 12
-          },
-          "interaction": {
-            "type": "dialogue",
-            "dialogueId": "captain_halden"
-          },
-          "npcId": "captain_halden",
-          "silhouette": "fishing_hut"
+          "silhouette": "fishing_hut_side_alt"
         },
         {
           "id": "wayfarers_rest",
@@ -179,15 +136,6 @@
             19,
             17
           ],
-          "door": {
-            "x": 19,
-            "y": 18
-          },
-          "interaction": {
-            "type": "dialogue",
-            "dialogueId": "innkeep_bessa"
-          },
-          "npcId": "innkeep_bessa",
           "silhouette": "fishing_hut"
         }
       ],

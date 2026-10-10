@@ -60,8 +60,15 @@ test('LIV-59 scene & quest catalogs', async (t) => {
       assert.ok(Array.isArray(town.buildings) && town.buildings.length >= 2, `${town.id} buildings`);
       for (const b of town.buildings) {
         assert.ok(b.id && b.name, `${town.id} building fields`);
-        assert.ok(b.door && Number.isInteger(b.door.x) && Number.isInteger(b.door.y), `${b.id} door`);
-        assert.ok(b.interaction && INTERACTION_TYPES.has(b.interaction.type), `${b.id} interaction type`);
+        if (b.door) {
+          assert.ok(Number.isInteger(b.door.x) && Number.isInteger(b.door.y), `${b.id} door`);
+          assert.ok(b.interaction && INTERACTION_TYPES.has(b.interaction.type), `${b.id} interaction type`);
+        } else {
+          // Decorative sprite building (LIV-110): no door/activator; carries a
+          // footprinted silhouette instead.
+          assert.ok(Array.isArray(b.footprint) && b.footprint.length === 4, `${b.id} decorative footprint`);
+          assert.ok(b.silhouette, `${b.id} decorative silhouette`);
+        }
       }
     }
   });

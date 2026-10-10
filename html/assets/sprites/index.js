@@ -32,6 +32,10 @@ import npcChildKes from './npc/npc_child_kes.json' with { type: 'json' };
 import npcVillagerMOdon from './npc/npc_villager_m_odon.json' with { type: 'json' };
 import npcVillagerFLena from './npc/npc_villager_f_lena.json' with { type: 'json' };
 import buildingFishingHut from './buildings/fishing_hut.json' with { type: 'json' };
+import buildingFishingHutBack from './buildings/fishing_hut_back.json' with { type: 'json' };
+import buildingFishingHutSide from './buildings/fishing_hut_side.json' with { type: 'json' };
+import buildingFishingHutSideAlt from './buildings/fishing_hut_side_alt.json' with { type: 'json' };
+import buildingFishingHutLarge from './buildings/fishing_hut_large.json' with { type: 'json' };
 
 export const SPRITE_MANIFEST = manifest;
 export const SPRITE_CATALOG = {
@@ -68,4 +72,8 @@ export { PROP_CATALOG, PROP_MANIFEST, PROP_IDS_BY_TIER, PROP_IDS_BY_KIND } from 
 // (renderBuildingSilhouettes) — no separate placement model or actor animation.
 export const BUILDING_CATALOG = {
   fishing_hut: buildingFishingHut,
+  fishing_hut_back: buildingFishingHutBack,
+  fishing_hut_side: buildingFishingHutSide,
+  fishing_hut_side_alt: buildingFishingHutSideAlt,
+  fishing_hut_large: buildingFishingHutLarge,
 };

@@ -317,12 +317,20 @@ const BUILDING_SILHOUETTE_RENDERERS = {
   // (GRID_SIZE == 32 native px at 2x), so this needs no new placement model and
   // no per-tile slicing — one bitmap, exactly like actor/prop sprites. A missing
   // def/frame is a no-op so a partial catalog can never black the scene.
-  fishing_hut(ctx, building, left, top, width, height) {
+  //
+  // LIV-110: the frame is data-driven via `placement.defaultFrame`, so the same
+  // renderer serves every authored hut view/size (front, back, side, large)
+  // without a per-view branch.
+  spriteBuilding(ctx, building, left, top, width, height) {
     const def = BUILDING_CATALOG[building.silhouette] || BUILDING_CATALOG[building.id] || BUILDING_CATALOG.fishing_hut;
     if (!def) return;
-    drawSpriteFrameInto(ctx, def, 'view_0', left, top, width, height);
+    const frameId = (def.placement && def.placement.defaultFrame) || 'view_0';
+    drawSpriteFrameInto(ctx, def, frameId, left, top, width, height);
   },
 };
+// Back-compat alias: the original single-hut key keeps dispatching to the shared
+// sprite-building renderer.
+BUILDING_SILHOUETTE_RENDERERS.fishing_hut = BUILDING_SILHOUETTE_RENDERERS.spriteBuilding;
 
 export class CanvasRenderer {
   constructor(canvas) {
@@ -1223,7 +1231,11 @@ export class CanvasRenderer {
     for (const building of buildings) {
       if (!building) continue;
       const key = building.silhouette || building.id;
-      const draw = BUILDING_SILHOUETTE_RENDERERS[key];
+      // Any key backed by a committed BUILDING_CATALOG sprite dispatches through
+      // the shared sprite-building renderer (LIV-110) — adding a building view is
+      // a catalog entry, never a per-building JS branch.
+      const draw = BUILDING_SILHOUETTE_RENDERERS[key]
+        || (BUILDING_CATALOG[key] ? BUILDING_SILHOUETTE_RENDERERS.spriteBuilding : null);
       if (!draw || !Array.isArray(building.footprint) || building.footprint.length < 4) continue;
       const [x0, y0, x1, y1] = building.footprint;
       const left = x0 * size - this.cameraX;

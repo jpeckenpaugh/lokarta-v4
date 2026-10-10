@@ -163,6 +163,17 @@ export const sceneControllerMethods = {
     for (const prop of this.props) {
       if (prop.layer === 'prop') this.gridMap.blockTile(prop.x, prop.y, true);
     }
+    // LIV-110: town buildings render as decorative hut sprites authored on grass
+    // (no house wall tiles). Their solid body therefore comes from the catalog
+    // footprint, data-driven: adding a building is a catalog entry, not map
+    // wall tiles. No doors are authored, so the whole footprint blocks.
+    for (const building of this.scene.buildings || []) {
+      const fp = building.footprint;
+      if (!Array.isArray(fp) || fp.length < 4) continue;
+      for (let y = fp[1]; y <= fp[3]; y++) {
+        for (let x = fp[0]; x <= fp[2]; x++) this.gridMap.blockTile(x, y, true);
+      }
+    }
     this.springs = [];
     this.ambientLights = [];
     this.monsters = [];
