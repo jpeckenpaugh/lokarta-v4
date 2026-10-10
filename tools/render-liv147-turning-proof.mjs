@@ -190,7 +190,10 @@ function drawLookRow(buf, x0, y0, spriteId, label, panels) {
 }
 
 function main() {
-  const out = process.argv[2] || path.join(ROOT, 'docs', 'art', 'preview', 'liv147-turning-framestrip.png');
+  // Defaults outside docs/art/preview: that directory is drift-checked against a
+  // fresh `exportPreviews` run (sprite-assets.test.mjs §10), so the framestrip is
+  // an issue artifact, not a committed preview.
+  const out = process.argv[2] || path.join(ROOT, 'docs', 'art', 'liv147-turning-framestrip.png');
 
   const row1Panels = Math.abs(dir8Delta('right', 'left')) + 1; // 5 frames of the eased arc
   const row2Panels = DIR8.length;
