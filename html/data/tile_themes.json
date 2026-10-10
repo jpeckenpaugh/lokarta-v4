@@ -684,6 +684,7 @@
         "edge": "#54452f"
       },
       "TREE": {
+        "art": "prop",
         "trunk": "#4a3520",
         "canopy": "#23431f",
         "canopyLight": "#356330",

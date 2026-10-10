@@ -56,9 +56,10 @@
     "prop_buoy": { "kind": "prop", "class": "free", "file": "./props/prop_buoy.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 29 }, "frames": ["idle"] },
     "prop_smoke_plume": { "kind": "prop", "class": "free", "file": "./props/prop_smoke_plume.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 }, "frames": ["idle"] },
     "prop_wooden_barrel": { "kind": "prop", "class": "free", "file": "./props/prop_wooden_barrel.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 }, "frames": ["idle", "view_0"] },
-    "prop_rock_pile": { "kind": "prop", "class": "free", "file": "./props/prop_rock_pile.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 }, "frames": ["idle", "view_0"] },
-    "prop_palm_tree": { "kind": "prop", "class": "free", "file": "./props/prop_palm_tree.json", "native": { "w": 64, "h": 128 }, "anchor": { "x": 32, "y": 126 }, "frames": ["idle", "view_0"] },
-    "prop_wooden_dock": { "kind": "decor", "class": "decor", "file": "./props/prop_wooden_dock.json", "native": { "w": 192, "h": 64 }, "anchor": { "x": 96, "y": 62 }, "frames": ["idle", "view_0"] },
+    "prop_rock_pile": { "kind": "prop", "class": "free", "file": "./props/prop_rock_pile.json", "native": { "w": 128, "h": 128 }, "anchor": { "x": 64, "y": 126 }, "frames": ["idle", "view_0", "view_90", "view_180", "view_270"] },
+    "prop_palm_tree": { "kind": "prop", "class": "free", "file": "./props/prop_palm_tree.json", "native": { "w": 64, "h": 128 }, "anchor": { "x": 32, "y": 126 }, "frames": ["idle", "view_0", "view_90", "view_180", "view_270"] },
+    "prop_palm_tree_large": { "kind": "prop", "class": "free", "file": "./props/prop_palm_tree_large.json", "native": { "w": 128, "h": 192 }, "anchor": { "x": 64, "y": 190 }, "frames": ["idle", "view_0", "view_90", "view_180", "view_270"] },
+    "prop_wooden_dock": { "kind": "decor", "class": "decor", "file": "./props/prop_wooden_dock.json", "native": { "w": 192, "h": 192 }, "anchor": { "x": 96, "y": 190 }, "frames": ["idle", "view_90"] },
     "decor_rug": { "kind": "decor", "class": "decor", "file": "./decor/decor_rug.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 0, "y": 0 }, "frames": ["idle"] }
   }
 }

@@ -526,6 +526,12 @@ const TILE_RENDERERS = {
     const base = grassRamp[grassShadeIndex(opts.x || 0, opts.y || 0, grassRamp.length)];
     ctx.fillStyle = base;
     ctx.fillRect(screenX, screenY, size, size);
+    // LIV-137: a scene theme may declare the TREE tile's art is prop-backed
+    // (`tiles.TREE.art === "prop"`). The 2D canopy is then suppressed and a
+    // 3D-baked palm/rock prop is scattered on top by the scene composer, so the
+    // Dawnreach Isle trees read as the same 3D decor as Havenreach. The tile
+    // itself stays solid, so walkability/collision is unchanged.
+    if (p.art === 'prop') return;
     ctx.fillStyle = p.trunk || outside.treeTrunk;
     ctx.fillRect(screenX + 14 * u, screenY + 18 * u, 5 * u, 11 * u);
     ctx.fillStyle = p.canopy || outside.treeCanopy;

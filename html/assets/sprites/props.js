@@ -42,6 +42,7 @@ import propSmokePlume from './props/prop_smoke_plume.json' with { type: 'json' }
 import propWoodenBarrel from './props/prop_wooden_barrel.json' with { type: 'json' };
 import propRockPile from './props/prop_rock_pile.json' with { type: 'json' };
 import propPalmTree from './props/prop_palm_tree.json' with { type: 'json' };
+import propPalmTreeLarge from './props/prop_palm_tree_large.json' with { type: 'json' };
 import propWoodenDock from './props/prop_wooden_dock.json' with { type: 'json' };
 import decorRug from './decor/decor_rug.json' with { type: 'json' };
 
@@ -84,13 +85,14 @@ export const PROP_CATALOG = {
   prop_wooden_barrel: propWoodenBarrel,
   prop_rock_pile: propRockPile,
   prop_palm_tree: propPalmTree,
+  prop_palm_tree_large: propPalmTreeLarge,
   prop_wooden_dock: propWoodenDock,
   decor_rug: decorRug,
 };
 
 /** Furniture/decor ids grouped by `kind`, for data-driven placement lookups. */
 export const PROP_IDS_BY_KIND = {
-  prop: ['prop_table', 'prop_crate', 'prop_barrel', 'prop_brazier', 'prop_candelabra', 'prop_bookshelf', 'prop_sarcophagus', 'prop_altar', 'prop_throne', 'prop_net', 'prop_fishers_net', 'prop_fishers_net_vertical', 'prop_drying_rack', 'prop_fish_barrel', 'prop_boat', 'prop_buoy', 'prop_smoke_plume', 'prop_wooden_barrel', 'prop_rock_pile', 'prop_palm_tree'],
+  prop: ['prop_table', 'prop_crate', 'prop_barrel', 'prop_brazier', 'prop_candelabra', 'prop_bookshelf', 'prop_sarcophagus', 'prop_altar', 'prop_throne', 'prop_net', 'prop_fishers_net', 'prop_fishers_net_vertical', 'prop_drying_rack', 'prop_fish_barrel', 'prop_boat', 'prop_buoy', 'prop_smoke_plume', 'prop_wooden_barrel', 'prop_rock_pile', 'prop_palm_tree', 'prop_palm_tree_large'],
   decor: ['decor_rug', 'prop_wooden_dock'],
 };
 

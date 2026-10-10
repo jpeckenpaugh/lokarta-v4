@@ -34,14 +34,18 @@ export const PX_PER_TILE = 64;
 export const PROP_RISE = 60;
 
 /**
- * The four prop bake specs (§5). `layer` is applied by the scene catalog
- * (`towns.json`); the def only records geometry + a default `view_0`/`idle`.
+ * The prop bake specs (§5 + LIV-137 decor refinement). `layer` is applied by the
+ * scene catalog (`towns.json`/`islands.json`); the def records geometry + the
+ * view frames. Palms ship a small (1×2) + large (2×3) tier, the rock pile is a
+ * zoom-to-fit 2×2, and the dock is a 90°-rotated 3×3; every decorative prop is
+ * baked from several azimuths so a row of placements is never uniform.
  */
 export const PROP_SPECS = [
   { id: 'prop_wooden_barrel', glb: 'wooden_barrel_optimized.glb', size: 64, views: [0], kind: 'prop', renderRes: 512 },
-  { id: 'prop_rock_pile', glb: 'rock_pile_optimized.glb', size: 64, views: [0], kind: 'prop', renderRes: 512 },
-  { id: 'prop_palm_tree', glb: 'palm_tree_optimized.glb', tiles: { w: 1, h: 2 }, views: [0], kind: 'prop', renderRes: 768 },
-  { id: 'prop_wooden_dock', glb: 'wooden_dock_optimized.glb', tiles: { w: 3, h: 1 }, views: [0], kind: 'decor', renderRes: 768 },
+  { id: 'prop_rock_pile', glb: 'rock_pile_optimized.glb', tiles: { w: 2, h: 2 }, views: [0, 90, 180, 270], kind: 'prop', renderRes: 768, margin: 4 },
+  { id: 'prop_palm_tree', glb: 'palm_tree_optimized.glb', tiles: { w: 1, h: 2 }, views: [0, 90, 180, 270], kind: 'prop', renderRes: 768 },
+  { id: 'prop_palm_tree_large', glb: 'palm_tree_optimized.glb', tiles: { w: 2, h: 3 }, views: [0, 90, 180, 270], kind: 'prop', renderRes: 1024 },
+  { id: 'prop_wooden_dock', glb: 'wooden_dock_optimized.glb', tiles: { w: 3, h: 3 }, views: [0], yaw: 90, kind: 'decor', renderRes: 768 },
 ];
 
 /** Bakes one prop: writes the committed artifact + the runtime def (idle alias). */
@@ -50,11 +54,15 @@ export async function bakeProp(spec, outDoc = POC, runtimeDir = RUNTIME_PROPS) {
   await buildAsset({
     glbPath, id: spec.id, outDir: outDoc, size: spec.size || 32, tiles: spec.tiles || null,
     views: spec.views || [0], kind: spec.kind || 'prop', tier: 'baked',
-    pxPerTile: PX_PER_TILE, rise: PROP_RISE, yaw: 0, renderRes: spec.renderRes || 512, outline: false,
+    pxPerTile: PX_PER_TILE, rise: PROP_RISE, yaw: spec.yaw || 0, renderRes: spec.renderRes || 512,
+    outline: false, margin: spec.margin || 0,
   });
   const artifact = path.join(outDoc, `${spec.id}.sprite.json`);
   const def = JSON.parse(fs.readFileSync(artifact, 'utf8'));
-  if (def.frames.view_0 && !def.frames.idle) def.frames.idle = JSON.parse(JSON.stringify(def.frames.view_0));
+  // Alias the default `view_<az>` frame to `idle` so a scene prop that omits an
+  // explicit `frame` still resolves (the dock's rotated default is `view_90`).
+  const defaultView = def.frames[`view_${spec.yaw || 0}`] ? `view_${spec.yaw || 0}` : Object.keys(def.frames).find((k) => /^view_/.test(k));
+  if (defaultView && !def.frames.idle) def.frames.idle = JSON.parse(JSON.stringify(def.frames[defaultView]));
   fs.writeFileSync(artifact, JSON.stringify(def, null, 2) + '\n');
   fs.mkdirSync(runtimeDir, { recursive: true });
   fs.writeFileSync(path.join(runtimeDir, `${spec.id}.json`), JSON.stringify(def, null, 2) + '\n');

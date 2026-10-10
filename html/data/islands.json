@@ -79,6 +79,17 @@
         "x": 24,
         "y": 44
       },
+      "propScatter": [
+        {
+          "tile": "TREE",
+          "layer": "decor",
+          "variants": [
+            { "propId": "prop_palm_tree", "weight": 4, "frames": ["view_0", "view_90", "view_180", "view_270"] },
+            { "propId": "prop_palm_tree_large", "weight": 2, "frames": ["view_0", "view_90", "view_180", "view_270"] },
+            { "propId": "prop_rock_pile", "weight": 2, "frames": ["view_0", "view_90", "view_180", "view_270"] }
+          ]
+        }
+      ],
       "portals": [
         {
           "id": "to_town",

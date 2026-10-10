@@ -268,7 +268,7 @@
           "x": 11,
           "y": 20,
           "layer": "decor",
-          "frame": "view_0"
+          "frame": "view_90"
         },
         {
           "propId": "prop_palm_tree",
@@ -282,7 +282,14 @@
           "x": 22,
           "y": 18,
           "layer": "prop",
-          "frame": "view_0"
+          "frame": "view_180"
+        },
+        {
+          "propId": "prop_palm_tree_large",
+          "x": 20,
+          "y": 16,
+          "layer": "prop",
+          "frame": "view_90"
         },
         {
           "propId": "prop_rock_pile",
@@ -296,7 +303,14 @@
           "x": 22,
           "y": 12,
           "layer": "prop",
-          "frame": "view_0"
+          "frame": "view_90"
+        },
+        {
+          "propId": "prop_rock_pile",
+          "x": 20,
+          "y": 14,
+          "layer": "prop",
+          "frame": "view_270"
         }
       ]
     }

@@ -139,6 +139,63 @@ function copyPortal(portal) {
   return { ...portal, target: portal.target ? { ...portal.target } : null };
 }
 
+/**
+ * Deterministic integer hash for a scattered prop. Integer-exact across runs
+ * (mirrors `sprite-renderer.js` `tileHash`); never `Math.random()`, so the same
+ * tile always yields the same variant + angle.
+ */
+function scatterHash(x, y, salt) {
+  const s = String(salt || '').length ? salt.length * 2654435761 : 0;
+  return (((Math.imul(x, 73856093) ^ Math.imul(y, 19349663) ^ s) >>> 0));
+}
+
+/**
+ * Expands a scene's authored `props[]` plus any declarative `propScatter[]`
+ * rules into the flat prop list the renderer draws (LIV-137).
+ *
+ * A scatter rule names a blocking tile type (`tile`, e.g. `"TREE"`) and a
+ * weighted `variants` list of 3D-baked props. Every map cell of that tile emits
+ * one prop chosen deterministically by tile coordinate, so the Dawnreach Isle's
+ * scattered trees become pale-coloured 3D palms/rocks at varied sizes + angles
+ * WITHOUT touching the tile collision contract (the tile stays solid; the prop
+ * is drawn in the non-blocking `decor` layer). Data-driven: adding a variant is
+ * a catalog entry, never a JS branch.
+ */
+export function expandSceneProps(def, tiles, width, height) {
+  const props = (def.props || []).map((prop) => ({ ...prop }));
+  for (const rule of def.propScatter || []) {
+    const code = tileCodeForName(rule.tile);
+    const variants = (rule.variants || []).filter((v) => v && v.propId);
+    if (code === null || variants.length === 0) continue;
+    const weights = variants.map((v) => (Number(v.weight) > 0 ? Number(v.weight) : 1));
+    const total = weights.reduce((s, w) => s + w, 0);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        if (tiles[y][x] !== code) continue;
+        const h = scatterHash(x, y, rule.tile);
+        let pick = h % total;
+        let vi = 0;
+        for (; vi < variants.length - 1; vi++) {
+          if (pick < weights[vi]) break;
+          pick -= weights[vi];
+        }
+        const variant = variants[vi];
+        const frames = Array.isArray(variant.frames) && variant.frames.length ? variant.frames : ['idle'];
+        const frame = frames[Math.floor(h / 31) % frames.length];
+        props.push({
+          propId: variant.propId,
+          x,
+          y,
+          layer: rule.layer || 'decor',
+          frame,
+          scatter: rule.tile,
+        });
+      }
+    }
+  }
+  return props;
+}
+
 function interactablesFor(kind, def) {
   const out = [];
   for (const entry of def.interactables || []) {
@@ -202,9 +259,11 @@ export function composeScene(kind, def) {
     spawnZones: (def.spawnZones || []).map((zone) => ({ ...zone })),
     // LIV-100: authored scene props are emitted so the renderer draws them.
     // Placement is pure catalog data (towns.json/islands.json `props[]`); the
-    // `layer` field (prop | decor) decides blocking vs walk-over. Previously
-    // dropped, so the town props path was inert.
-    props: (def.props || []).map((prop) => ({ ...prop })),
+    // `layer` field (prop | decor) decides blocking vs walk-over. LIV-137 adds
+    // declarative `propScatter[]` (tile -> weighted 3D prop variants) so a
+    // scattered overworld (Dawnreach Isle) becomes 3D palms/rocks without
+    // hand-authoring one prop per tile.
+    props: expandSceneProps(def, tiles, width, height),
     // LIV-100: town building footprints are emitted so a per-building silhouette
     // hook can key a renderer on the building's `silhouette` (or id) through a
     // dispatch table. Additive and empty for scenes that author no buildings.
