@@ -18,6 +18,9 @@ import cryptSkeleton from './monsters/crypt_skeleton.json' with { type: 'json' }
 import shadowCultist from './monsters/shadow_cultist.json' with { type: 'json' };
 import eliteCultist from './monsters/elite_cultist.json' with { type: 'json' };
 import abyssalOverlord from './monsters/abyssal_overlord.json' with { type: 'json' };
+import riverPiranha from './monsters/river_piranha.json' with { type: 'json' };
+import riverEel from './monsters/river_eel.json' with { type: 'json' };
+import riverRat from './monsters/river_rat.json' with { type: 'json' };
 import npcElderRowanVane from './npc/npc_elder_rowan_vane.json' with { type: 'json' };
 import npcCaptainHalden from './npc/npc_captain_halden.json' with { type: 'json' };
 import npcWick from './npc/npc_wick.json' with { type: 'json' };
@@ -51,6 +54,9 @@ export const SPRITE_CATALOG = {
   shadow_cultist: shadowCultist,
   elite_cultist: eliteCultist,
   abyssal_overlord: abyssalOverlord,
+  river_piranha: riverPiranha,
+  river_eel: riverEel,
+  river_rat: riverRat,
   npc_elder_rowan_vane: npcElderRowanVane,
   npc_captain_halden: npcCaptainHalden,
   npc_wick: npcWick,

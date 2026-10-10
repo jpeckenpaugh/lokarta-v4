@@ -986,7 +986,7 @@ export async function buildAnimatedAsset({
   glbPath, id, outDir, clip = null, size = 32, views = [0, 90, 180, 270], rise = DEFAULT_CAMERA_RISE,
   flat = false, renderRes = 512, tier = 'baked', families = 5, steps = 15,
   times = null, frameCount = 8, poseList = null, write = true, rim = null,
-  ambient = 0.30, exposure = 1, outline = tier !== 'baked', recolor = null,
+  ambient = 0.30, exposure = 1, outline = tier !== 'baked', recolor = null, bounds = null,
 }) {
   const baked = tier === 'baked';
   const glb = parseGLB(glbPath);
@@ -1011,7 +1011,12 @@ export async function buildAnimatedAsset({
       })();
   const sampleTimes = renderList.map((p) => p.time);
   const poses = renderList.map((p) => skinAtTime(glb, anim, 0, prim, ibm, p.time, roots, p.override));
-  const b = unionBounds(poses);
+  // LIV-135: an optional caller-supplied `bounds` (model-space union bbox)
+  // lets two GLBs of the same actor share ONE projection — e.g. an idle pose
+  // from a static GLB plus a walk cycle from a rigged GLB, so the shipped
+  // frames never pop scale/position between states. Default null keeps every
+  // single-GLB bake byte-identical.
+  const b = bounds || unionBounds(poses);
   const cx = (b.mnx + b.mxx) / 2, cy = (b.mny + b.mxy) / 2, cz = (b.mnz + b.mxz) / 2;
   const modelH = (b.mxy - b.mny) || 1;
   const scale = (renderRes * 0.92) / modelH;
