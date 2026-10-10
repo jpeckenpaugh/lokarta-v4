@@ -82,7 +82,7 @@ it is a *building/landmark* that rides the footprint mechanism above.
   * `attack`: 3 directions (3 frames each)
   * `hit`: 3 directions (1 frame each)
   * `death`: 4 frames (`death_0`..`death_3`) non-directional (Boss `abyssal_overlord` has 6 frames: `death_0`..`death_5`).
-* **Outline & Shading:** Standard $1\text{ px}$ silhouette outline (`#0b0d12`) with $\le 16$-color indexed palettes and flat pixel ramps. A new opt-in **Tier B "baked"** class (≤32 colors for 2D-derived defs; **≤96 entries / 75 opaque for 3D-baked defs, §10**, ordered dither, baked key light) is specified in [art-direction-target.md](art-direction-target.md) for heroes, bosses, and signature NPCs/props; it keeps the pixelated rule and the ≥3:1 rim bar.
+* **Outline & Shading:** Standard $1\text{ px}$ silhouette outline (`#0b0d12`) with $\le 16$-color indexed palettes and flat pixel ramps. A new opt-in **Tier B "baked"** class (≤32 colors for 2D-derived defs; **≤256 entries / 255 opaque for 3D-baked defs, §11** (supersedes §10), ordered dither, baked key light) is specified in [art-direction-target.md](art-direction-target.md) for heroes, bosses, and signature NPCs/props; it keeps the pixelated rule and the ≥3:1 rim bar.
   * **Tier B outline exception (LIV-115, round 2.2):** 3D-baked (Tier B) renders **drop the $1\text{ px}$ outline** — the board read the `#0b0d12` ring as a "pencil trace", so baked colours now end naturally at the silhouette. The bake emits `outline:false` and the renderer honours it (sprite + building + prop paths). **Tier A flat sprites keep the outline unchanged.** Rim-light/ramp shading stays: it is form, not an outline.
 * **Ground contact (all actors):** the silhouette ground-shadow of §7 — the shared renderer ellipse is retired. It is deliberately distinct from the outline (squashed, offset, $\alpha\le0.55$, only under the actor).
 
@@ -326,6 +326,12 @@ No dark patterns or manipulative engagement mechanics are introduced.
 
 ## 10. 3D-Baked Palette Capacity ×3 (LIV-122)
 
+> **SUPERSEDED for 3D-baked defs by §11 (LIV-124).**
+> §10's $75$-opaque / $\le96$-slot rule and its $5\times15$ ramp-family structure no
+> longer govern the 11 3D-baked defs; the current rule is the full 8-bit palette
+> ($\le256$ slots / $255$ opaque) in §11. Tier A and 2D-derived Tier B never used
+> §10 and are unchanged.
+
 Board direction (2026-10-10, via the final visual gate): a 3D-baked sprite still
 carries **too few colors**. Triple the number of unique palette numbers available
 to 3D-rendered assets and regenerate in Phase 1. This section amends the palette
@@ -415,5 +421,154 @@ indices $\ge 36$ must **not** spill into 2-character keys.
   highest-detail baked defs, gated behind a bounded, cheap data change.
 * **Scope discipline** — opt-in by source: Tier A and 2D-derived Tier B keep
   their caps; only the 11 3D-baked defs migrate.
+
+No dark patterns or manipulative engagement mechanics are introduced.
+
+---
+
+## 11. 3D-Baked Palette — Full 8-bit (256 / 255 opaque) (LIV-124)
+
+Board direction (2026-10-10, rev 4): *"It looks much better. We want to see it with
+256 (or 255 which ever fits better) unique color palletes per sprite/individual
+artwork."* Each 3D-baked sprite now carries a **full 8-bit palette**. This section
+**supersedes §10 for 3D-baked defs only**; Tier A (indexed) and 2D-derived Tier B
+are untouched. Owner: Game Designer. Implementation: **Phase B** (Tech Lead) per
+the [LIV-116](/LIV/issues/LIV-116) plan rev 4.
+
+### 11.1 The rule
+
+* **3D-baked palette capacity: $75 \to 255$ opaque colors**, i.e. **$\le 256$
+  palette slots** ($255$ opaque $+$ the `.` transparent slot) — a single byte of
+  colors.
+* **Tier B palette cap for 3D-baked defs: $\le 96 \to \le 256$ entries.** $256$ is
+  the hard cap; the authored target is the full $255$ opaque **when the render
+  carries that much color information** (a small/simple def may land lower and is
+  not padded).
+* **Per-sprite palette.** Each def quantizes its own render to its own $\le256$
+  palette (the board's "per sprite / individual artwork"), exactly as today's
+  per-def palette map works.
+* **Scope is opt-in by source — unchanged.** "3D-baked" means `renderTier:"baked"`
+  **and** a GLB/3D bake source: the 11 defs in §6.3 (`archer`, the 8 Havenreach
+  buildings, the 2 fisher's nets). **2D-derived baked stays $\le 32$; Tier A
+  stays $\le 16$.**
+* `.` is reserved for transparent; opaque entries are $N \le 255$. Total
+  $\le 256$.
+
+### 11.2 Quantization — direct 256-color, no ramp families
+
+* **Retire the §10.2 ramp-family constraint for 3D bakes.** The
+  "$5$ families $\times\ 15$ luma steps" default (and the $6\times12+3$ variant)
+  **no longer applies** to 3D-baked defs.
+* **Direct quantization.** Take all opaque pixels of the def's native render
+  (native $= \text{tiles}\times64$ px, §6) and quantize them to **up to $255$
+  opaque colors** with a single global palette (median-cut, octree, k-means, or an
+  equivalent), then map each pixel to its palette entry. There is **no requirement
+  that ramp steps be equal, that families exist, or that colors be ramp-ordered**;
+  the palette is a perceptual approximation of the render's color volume, and
+  **families are optional/introduced only by the quantizer, never mandated.**
+* **Mixed / anti-aliased samples.** The high-resolution orthographic render is
+  downscaled to the native canvas, so edge pixels blend toward the background and
+  neighbors. Mapping rules:
+  1. **Alpha is binary.** A pixel is transparent (`.`) iff its coverage/alpha is
+     below the def's threshold (default $\alpha < 0.5$); otherwise it is opaque.
+     There is **no partial-alpha code**: the char grid has no semi-transparent
+     pixel, and downscaled edge samples resolve to either `.` or an opaque color.
+  2. **Every opaque sample is an ordinary quantization input**, including
+     anti-aliased edge pixels. It maps to the **nearest** palette entry under the
+     quantizer's distance metric (default: luma-weighted RGB, i.e. a perceptual
+     distance). Edge pixels are **not** required to form a ramp or a distinct
+     family; they simply consume palette colors where needed.
+  3. **Palette order is canonical, not semantic.** Unlike §10's shadow→base→rim
+     ordering, a 3D-baked palette is a quantization result. For determinism it is
+     emitted in a **fixed canonical order** (default: ascending Rec.601 luma, ties
+     broken by the code unit's numeric value) so re-bakes and drift/preview
+     comparisons are reproducible.
+* **Dither stays allowed, not required** (unchanged from §2 and
+  [art-direction-target.md](art-direction-target.md) §5.4): a $2\times2$ Bayer
+  ordered dither **between two adjacent quantized colors** is a legal
+  quantizer/authoring option to soften banding. No arbitrary per-pixel color
+  noise; no off-grid color.
+* **Banding.** The old "adjacent-step relative-luma delta $\le 20\%$" numeric
+  target is **not** the governing rule for 3D bakes. On a $255$-color palette,
+  banding is a *quantization-quality* question, not a *step-count* one: the target
+  is a faithful $255$-color approximation of the render, judged per-`renderTier`
+  on the committed preview.
+
+### 11.3 Encoding requirement (contract level — concrete encoding is Phase B's)
+
+The per-pixel frame key is a **single-character** code: the renderer indexes frames
+by char and every row must decode to exactly `native.w` characters. The old
+76-symbol alphabet (§10.3) **cannot express 256 colors**, so the amendment carries
+this contract requirement (Phase B owns the concrete implementation):
+
+1. **One code per opaque color.** The def's $N$ opaque palette entries
+   ($N \le 255$) each get exactly one code.
+2. **Exactly one code reserved for transparent** (`.` by convention). Total codes
+   $\le 256$ ($N$ opaque $+$ transparent).
+3. **One code unit per pixel.** Every code must be **one Unicode code unit** in the
+   decoded JS string, so each frame row is exactly `native.w` code units and a
+   pixel is addressable as `row[x]`. **No multi-character keys** — a 2-char key
+   would break both char indexing and row alignment.
+4. **Fixed, deterministic alphabet shared across all 3D-baked defs**, so a def's
+   `palette` map (code → `#rrggbb`) is unambiguous and stable across re-bakes.
+5. **Phase B owns the concrete encoding** — which code units and how
+   `palette`/`frames` serialize. Phase B MUST verify: (a) decoded row width
+   $=$ `native.w`; (b) no palette key is more than one code unit; (c) JSON size
+   and runtime draw cost are acceptable; (d) the preview/drift byte-compares still
+   pass. **Recommended: $255$ opaque $+$ $1$ transparent**, because that fits one
+   byte cleanly, whereas $256$ opaque cannot (the transparent slot needs a code).
+
+### 11.4 Preview & memory implications
+
+* **Palette map grows:** $76 \to$ up to $256$ entries per def ($\approx +2$ KB/def
+  at $\sim\!12$ B/entry, $\approx +22$ KB across all 11 defs). Negligible and
+  independent of frame size.
+* **Frame pixel count is unchanged** ($\text{native w} \times \text{native h}$),
+  but **frame JSON byte size depends on the chosen encoding** — this corrects
+  §10.4's "frame byte size is unchanged" for 3D bakes. A 256-code alphabet cannot
+  be all-ASCII-printable, so:
+  * ASCII-range codes cost $1$ byte/pixel;
+  * raw multibyte Unicode costs $2$–$3$ bytes/pixel;
+  * JSON-escaped `\uXXXX` codes cost $6$ bytes/pixel.
+  Phase B must choose a compact scheme (prefer minimal escaping) and **measure the
+  real byte deltas** per def before committing previews.
+* **Runtime draw cost** is per-pixel over the same pixel count; only the
+  palette-map length grows. No new blit path, no cached-canvas growth.
+* **Preview legend** must lay out up to $256$ swatches (wrap the row); pixel art
+  and the byte-compare drift semantics are unchanged.
+* **Tests become 3D-baked-aware at the new cap.** `paletteCapFor` returns
+  $\le 256$ for 3D-baked defs (was $96$), and the per-def assertions migrate to
+  that cap. The `rampPalette` family-step budget is **retired for 3D bakes** in
+  favor of the direct quantizer (§11.2).
+
+### 11.5 Unchanged
+
+* **1:1 (N64) native render** — 3D-baked sprites stay native $64$ px/tile (§6); no
+  resolution change.
+* **Pixelated / no-AA / ordered-dither** contract (§1, target doc §5.4) — the
+  palette is indexed and on-grid; no smoothing.
+* **Dropped outline for 3D bakes** (LIV-115, §2) and the $\ge 3{:}1$ rim rule
+  (§3) — the palette must still contain at least one entry clearing $\ge3{:}1$ vs
+  the floor; a richer palette only makes this easier (the test scans best-of).
+* **Silhouette ground shadow** (§7) — unchanged.
+* **Non-3D tiers** — Tier A $\le16$ and 2D-derived Tier B $\le32$ unchanged.
+
+### 11.6 Lenses cited (LIV-124 amendment)
+
+* **Readability & legibility** — a full 8-bit approximation preserves the baked
+  key light and material separation; the $\ge3{:}1$ rim and dropped-outline read
+  are unchanged (§11.5).
+* **Game feel / juice** — smoother, richer render-to-sprite shading removes the
+  residual banding a $75$-color cap left in fine gradients.
+* **MDA** — the *felt* upgrade is a richer pre-rendered look (aesthetics) produced
+  by palette depth (mechanic), not by resolution (already 1:1) or the render path.
+* **Balance levers** — the smallest lever is **palette depth $+$ quantizer**;
+  native density (§6) and the render path are untouched.
+* **Theme coherence** — one global $135^\circ$ baked key still ties the cast
+  together; per-sprite palettes change color depth, not light direction.
+* **Kano model** — palette depth is the performance/delighter lever on the
+  highest-detail baked defs; the cost is a bounded data $+$ encoding change.
+* **Scope discipline** — opt-in by source: Tier A and 2D-derived Tier B keep
+  their caps; only the 11 3D-baked defs migrate; 1:1 and shadow are unchanged.
 
 No dark patterns or manipulative engagement mechanics are introduced.

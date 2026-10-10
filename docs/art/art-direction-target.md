@@ -104,14 +104,16 @@ changes**. `renderTier` is metadata for validation and for future authors/tools.
 
 1. **Canvas / grid / scaling — unchanged.** 32×32 native, integer 2× scale,
    `image-rendering: pixelated; crisp-edges`. No sub-pixel offsets.
-2. **Palette ceiling — ≤32 entries (2D-derived); ≤96 entries for 3D-baked.**
+2. **Palette ceiling — ≤32 entries (2D-derived); ≤256 entries for 3D-baked.**
    The base Tier B ceiling is ≤32 entries: the `.` transparent slot and the
    reserved `0` outline slot, so ≤30 usable colors. **3D-baked defs
-   (`renderTier:"baked"` from a GLB/3D bake source) raise the ceiling to ≤96
-   entries, target ≤76 slots / 75 opaque** (palette capacity ×3), with the ramp
-   structure and 76-char key alphabet in [art-direction.md §10](art-direction.md).
-   Single-character keys stay **mandatory** (the renderer indexes by char);
-   reserved char: `.`.
+   (`renderTier:"baked"` from a GLB/3D bake source) raise the ceiling to ≤256
+   entries, target 255 opaque + transparent** (full 8-bit palette; supersedes the
+   earlier ×3 / ≤96 rule), with direct 256-color quantization, the mixed-sample
+   mapping, and the 256-symbol encoding requirement in
+   [art-direction.md §11](art-direction.md). The earlier ramp-family structure
+   (`§10`) is retired for 3D bakes. Single-character keys stay **mandatory** (the
+   renderer indexes by char); reserved char: `.`.
 3. **Shading ramps — mandatory.** Every dominant material (skin, cloth, metal,
    wood, hair) authors **≥4 ordered steps** *shadow → base → light → rim*. Step
    deltas should be perceptible (aim ≥12% relative luminance between adjacent
@@ -140,9 +142,9 @@ changes**. `renderTier` is metadata for validation and for future authors/tools.
     $32W\times32H$ canvases ($W,H\in\{1,2,3,4\}$, up to $128\times128$ native px,
     non-square allowed) per [art-direction.md §1](art-direction.md). **$32\times32$
     is one tile**; a $128\times64$ hut is $4\times2$ tiles and is placed
-    grid-aligned — never squished to a single tile. Every rule above (≤32 palette,
-    4-step ramps, dither, 135° key light, outline + inner rim, 3:1 rim) applies
-    **unchanged**; only the canvas is larger. Actors, monsters, vocations, NPCs,
+    grid-aligned — never squished to a single tile. Every rule above (tier-aware
+    palette cap, ramp/dither guidance, 135° key light, outline + inner rim, 3:1 rim)
+    applies **unchanged**; only the canvas is larger. Actors, monsters, vocations, NPCs,
     regular props, and tiles stay single-tile $32\times32$; the $48\times48$ boss
     stays a single-tile entity. Placement rides the **existing building
     footprint + `BUILDING_SILHOUETTE_RENDERERS` dispatch** (`canvas-renderer.js`),
@@ -181,7 +183,7 @@ changes**. `renderTier` is metadata for validation and for future authors/tools.
 | **1px `#0b0d12` outline** | **Kept** | Silhouette legibility over ≤0.02 floors; Tier B only *adds* an inner rim light. |
 | **32×32 native / integer 2×** | **Kept** | Avoids an engine `GRID_SIZE` change (48-native would need 96/144). Multi-tile canvases are integer tile multiples, so the same 2× scale holds across the whole piece. |
 | **"Props are 32×32"** | **Clarified** | $32\times32$ = **one tile**. Single-tile `prop_*` unchanged; multi-tile scene objects (buildings/landmarks) use $32W\times32H$ and the existing `footprint` mechanism (art-direction.md §1). |
-| **≤16 palette (Art §2, test 3/28)** | **Amended** | Becomes tier-aware: `indexed ? 16 : (3D-baked ? 96 : 32)` — 2D-derived baked stays ≤32, 3D-baked ≤96 (target 76 slots), per [art-direction.md §10](art-direction.md). The single thing that changes in the test contract. |
+| **≤16 palette (Art §2, test 3/28)** | **Amended** | Becomes tier-aware: `indexed ? 16 : (3D-baked ? 256 : 32)` — 2D-derived baked stays ≤32, 3D-baked ≤256 (target 255 opaque + transparent), per [art-direction.md §11](art-direction.md) (supersedes §10). The single thing that changes in the test contract. |
 | **3-direction facing** | **Kept** | No new directions. |
 
 ---
@@ -197,7 +199,7 @@ JSON:
 ```
 GLB → orthographic render (fixed 135° key) →
   downscale to 32/48 or 64 (actors, boss) OR native multi-tile (scene objects) →
-  quantize to the tier ceiling (3D-baked: 75 opaque, art-direction.md §10) →
+  quantize to the tier ceiling (3D-baked: 255 opaque, art-direction.md §11) →
   apply ordered dither → outline pass → char-grid JSON
 ```
 

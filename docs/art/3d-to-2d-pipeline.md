@@ -316,13 +316,16 @@ The palette is authored as **explicit shadow→base→light→rim ramps per mate
 structural property; `quantizeRamp` turns each pixel's continuous ramp position into a
 dithered pair of adjacent steps. Run: `node tools/gltf-to-sprite.mjs <glb> --tier baked [--tiles 2x3]`.
 
-> **Superseded for 3D-baked defs ([art-direction.md §10](art-direction.md), LIV-122).**
-> 3D-baked sprites now target **75 opaque colors (≤76 slots)** and a **≤96-entry**
-> cap: default **5 material families × 15 luma steps**, adjacent-step relative-luma
-> delta ≤20% (kills the flagged 70–115% banding), assigned from the fixed 76-char
-> single-byte alphabet. The family clamp above becomes a **75-opaque budget** for
-> 3D bakes, not `Math.floor(30/steps)`. Frames stay one char/pixel, so previews and
-> runtime cost are unchanged. 2D-derived Tier B stays ≤32.
+> **Superseded for 3D-baked defs ([art-direction.md §11](art-direction.md),
+> LIV-124).** 3D-baked sprites now target a **full 8-bit palette — 255 opaque
+> colors ($\le256$ slots incl. transparent)** and a **$\le256$-entry** cap, via
+> **direct 256-color quantization** of the source render (the 5×15 ramp-family
+> structure of the §10 era is retired for 3D bakes). Anti-aliased/mixed samples map
+> to the nearest quantized entry; alpha is binary (one `.` transparent code).
+> Frames stay one **single-code-unit** key per pixel, but the encoding must supply
+> up to 256 codes, so Phase B owns the concrete alphabet and must re-check frame
+> JSON size (a 256-code alphabet cannot be all-ASCII, so frames may grow) and draw
+> cost. 2D-derived Tier B stays $\le32$.
 
 Committed Phase 1 before/after proof (`docs/art/3d-poc/phase1/`, composed by
 `tools/render-tierb-proof.mjs`):
