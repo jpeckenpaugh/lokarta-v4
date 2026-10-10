@@ -82,7 +82,7 @@ it is a *building/landmark* that rides the footprint mechanism above.
   * `attack`: 3 directions (3 frames each)
   * `hit`: 3 directions (1 frame each)
   * `death`: 4 frames (`death_0`..`death_3`) non-directional (Boss `abyssal_overlord` has 6 frames: `death_0`..`death_5`).
-* **Outline & Shading:** Standard $1\text{ px}$ silhouette outline (`#0b0d12`) with $\le 16$-color indexed palettes and flat pixel ramps. A new opt-in **Tier B "baked"** class (≤32 colors, 4-step ramps, ordered dither, baked key light) is specified in [art-direction-target.md](art-direction-target.md) for heroes, bosses, and signature NPCs/props; it keeps the pixelated rule and the ≥3:1 rim bar.
+* **Outline & Shading:** Standard $1\text{ px}$ silhouette outline (`#0b0d12`) with $\le 16$-color indexed palettes and flat pixel ramps. A new opt-in **Tier B "baked"** class (≤32 colors for 2D-derived defs; **≤96 entries / 75 opaque for 3D-baked defs, §10**, ordered dither, baked key light) is specified in [art-direction-target.md](art-direction-target.md) for heroes, bosses, and signature NPCs/props; it keeps the pixelated rule and the ≥3:1 rim bar.
   * **Tier B outline exception (LIV-115, round 2.2):** 3D-baked (Tier B) renders **drop the $1\text{ px}$ outline** — the board read the `#0b0d12` ring as a "pencil trace", so baked colours now end naturally at the silhouette. The bake emits `outline:false` and the renderer honours it (sprite + building + prop paths). **Tier A flat sprites keep the outline unchanged.** Rim-light/ramp shading stays: it is form, not an outline.
 * **Ground contact (all actors):** the silhouette ground-shadow of §7 — the shared renderer ellipse is retired. It is deliberately distinct from the outline (squashed, offset, $\alpha\le0.55$, only under the actor).
 
@@ -319,5 +319,101 @@ and the 1:1 fidelity added in §6.
   grid change (§6.2.5).
 * **Scope discipline** — two native tiers are opt-in by source: non-3D art and every
   existing test/footprint contract are untouched; only 3D-sourced defs migrate (§6.2.2).
+
+No dark patterns or manipulative engagement mechanics are introduced.
+
+---
+
+## 10. 3D-Baked Palette Capacity ×3 (LIV-122)
+
+Board direction (2026-10-10, via the final visual gate): a 3D-baked sprite still
+carries **too few colors**. Triple the number of unique palette numbers available
+to 3D-rendered assets and regenerate in Phase 1. This section amends the palette
+ceiling **for 3D-baked defs only**; Tier A (indexed) and 2D-derived Tier B are
+untouched. Owner: Game Designer. Implementation: Phase 1 (Tech Lead) per the
+[LIV-116](/LIV/issues/LIV-116) plan.
+
+### 10.1 The rule
+
+* **3D-baked palette capacity: $25 \to 75$ opaque colors ($3\times$)**, i.e.
+  **$\le 76$ palette slots** (75 opaque $+$ the `.` transparent slot).
+* **Tier B palette cap for 3D-baked defs: $\le 32 \to \le 96$ entries.** $96$ is
+  headroom; the authored target is $76$ slots.
+* **Scope is opt-in by source.** "3D-baked" means `renderTier:"baked"` **and** a
+  GLB/3D bake source — the 11 defs in §6.3 (`archer`, the 8 Havenreach buildings,
+  the 2 fisher's nets). **2D-derived baked defs stay $\le 32$; Tier A stays
+  $\le 16$.** The consumed current state was $26$ slots (25 opaque $+$
+  transparent) on all 11 defs.
+
+### 10.2 Ramp structure — reach $\approx75$, kill banding
+
+The prior review flagged **hard banding**: adjacent ramp steps jumping
+**$70\text{–}115\%$ relative luminance**. The fix is **more steps per ramp**, not
+more hue ramps — a fixed color budget spent on finer gradients, not extra hues.
+
+* **Normative default: $5$ material families $\times\ 15$ luma steps $=75$ opaque
+  colors.**
+* **Allowed variant** when a def genuinely needs a 6th material:
+  $6$ families $\times\ 12$ steps $=72$ $+$ up to **$3$ accent/emissive colors**
+  $= \le 75$. Steps per family must stay **$\ge 12$** and families $\ge 5$.
+* **Banding target: adjacent-step relative-luma delta $\le 20\%$ (aim
+  $\le 12\%$).** $\ge 12$ steps across a material's luma range meets this; the
+  old $4$-step ramps did not.
+* Ramp ordering stays shadow $\to$ base $\to$ light $\to$ rim; $2\times2$ Bayer
+  ordered dither **between adjacent steps** is unchanged (§5.4 of
+  [art-direction-target.md](art-direction-target.md)). The one global $135^\circ$
+  baked key light is unchanged.
+
+### 10.3 Key alphabet (single-char, 76 slots)
+
+Single-character keys are **mandatory** (the renderer indexes by char). The
+3D-baked palette uses this fixed alphabet, in order:
+
+```text
+.                                  transparent (1 reserved slot)
+0 1 2 3 4 5 6 7 8 9                digits (10)
+a b c ... z                        lowercase (26)
+A B C ... Z                        uppercase (26)
+! @ # $ % ^ & * ( ) - _ +          punctuation (13)
+```
+
+$1 + 10 + 26 + 26 + 13 = \mathbf{76}$ slots (75 opaque $+$ transparent). The
+reserved `0` outline slot is **not required** for 3D bakes (`outline:false`,
+LIV-115, §2), so `0` is available as an opaque color. Phase 1 replaces the
+pipeline's base-36 `(index).toString(36)` key assignment with this alphabet —
+indices $\ge 36$ must **not** spill into 2-character keys.
+
+### 10.4 Preview & memory implications
+
+* **Frame byte size is unchanged.** Frames stay one char per pixel and every key
+  stays a single character, so the char-grid JSON, the committed preview PNGs,
+  and runtime draw cost do **not** grow with palette depth. (Phase-1 correctness
+  note: a 2-char key would break both the renderer and row alignment — the
+  alphabet above prevents that.)
+* **Only the `palette` map grows:** 25 $\to$ 75 entries ($\approx +0.5$ KB per
+  def, $\approx +6$ KB across all 11 defs). Negligible.
+* **Preview legend** must lay out up to 96 swatches (wrap the row); pixel art and
+  the byte-compare drift semantics are unchanged.
+* **Tests become 3D-baked-aware.** `paletteCapFor` must return **96** for
+  3D-baked defs and the per-def `<= 32` assertions in the Tier B tests migrate to
+  that cap. The `rampPalette` family clamp (`Math.floor(30 / steps)`) becomes the
+  **75-opaque budget** for 3D bakes, not the old $\le32$ budget.
+
+### 10.5 Lenses cited (LIV-122 amendment)
+
+* **Readability & legibility** — finer ramps add form without new floor colors;
+  the $\ge 3{:}1$ rim (§3) and dropped-outline read (LIV-115) are unchanged.
+* **Game feel / juice** — smoother stepped gradients remove the banded
+  "$70\text{–}115\%$ jump" artifact; volume reads as volume.
+* **MDA** — the *felt* upgrade is smoother shading (aesthetics) produced by
+  palette depth (mechanic), not by resolution (design the experience, not the
+  number).
+* **Balance levers** — the smallest lever that fixes the read is **palette
+  depth**; native density (§6) and the render path are unchanged.
+* **Theme coherence** — one global baked key (§5.5) still ties the cast together.
+* **Kano model** — palette depth is a *performance/delighter* upgrade on the
+  highest-detail baked defs, gated behind a bounded, cheap data change.
+* **Scope discipline** — opt-in by source: Tier A and 2D-derived Tier B keep
+  their caps; only the 11 3D-baked defs migrate.
 
 No dark patterns or manipulative engagement mechanics are introduced.

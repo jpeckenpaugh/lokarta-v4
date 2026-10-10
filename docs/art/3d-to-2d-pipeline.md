@@ -306,7 +306,7 @@ end-to-end with the real committed assets, for both single- and multi-tile class
 orthographic render @ 135-degree key (upper-left) + inner rim-light on grazing,
   key-facing normals + cool bounce in shadow
   └▶ [downscale to 32 OR chop-to-tile-canvas]
-      └▶ chromaticity k-means (families) × 4 ordered luma steps = <=24 usable colours
+      └▶ chromaticity k-means (families) × ordered luma steps (<=24 at the 32px era)
           + 2x2 Bayer ordered dither between adjacent steps
           └▶ 1px outline -> sprite JSON with renderTier:"baked" (cap <=32) + preview PNG
 ```
@@ -315,6 +315,14 @@ The palette is authored as **explicit shadow→base→light→rim ramps per mate
 (`rampPalette`) rather than an arbitrary median-cut, so the ">=4-step ramp" rule is a
 structural property; `quantizeRamp` turns each pixel's continuous ramp position into a
 dithered pair of adjacent steps. Run: `node tools/gltf-to-sprite.mjs <glb> --tier baked [--tiles 2x3]`.
+
+> **Superseded for 3D-baked defs ([art-direction.md §10](art-direction.md), LIV-122).**
+> 3D-baked sprites now target **75 opaque colors (≤76 slots)** and a **≤96-entry**
+> cap: default **5 material families × 15 luma steps**, adjacent-step relative-luma
+> delta ≤20% (kills the flagged 70–115% banding), assigned from the fixed 76-char
+> single-byte alphabet. The family clamp above becomes a **75-opaque budget** for
+> 3D bakes, not `Math.floor(30/steps)`. Frames stay one char/pixel, so previews and
+> runtime cost are unchanged. 2D-derived Tier B stays ≤32.
 
 Committed Phase 1 before/after proof (`docs/art/3d-poc/phase1/`, composed by
 `tools/render-tierb-proof.mjs`):
