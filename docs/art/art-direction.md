@@ -188,6 +188,13 @@ longhouse / fishers-house / net GLBs in `lokarta-private`. The bake **must hit t
 tier's native size** (§6.2.1): a 64-native actor at `scale = 1` is what removes the
 $2\times2$ source blocks the board flagged.
 
+[LIV-133](/LIV/issues/LIV-133) extends the N64 scope to the **13 Havenreach NPC
+actors** (baked from the six rigged human GLBs in `lokarta-private`) and to the
+**3 overworld creatures + 4 scene props**; see §13 and the per-asset mapping in
+[3d-sprite-mapping.md](3d-sprite-mapping.md). Same native size, same palette cap,
+same dropped outline, same ground shadow; only the actor camera exception (§12.1)
+and the walk/idle frame contract (§13.2) are called out there.
+
 **Camera baseline ([LIV-126](/LIV/issues/LIV-126) / [LIV-127](/LIV/issues/LIV-127) /
 [LIV-130](/LIV/issues/LIV-130)).**
 Every 3D-rendered artifact uses a **Top-Down Oblique "3/4" orthographic** projection.
@@ -814,5 +821,89 @@ footprint re-derivation does not apply to them.
   yaw is a cheap *delighter* for scene variety (§12.3).
 * **Scope discipline** — opt-in by source: Tier A and all non-3D assets are
   grandfathered; only new 3D bakes carry the baseline (§12.5).
+
+No dark patterns or manipulative engagement mechanics are introduced.
+
+---
+
+## 13. 3D-Baked NPC Actors, Creatures & Props (LIV-133)
+
+Board direction (2026-10-10, [LIV-132](/LIV/issues/LIV-132)): bake the Havenreach
+NPC cast, the Dawnreach Isle creatures, and four scene props from the 19 optimized
+GLBs in `lokarta-private`. This section locks the **actor** side of that contract;
+the per-asset mapping (13 NPCs + 3 creatures + 4 props) lives in
+[3d-sprite-mapping.md](3d-sprite-mapping.md). Owner: Game Designer. Implementation:
+[LIV-134](/LIV/issues/LIV-134) (NPCs/props) + [LIV-135](/LIV/issues/LIV-135)
+(creatures). No runtime contract changes beyond the two wiring items named below.
+
+### 13.1 N64 actor tier (native 64 px / tile, 1:1)
+
+NPC and creature actors join §6's **N64** tier: a $1\times1$ actor is a
+**$64\times64$** native canvas, blitted **1:1** at the default 64 px display tile
+(`scale = max(1, floor(displayTile / nativeTile)) = 1`). They carry the same
+`renderTier:"baked"` / `baked3d:true` / `outline:false` metadata and the same
+`≤256`-entry palette as the already-baked `archer` and buildings (§6.3, §11). This
+supersedes the hand-authored N32 ($32\times32$) NPC atlas of
+[npc-identity-spec.md](../design/npc-identity-spec.md) for the baked set.
+
+### 13.2 Actor-exception camera pitch (§12.1) — NOT 60°
+
+NPCs and creatures are **actors**, so they take the §12.1 **actor exception**: a
+**shallow pitch** measured from the horizon (`rise < 60`), over the axis-aligned
+cardinal azimuths `0/90/180/270` with **no yaw**. The full 60° building/prop
+baseline (§12.1) is for scene objects only. Rationale (readability & game feel):
+the actor is the closest-viewed, highest-screen-time asset, and the runtime's
+3-direction facing model (`down`/`up`/`side`, §2) must keep the side-profile read
+and the walk-cycle stride legible within a beat.
+
+### 13.3 Directional walk + idle frame contract
+
+Baked actors author, per direction (`down`/`up`/`side`; `left` mirrors `side`):
+
+* **`idle` — 1 frame** per direction.
+* **`walk` — 2 frames** per direction, **step-driven** (`advanceOn:"step"`), the
+  existing §2 contract.
+
+**Ambient (`aiType:"wander"`) NPCs must actually animate** (board answer 3): the
+bake ships the walk frames and the Tech Lead wires `npc.anim = createAnimState(facing)`
++ `setAnimState(npc, 'walk'|'idle')` in `updateNpcs` — today wandering NPCs move
+without an `anim` and render `idle_down`, so the walk frames are inert until wired.
+**Static actors** (the sessile creatures of
+[3d-sprite-mapping.md](3d-sprite-mapping.md) §4) author **`idle` only**; the
+renderer's `resolveSpriteFrame` fallback (§2) covers any missing state. `attack` /
+`hit` / `death` are optional for NPCs (they do not fight).
+
+**Silhouette ground shadow (§7) — unchanged and required.** Every baked actor uses
+the data-driven `groundShadow` (`shape:"silhouette"`, $\alpha\le0.55$, offset
+toward the $135^\circ$ key). For outline-less N64 actors the shadow is the only
+dark contact cue (§7.3), so it is mandatory, not optional.
+
+**No outline.** `outline:false` per LIV-115 / §11.5 — colours end at the silhouette.
+
+### 13.4 Props
+
+The four new props (`wooden_dock`, `wooden_barrel`, `palm_tree`, `rock_pile`) are
+**scene objects, not actors**: they keep the §12.1 **60° building/prop pitch**, the
+N64 native size, the `≤256` palette, and `outline:false`. Their `layer`
+classification (walk-over decor vs blocking furniture) is in
+[3d-sprite-mapping.md](3d-sprite-mapping.md) §5 and is a scene-entry field, not an
+art-contract change.
+
+### 13.5 Lenses cited (LIV-133)
+
+* **Readability & legibility** — the shallow actor pitch + 3-dir walk keeps facing
+  and gait readable; the ≥3:1 rim and the silhouette shadow carry the
+  outline-less N64 silhouette (§13.2–§13.3).
+* **Game feel / juice** — a real walk cycle on ambient NPCs and creatures replaces
+  the "sliding idle frame" read; the baked key light adds volume at 1:1.
+* **Theme coherence** — one actor camera + one screen-space $135^\circ$ key tie the
+  baked cast to the baked buildings/props.
+* **Balance levers** — the smallest levers are the actor pitch constant and the
+  walk/idle frame counts; native density and palette are already fixed by §6/§11.
+* **Kano model** — distinct baked NPCs and animated ambient folk are the
+  performance/delighter upgrade on the town's human face; the reuse+recolor budget
+  keeps it bounded.
+* **Scope discipline** — opt-in by source: only the 13 NPCs, 3 creatures, and 4
+  props migrate; every other 2D asset is grandfathered (§12.5).
 
 No dark patterns or manipulative engagement mechanics are introduced.

@@ -214,6 +214,35 @@ Re-rendered from the real GLB with `--tiles`; the 32×32 actor path is untouched
 Net tooling delta for the multi-tile path: **≈1 eng-day** on top of the 3–5-day
 productionisation estimate; content cost scales with canvas size, not tile count.
 
+### 3.6 Baked actor path — NPCs & creatures (LIV-133, native 64 px / tile)
+
+The stage chain above is written at the **N32** grid (32 px = 1 tile, §6/§11 of
+[art-direction.md](art-direction.md)). The LIV-133 actor bake re-points the
+single-tile **actor** row to the **N64** grid:
+
+| Stage | N32 (legacy actors) | **N64 (LIV-133 baked actors)** |
+| :-- | :-- | :-- |
+| Ortho pixel render | scene-object or legacy actor pitch | **actor exception pitch** `rise < 60`, cardinal azimuths, no yaw (§12.1) |
+| Native tile grid | 32 px = 1 tile | **64 px = 1 tile** ($1\times1$ ⇒ $64\times64$) |
+| Display blit | `SCALE=2` | **`scale = 1` (1:1)** |
+| Palette | ≤16 (Tier A) / ≤32 (2D Tier B) | **≤256 (255 opaque)** direct quantizer (§11) |
+| Outline | 1 px `#0b0d12` | **none** (`outline:false`, LIV-115) |
+| Shadow | renderer ellipse | **silhouette ground shadow** (§7) |
+| Frames | full 5-state | **idle ×1 + walk ×2 per direction** (creatures may be idle-only) |
+
+So: `GLB → ortho render (actor pitch, cardinals) × frame → crop → downscale to
+64×64 (one tile) → median-cut ≤255 opaque → (no outline) → char-grid JSON with
+`renderTier:"baked"` + `baked3d:true` + `outline:false` → silhouette groundShadow`.
+The single-tile **actor** row of §3.3 becomes native $64\times64$ for these defs; the
+building/prop rows are unchanged (they already use $64W\times64H$ per §6.3 of
+[art-direction.md](art-direction.md)). Per-asset mapping:
+[3d-sprite-mapping.md](3d-sprite-mapping.md).
+
+**`river_rat` is the one actor with both a static and a rigged GLB** — bake
+`idle` from `river_rat_static_optimized.glb` and `walk` from
+`river_rat_walking_optimized.glb`. `piranha`/`river_eel` ship a single static GLB →
+`idle` only.
+
 ---
 
 ## 4. meshy.ai fit (modes, license, cost)

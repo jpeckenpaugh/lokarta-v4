@@ -7,8 +7,8 @@
 | **Issue** | [LIV-81](/LIV/issues/LIV-81) — I1 of the [Dawnreach enrichment report](dawnreach-enrichment-report.md) §3 |
 | **Author** | Game Designer |
 | **Owner** | Design/Art direction: Game Designer. Renderer + NPC asset atlas + drift check: Tech Lead |
-| **Status** | Design intent + catalog content landed; sprite/portrait assets are the Tech Lead child |
-| **Related** | [LIV-85](/LIV/issues/LIV-85) (I2 schedules, consumes the `ambience` hook) |
+| **Status** | Design intent + catalog content landed; sprite/portrait assets are the Tech Lead child. **§7 supersedes the hand-authored N32 atlas with the N64 3D-baked identities (LIV-133).** |
+| **Related** | [LIV-85](/LIV/issues/LIV-85) (I2 schedules, consumes the `ambience` hook); [LIV-132](/LIV/issues/LIV-132) / [LIV-133](/LIV/issues/LIV-133) (3D bake — see [3d-sprite-mapping.md](../art/3d-sprite-mapping.md) §2 and [art-direction.md](../art/art-direction.md) §13) |
 
 This spec expands report §3.1–§3.4 into an implementable contract. It is the
 source of truth for *what each NPC looks like and how the engine resolves it*;
@@ -252,3 +252,71 @@ condition in game logic fails acceptance.
 - The portrait expression visibly changes in the dialogue bubble between a
   `warm` turn-in and an `urgent` warning.
 - T0 (`node --test html/tests/*.test.mjs`) green on `main`.
+
+---
+
+## 7. N64 3D-baked identities (LIV-133 — supersedes §2/§6 for the baked set)
+
+The board directed ([LIV-133](/LIV/issues/LIV-133), 2026-10-10) that the Havenreach
+cast is **baked from the six rigged human GLBs in `lokarta-private`**, using
+**reuse + recolor**: six cast members map 1:1 to a mesh, the other seven reuse the
+nearest mesh with a distinct palette. The full per-NPC mesh + recolor table lives in
+[3d-sprite-mapping.md](../art/3d-sprite-mapping.md) §2; this section records what
+changes here and what is retired.
+
+### 7.1 What supersedes
+
+| §2/§6 rule (hand-authored N32) | **N64 baked rule (LIV-133)** |
+| :--- | :--- |
+| Own $32\times32$ sprite, silhouette-changing signature prop | **Baked from a mesh**; 6 direct + 7 reuse (recolor). Signature props become *optional recolour overlays*, not required outline changes. |
+| **No two NPC `idle_down` masks identical** | **Relaxed** — 13 cast / 6 meshes guarantees shared silhouettes. Identity = distinct palette + spatial separation + name/title/dialogue. |
+| $32\times32$ native, integer 2× | **$64\times64$ native (N64), 1:1** ([art-direction.md](../art/art-direction.md) §6, §13.1) |
+| ≤16-colour indexed palette + `#0b0d12` outline | **≤256 entries (≤255 opaque), `outline:false`** (art-direction §11, §2/§11.5) |
+| Renderer ellipse ground shadow | **Silhouette ground shadow** (art-direction §7) |
+| Idle-only render (wanderers slide) | **Directional idle ×1 + walk ×2**, wired via `npc.anim` (§7.3) |
+| Camera: N/A (2D) | **Actor exception pitch** `< 60°` from horizon, cardinals, no yaw (art-direction §12.1, §13.2) |
+
+Unchanged: the §3 portrait/expression contract (48×48 busts, `neutral|warm|urgent`,
+stage `expression`), the §5 `npcs.json` catalog fields (`npcSpriteId`, `spriteId`
+fallback, `renderTheme` tint fallback, `portraits`), the resolve order
+`npcSpriteId > spriteId > type`, and the §4 personality/ambience hooks. Portraits
+are **out of scope** for the 3D bake (they stay authored busts).
+
+### 7.2 The 13 identities (mesh → palette)
+
+Six direct meshes: `villager_m` (Odon), `villager_f` (Lena), `young_fisher` (Ilo),
+`first_fisher` (Old Doran), `deckhand` (Brann), `child_white_hair` (Kes). Seven
+reuse with a distinct palette: The Weigher (`first_fisher`), Capt. Halden
+(`villager_m`), Wick (`deckhand`), Tidekeeper Aurel (`villager_f`), Mara
+(`villager_f`), Innkeep Bessa (`villager_m`), Young Tam (`young_fisher`). Exact
+recolor hexes, `aiType`, and rationale: [3d-sprite-mapping.md](../art/3d-sprite-mapping.md) §2.
+
+### 7.3 Quest-giver placement (board answer 2)
+
+The three quest givers move to their top-row doorways, facing `down`, marker and
+stage-gating unchanged:
+
+| Giver | Quest | New tile | Building |
+| :--- | :--- | :--- | :--- |
+| Captain Halden | Q1 | **`(3,5)`** | Fish Market |
+| Wick | Q2 | **`(20,5)`** | The Tidehall |
+| The Weigher | Q3 | **`(12,7)`** | The Longhouse |
+
+The `!` / `?` marker is data-driven from `quests.json` `giverNpcId`/`turnInNpcId` +
+prerequisite state (`scene-controller.js:635-656`) and is untouched by the move. The
+convention and soft-lock check are in
+[3d-sprite-mapping.md](../art/3d-sprite-mapping.md) §3.
+
+### 7.4 Engine wiring (handoff → [LIV-134](/LIV/issues/LIV-134))
+
+Ambient (`aiType:"wander"`) NPCs must **animate walking** (board answer 3): give
+`npc.anim = createAnimState(npc.facing)` and call `setAnimState(npc,'walk')` on a
+step / `'idle'` when stationary in `updateNpcs` — today they have no `anim` and
+render `idle_down` while moving. Stationary givers need idle only; the walk frames
+still ship for future schedule/bustle use. No per-NPC branch.
+
+*Lenses cited (§7): readability & legibility (silhouette + palette identity under
+reuse), theme coherence (one baked actor camera/light), Kano (a delighter that
+upgrades the town's human face), balance levers (recolor palette + placement, not
+new meshes), scope discipline (bake only the 13; portraits other 2D art untouched).
+No dark patterns.*

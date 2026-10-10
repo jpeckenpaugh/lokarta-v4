@@ -94,7 +94,7 @@ changes**. `renderTier` is metadata for validation and for future authors/tools.
 | Common monsters (rat, skeleton, cultist…) | A initially | Highest count × lowest screen time |
 | **Player vocations (4)** | **B** | On screen 100% of the run — best ROI |
 | **Bosses (4)** | **B** | Emotional peak; DKC-style presence matters most here |
-| **Quest-critical NPCs** | **B** | Dialogue close-ups + identity |
+| **Quest-critical NPCs** | **B** | Dialogue close-ups + identity. **LIV-133:** the 13-NPC Havenreach cast bakes at the **N64 actor tier** ($64\times64$/tile, 1:1), actor-exception pitch, no outline — see [art-direction.md §13](art-direction.md). |
 | **Signature props** (fishing hut/Longhouse, boat) | **B** | The board's own examples; scene anchors. **Multi-tile** ($32W\times32H$ canvas) per §5.10 — a hut is $4\times2$ tiles, not one. |
 | **Town buildings** | **B** | Multi-tile footprint already exists (`footprint` + silhouettes); bake to $32W\times32H$ canvases. |
 
@@ -129,7 +129,10 @@ changes**. `renderTier` is metadata for validation and for future authors/tools.
 6. **Outline — unchanged.** 1px `#0b0d12` silhouette via the existing
    `applyOutline` pass. Tier B **adds** an optional inner **rim-light** row
    (lightest ramp step) on the key-lit edge. No anti-aliased, soft, or
-   colored outlines.
+   colored outlines. **Exception — 3D-baked defs (N64) drop the outline
+   entirely** (`outline:false`, LIV-115; [art-direction.md §11.5, §13](art-direction.md)):
+   colours end at the silhouette, and the silhouette ground shadow (rule 7) is the
+   only dark contact cue. This includes the LIV-133 baked NPCs and creatures.
 7. **Ground contact (optional).** ≤2 interior AO chars at the base of a Tier B
    actor. The shared renderer ellipse stays the ground shadow for all actors.
 8. **Frame counts — unchanged in Phase 1.** idle 1 / walk 2 / attack 3 / hit 1 /
@@ -163,7 +166,13 @@ changes**. `renderTier` is metadata for validation and for future authors/tools.
     `0/90/180/270`, and an **optional +45° yaw** (`45/135/225/315`) for static scene
     objects. **3D-rendered actors are the exception and stay shallower than 60°**
     (art-direction.md §12.1) to preserve the walk-cycle side read; their exact actor
-    look is pending. Rules 1–11 above (grid/scaling, palette cap, ramps, dither, 135°
+    look is pending. **LIV-133** applies that exception to the whole baked actor
+    class — the 13 Havenreach NPCs and the 3 overworld creatures — at the N64 actor
+    tier ($64\times64$/tile, 1:1, `outline:false`, silhouette ground shadow,
+    directional idle+walk) per [art-direction.md §13](art-direction.md) and
+    [3d-sprite-mapping.md](3d-sprite-mapping.md); the 4 new scene props
+    (`wooden_dock`, `wooden_barrel`, `palm_tree`, `rock_pile`) are **scene objects**
+    and keep the full 60° pitch. Rules 1–11 above (grid/scaling, palette cap, ramps, dither, 135°
     key light, outline/inner rim, contrast, footprints) are **unchanged** by the
     camera — they are screen-space or post-render. **2D-derived Tier B and Tier A are
     grandfathered** (no retro-fit); pre-baseline 3D bakes are re-baked per
