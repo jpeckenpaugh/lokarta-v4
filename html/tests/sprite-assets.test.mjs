@@ -276,7 +276,9 @@ test('Sprite assets', async t => {
     assert.equal(resolveSpriteId({ type: 'giant_rat' }), 'giant_rat');
     const ctx2 = makeFakeCtx();
     const geo = SpriteRenderer.drawActor(ctx2, { type: 'giant_rat', facing: 'left' }, 0, 0);
-    assert.ok(geo && geo.w === SPRITE_NATIVE * SpriteRenderer.scaleForSize(CONFIG.GRID_SIZE));
+    // LIV-151: giant_rat is a wide-short actor with a per-facing render extent, so
+    // a side-facing draw is ~2x its native tile scale (see liv151-facing-extent).
+    assert.ok(geo && geo.w === 2 * SPRITE_NATIVE * SpriteRenderer.scaleForSize(CONFIG.GRID_SIZE));
     assert.ok(ctx2.calls.some(c => c.name === 'fillRect'), 'pixel path drew via fillRect');
   });
 

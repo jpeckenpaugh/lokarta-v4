@@ -13,7 +13,7 @@
 import { CONFIG, TILE_TYPES } from '../engine/index.js';
 import { TILE_THEMES_CATALOG, VOCATIONS_CATALOG, CHESTS_CATALOG, MONSTERS_CATALOG, DEFAULT_TOWER_ID, getTowerDefinition, PROCEDURAL_SQUISH } from '../data/index.js';
 import { SPRITE_CATALOG, PROP_CATALOG, PROP_IDS_BY_TIER } from '../assets/sprites/index.js';
-import { resolveFrameDir, resolveFrameIndex, squishScaleFor } from './animation-state.js';
+import { resolveFrameDir, resolveFrameIndex, squishScaleFor, DIR8_ANGLE, normalizeDir8 } from './animation-state.js';
 
 // Minimal hairline guard so 1px strokes stay visible even if GRID_SIZE shrinks.
 const HAIRLINE = (u) => Math.max(1, u);
@@ -136,6 +136,71 @@ export function actorRenderBox(def, size = CONFIG.GRID_SIZE, renderScale = null)
   return {
     w: Math.round((size * bw) / HUMANOID_BOX_REF_TILE),
     h: Math.round((size * bh) / HUMANOID_BOX_REF_TILE),
+  };
+}
+
+/** Reference tile the per-facing render extents are authored against (default GRID_SIZE). */
+const FACING_BOX_REF_TILE = 64;
+
+/**
+ * Resolves a data-driven per-facing render extent for a wide-short actor
+ * (LIV-151). A rat is short but long (tail behind), so a single square box
+ * squishes it nose-to-tail when it faces left/right. The def authors
+ * `facingBox` as the box at the two extremes — `front` (front/back facing, e.g.
+ * down/up) and `side` (left/right facing) — each `{ w, h }` in px at the 64 px
+ * reference tile. Width/height interpolate between the two extremes by the
+ * facing angle's horizontal component (`|sin|`): 0 at front/back, 1 at side, so
+ * the four 45-degree diagonals land in between and the size eases as the actor
+ * turns instead of snapping.
+ *
+ * Pure and allocation-light; returns `null` for a def that authors no
+ * `facingBox`, leaving the LIV-142 humanoid box / legacy tile-scale path
+ * untouched. `renderScale` (LIV-145) then multiplies the result on each axis.
+ *
+ * @param {object} def
+ * @param {string} dir - canonical 8-dir (or legacy) facing
+ * @returns {{w:number,h:number}|null} extent in reference-tile px, or null
+ */
+export function facingExtentFor(def, dir) {
+  const fb = def && def.facingBox;
+  if (!fb) return null;
+  const front = fb.front || fb;
+  const side = fb.side || fb;
+  const angle = (DIR8_ANGLE[normalizeDir8(dir)] || 0) * (Math.PI / 180);
+  // Snap the endpoints so the cardinal faces are exactly front/back (t=0) or
+  // side (t=1) despite sin(pi) float drift; the interpolant stays smooth between.
+  let t = Math.abs(Math.sin(angle));
+  if (t < 1e-9) t = 0;
+  else if (t > 1 - 1e-9) t = 1;
+  const num = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d);
+  const fw = num(front.w, SPRITE_NATIVE);
+  const fh = num(front.h, SPRITE_NATIVE);
+  const sw = num(side.w, fw);
+  const sh = num(side.h, fh);
+  return { w: fw + (sw - fw) * t, h: fh + (sh - fh) * t };
+}
+
+/**
+ * Resolves a wide-short actor's display box in px for a resolved facing,
+ * or null when the def authors no `facingBox`. The reference-tile extent is
+ * scaled to the display `size` and multiplied by `renderScale`, matching
+ * `actorRenderBox`'s units so `drawActor` can blit with either. The caller keeps
+ * its centre-bottom anchor, so the box grows symmetrically about the tile centre
+ * and the feet stay on the tile — the sprite never jumps as it rotates.
+ * @param {object} def
+ * @param {number} [size]
+ * @param {{w:number,h:number}|number|string|null} [renderScale] resolved pair or raw spec
+ * @param {string} [dir]
+ * @returns {{w:number,h:number}|null}
+ */
+export function resolveFacingBox(def, size = CONFIG.GRID_SIZE, renderScale = null, dir = 'down') {
+  const extent = facingExtentFor(def, dir);
+  if (!extent) return null;
+  const sw = renderScaleMultiplier(renderScale, 'w');
+  const sh = renderScaleMultiplier(renderScale, 'h');
+  return {
+    w: Math.round((size * extent.w * sw) / FACING_BOX_REF_TILE),
+    h: Math.round((size * extent.h * sh) / FACING_BOX_REF_TILE),
   };
 }
 
@@ -1584,7 +1649,12 @@ export class SpriteRenderer {
     // `renderScale` multiplier (authored per NPC) scales that box on each axis;
     // the centre-bottom anchor, ground shadow and HP/quest anchors all track it.
     const renderScale = resolveRenderScale(actor);
-    const box = actorRenderBox(def, size, renderScale);
+    // LIV-151: a wide-short actor (rat-like) authors a per-facing extent so it
+    // renders wider side-on without squishing nose-to-tail. It takes precedence
+    // over the LIV-142 humanoid box when present, and the centre-bottom anchor
+    // below is unchanged, so the sprite stays put as the facing/width eases.
+    const facingDir = normalizeDir8((anim && anim.dir) || actor.facing);
+    const box = resolveFacingBox(def, size, renderScale, facingDir) || actorRenderBox(def, size, renderScale);
     const nw = box ? box.w : def.native.w * scale;
     const nh = box ? box.h : def.native.h * scale;
     const dx = Math.round(screenX + (size - nw) / 2);

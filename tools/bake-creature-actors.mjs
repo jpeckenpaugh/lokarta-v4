@@ -67,18 +67,28 @@ export const CREATURE_AMBIENT = 0.62;
 export const CREATURE_EXPOSURE = 1.28;
 
 /**
+ * Wide-short render extent (LIV-151) shared by the river creatures. They are
+ * long and low, so a single square box squishes them nose-to-tail side-on: the
+ * front/back box stays 64x64 while the side box doubles its width. Authored in
+ * reference-tile px and carried through the bake artifact -> runtime def, where
+ * the renderer interpolates between the two extremes by facing.
+ */
+export const CREATURE_FACING_BOX = { front: { w: 64, h: 64 }, side: { w: 128, h: 64 } };
+
+/**
  * The creature bake table (docs/art/3d-sprite-mapping.md §4.1). `movement` is
  * the one field the runtime integrator consumes: `static` -> idle-only (the
  * sessile ambusher class), `walking` -> idle + walk (the roaming chaser).
  */
 export const CREATURE_SPECS = [
-  { id: 'river_piranha', movement: 'static', glb: 'piranha_optimized.glb' },
-  { id: 'river_eel', movement: 'static', glb: 'river_eel_optimized.glb' },
+  { id: 'river_piranha', movement: 'static', glb: 'piranha_optimized.glb', facingBox: CREATURE_FACING_BOX },
+  { id: 'river_eel', movement: 'static', glb: 'river_eel_optimized.glb', facingBox: CREATURE_FACING_BOX },
   {
     id: 'river_rat',
     movement: 'walking',
     idleGlb: 'river_rat_static_optimized.glb',
     walkGlb: 'river_rat_walking_optimized.glb',
+    facingBox: CREATURE_FACING_BOX,
   },
 ];
 
@@ -188,6 +198,7 @@ export async function bakeStatic(spec, outDir = ARTIFACT_DIR) {
   }
   def.frames = renamed;
   def.movement = spec.movement;
+  if (spec.facingBox) def.facingBox = spec.facingBox;
   delete def.camera;
   fs.writeFileSync(artifact, JSON.stringify(def, null, 2) + '\n');
   return def;
@@ -246,6 +257,7 @@ export async function bakeWalking(spec, outDir = ARTIFACT_DIR) {
     native: { w: PX_PER_TILE, h: PX_PER_TILE },
     anchor: { x: Math.floor(PX_PER_TILE / 2), y: PX_PER_TILE - 2 },
     movement: spec.movement,
+    ...(spec.facingBox ? { facingBox: spec.facingBox } : {}),
   }, [idleRes.def, walkRes.def]);
 
   fs.mkdirSync(outDir, { recursive: true });

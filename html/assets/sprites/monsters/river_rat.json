@@ -12,6 +12,16 @@
     "x": 32,
     "y": 62
   },
+  "facingBox": {
+    "front": {
+      "w": 64,
+      "h": 64
+    },
+    "side": {
+      "w": 128,
+      "h": 64
+    }
+  },
   "quantize": {
     "method": "median-cut",
     "budget": 255

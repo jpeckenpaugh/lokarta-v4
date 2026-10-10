@@ -89,6 +89,7 @@ export function buildCreatureDef(id, dir = ARTIFACT_DIR) {
     ...(art.outline === false ? { outline: false } : {}),
     native: { ...art.native },
     anchor: { ...art.anchor },
+    ...(art.facingBox ? { facingBox: JSON.parse(JSON.stringify(art.facingBox)) } : {}),
     ...(art.quantize ? { quantize: { ...art.quantize } } : {}),
     palette: { ...art.palette },
     animations: JSON.parse(JSON.stringify(animations)),

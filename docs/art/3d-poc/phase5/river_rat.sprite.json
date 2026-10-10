@@ -15,6 +15,10 @@
     "y": 62
   },
   "movement": "walking",
+  "facingBox": {
+    "front": { "w": 64, "h": 64 },
+    "side": { "w": 128, "h": 64 }
+  },
   "palette": {
     ".": null,
     "!": "#282727",
