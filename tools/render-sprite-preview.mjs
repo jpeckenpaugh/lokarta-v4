@@ -47,7 +47,7 @@ function chunk(type, data) {
   crc.writeUInt32BE(crc32(Buffer.concat([t, data])), 0);
   return Buffer.concat([len, t, data, crc]);
 }
-function encodePNG(w, h, rgba) {
+export function encodePNG(w, h, rgba) {
   const stride = w * 4;
   const raw = Buffer.alloc((stride + 1) * h);
   for (let y = 0; y < h; y++) {
