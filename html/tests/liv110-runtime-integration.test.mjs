@@ -141,10 +141,10 @@ test('LIV-110 runtime integration of the 3D-baked assets', async (t) => {
     // Attack frames must show a draw/release lean.
     assert.notDeepEqual(archer.frames.attack_down_1, archer.frames.attack_down_0, 'attack release differs');
     assert.notDeepEqual(archer.frames.attack_down_1, archer.frames.attack_down_2, 'attack settle differs');
-    // Motion never changes geometry.
+    // Motion never changes geometry (LIV-121: the 3D-baked archer is 64-native).
     for (const fid of Object.keys(archer.frames)) {
-      assert.equal(archer.frames[fid].length, 32, `${fid} height`);
-      assert.ok(archer.frames[fid].every((r) => r.length === 32), `${fid} width`);
+      assert.equal(archer.frames[fid].length, 64, `${fid} height`);
+      assert.ok(archer.frames[fid].every((r) => r.length === 64), `${fid} width`);
     }
   });
 });

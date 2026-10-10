@@ -11,6 +11,7 @@ import {
   footprintFor,
   cropToContent,
 } from '../../tools/gltf-to-sprite.mjs';
+import { nativePerTile } from '../../tools/validate-sprite-def.mjs';
 
 // LIV-106: "32x32 is ONE tile". A large raster (e.g. 128x64) must be chopped
 // into a whole-tile canvas that aligns to the 32px native grid, NOT squished
@@ -87,7 +88,8 @@ test('LIV-106 multi-tile scale & chopping', async (t) => {
     const def = JSON.parse(fs.readFileSync(file, 'utf8'));
     assert.equal(def.kind, 'building');
     assert.deepEqual(def.tiles, { w: 2, h: 3 });
-    assert.deepEqual(def.native, tileCanvasSize(def.tiles), 'native px == tiles * 32');
+    // LIV-121: the 3D-baked hut is N64, so native == tiles * 64 (per-def tier).
+    assert.deepEqual(def.native, tileCanvasSize(def.tiles, nativePerTile(def)), 'native px == tiles * per-tile native');
     assert.equal(def.anchor.y, def.native.h - 2, 'anchor sits on the bottom tile edge');
     assert.equal(def.placement.mode, 'multi-tile-blit');
     assert.deepEqual(def.placement.footprint, footprintFor(0, 0, def.tiles));

@@ -153,10 +153,12 @@ export async function bakeRiggedArcher() {
   const glb = parseGLB(glbPath);
   const { bones, rest } = readRigBones(glb.json);
   const poseList = buildPoseList(bones, rest);
+  // LIV-121: actor size 32 -> 64 (N64, 1:1 at the default 64 px tile) and raise
+  // the render target so detail survives the downscale (art-direction.md §6.4).
   const res = await buildAnimatedAsset({
     glbPath, id: 'rukiya_archer_rigged', outDir: path.dirname(ARTIFACT),
-    clip: 'Walking', size: 32, rise: 8, tier: 'baked',
-    families: 6, steps: 4, poseList, renderRes: 512, write: false, rim: ARCHER_RIM,
+    clip: 'Walking', size: 64, rise: 8, tier: 'baked',
+    families: 6, steps: 4, poseList, renderRes: 1024, write: false, rim: ARCHER_RIM,
     ambient: ARCHER_AMBIENT, exposure: ARCHER_EXPOSURE, outline: false,
   });
   fs.writeFileSync(ARTIFACT, JSON.stringify(res.def, null, 2) + '\n');

@@ -29,6 +29,31 @@ export const ROOT = path.resolve(HERE, '..');
 /** Atomic tile: 32x32 native px == ONE tile (art-direction.md §1). */
 export const NATIVE_TILE = 32;
 /**
+ * Legal native densities (art-direction.md §6, LIV-121): hand-authored /
+ * 2D-derived art is 32 px per tile (N32); 3D-baked art is 64 px per tile (N64).
+ * A def's density is inferred per-def from `native.w / tiles.w` (multi-tile) or
+ * `native.w` (single-tile) so validators assert per-def/tier, never a global 32.
+ */
+export const NATIVE_TILES = [32, 64];
+
+/**
+ * The native px per tile of a def, inferred per-def. `64` for 3D-baked defs,
+ * `32` for N32. Returns the inferred integer when it is a legal density, else
+ * falls back to 32 so the caller's own mismatch check reports the real error.
+ */
+export function nativePerTile(def) {
+  const nw = def && def.native && def.native.w;
+  const nh = def && def.native && def.native.h;
+  const tw = def && def.tiles && def.tiles.w;
+  const th = def && def.tiles && def.tiles.h;
+  if (Number.isInteger(nw) && Number.isInteger(nh) && Number.isInteger(tw) && Number.isInteger(th) && tw > 0 && th > 0) {
+    if (nw % tw === 0 && nh % th === 0 && nw / tw === nh / th && NATIVE_TILES.includes(nw / tw)) return nw / tw;
+  } else if (Number.isInteger(nw) && NATIVE_TILES.includes(nw)) {
+    return nw;
+  }
+  return NATIVE_TILE;
+}
+/**
  * Allowed multi-tile footprint per axis. LIV-113 generalised the ceiling from
  * 4 (128px) to 16 (512px) so a large landmark such as the Havenreach longhouse
  * (12x4 tiles) fits ONE blitted bitmap through the existing footprint path. The
@@ -111,19 +136,24 @@ export function validateSpriteDef(def, { label = def && def.id } = {}) {
 
   if (isMultiTile(def)) {
     const t = def.tiles;
+    const pxPerTile = nativePerTile(def);
+    const maxPx = MULTI_TILE_MAX_TILES * pxPerTile;
     if (!t || !Number.isInteger(t.w) || !Number.isInteger(t.h) || t.w < 1 || t.h < 1) {
       push('tiles must be positive integers {w,h}');
     } else {
       if (t.w > MULTI_TILE_MAX_TILES || t.h > MULTI_TILE_MAX_TILES) {
         push(`tiles ${t.w}x${t.h} exceeds ${MULTI_TILE_MAX_TILES}x${MULTI_TILE_MAX_TILES}`);
       }
-      if (nativeOk && (native.w !== t.w * NATIVE_TILE || native.h !== t.h * NATIVE_TILE)) {
-        push(`native ${native.w}x${native.h} != tiles ${t.w}x${t.h} * ${NATIVE_TILE}`);
+      if (!NATIVE_TILES.includes(pxPerTile)) {
+        push(`native ${native.w}x${native.h} over tiles ${t.w}x${t.h} is ${pxPerTile} px/tile; expected ${NATIVE_TILES.join(' or ')}`);
+      }
+      if (nativeOk && (native.w !== t.w * pxPerTile || native.h !== t.h * pxPerTile)) {
+        push(`native ${native.w}x${native.h} != tiles ${t.w}x${t.h} * ${pxPerTile}px/tile`);
       }
     }
     if (nativeOk) {
-      if (native.w % NATIVE_TILE !== 0 || native.h % NATIVE_TILE !== 0) push(`native ${native.w}x${native.h} not a multiple of ${NATIVE_TILE}`);
-      if (native.w > MULTI_TILE_MAX_PX || native.h > MULTI_TILE_MAX_PX) push(`native ${native.w}x${native.h} exceeds ${MULTI_TILE_MAX_PX}x${MULTI_TILE_MAX_PX}`);
+      if (native.w % pxPerTile !== 0 || native.h % pxPerTile !== 0) push(`native ${native.w}x${native.h} not a multiple of ${pxPerTile}`);
+      if (native.w > maxPx || native.h > maxPx) push(`native ${native.w}x${native.h} exceeds ${maxPx}x${maxPx}`);
     }
     const a = def.anchor;
     if (!a || !Number.isInteger(a.x) || !Number.isInteger(a.y)) push('anchor must be integer {x,y}');
@@ -135,7 +165,7 @@ export function validateSpriteDef(def, { label = def && def.id } = {}) {
     if (!span) push('placement.footprint must be [x0,y0,x1,y1]');
     else if (t && Number.isInteger(t.w) && Number.isInteger(t.h)) {
       // The LIV-107 assertion: canvas tile span must equal the footprint span.
-      if ((native.w / NATIVE_TILE) * (native.h / NATIVE_TILE) !== span[0] * span[1] || span[0] !== t.w || span[1] !== t.h) {
+      if ((native.w / pxPerTile) * (native.h / pxPerTile) !== span[0] * span[1] || span[0] !== t.w || span[1] !== t.h) {
         push(`footprint span ${span[0]}x${span[1]} != tiles ${t.w}x${t.h}`);
       }
     }

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { render, chopToTileCanvas, tileCanvasSize } from '../../tools/gltf-to-sprite.mjs';
+import { nativePerTile } from '../../tools/validate-sprite-def.mjs';
 import { BUILDING_CATALOG } from '../assets/sprites/index.js';
 import { getTownDefinition, DEFAULT_TOWN_ID } from '../data/index.js';
 
@@ -104,14 +105,16 @@ test('LIV-114 stretch — side-view fisher huts fill a 4-tile-wide canvas', asyn
     assert.equal(opaqueAt(stretched, Math.floor(cw / 2), ch - 1), true);
   });
 
-  await t.test('2. the side-facing hut defs are 4 tiles wide (128x96), annotated stretchX', () => {
+  await t.test('2. the side-facing hut defs are 4 tiles wide (256x192 N64), annotated stretchX', () => {
     for (const id of ['fishing_hut_left', 'fishing_hut_right']) {
       const def = BUILDING_CATALOG[id];
       assert.ok(def, `${id} registered`);
       assert.deepEqual(def.tiles, { w: 4, h: 3 }, `${id} is 4x3 tiles`);
-      assert.deepEqual(def.native, { w: 128, h: 96 }, `${id} native is 4x3 * 32`);
+      // LIV-121: 3D-baked huts are N64, so 4x3 is 256x192 native.
+      assert.equal(nativePerTile(def), 64, `${id} is 3D-baked N64`);
+      assert.deepEqual(def.native, { w: 256, h: 192 }, `${id} native is 4x3 * 64`);
       assert.match(def.method, /stretchX/, `${id} records the horizontal stretch`);
-      assert.deepEqual(tileCanvasSize(def.tiles), def.native);
+      assert.deepEqual(tileCanvasSize(def.tiles, nativePerTile(def)), def.native);
     }
   });
 

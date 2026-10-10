@@ -17,6 +17,7 @@ import {
   paletteCapFor,
   resolveRenderTier,
   footprintSpan,
+  nativePerTile,
   NATIVE_TILE,
 } from '../../tools/validate-sprite-def.mjs';
 import { PROOF_PAIRS, exportProof } from '../../tools/render-tierb-proof.mjs';
@@ -89,12 +90,14 @@ test('LIV-109 Tier B baked Phase 1', async (t) => {
     }
   });
 
-  await t.test('3. hut is a 2x3 (64x96) multi-tile building on the footprint contract', () => {
+  await t.test('3. hut is a 2x3 (128x192) multi-tile N64 building on the footprint contract', () => {
     const def = readDef(HUT_BAKED);
     assert.equal(def.kind, 'building');
     assert.deepEqual(def.tiles, { w: 2, h: 3 });
-    assert.deepEqual(def.native, tileCanvasSize(def.tiles));
-    assert.deepEqual(def.native, { w: 64, h: 96 });
+    // LIV-121: the 3D-baked hut is 64 px/tile (1:1 at the default 64 px tile).
+    assert.equal(nativePerTile(def), 64);
+    assert.deepEqual(def.native, tileCanvasSize(def.tiles, nativePerTile(def)));
+    assert.deepEqual(def.native, { w: 128, h: 192 });
     assert.equal(def.placement.mode, 'multi-tile-blit');
     assert.deepEqual(def.placement.footprint, footprintFor(0, 0, def.tiles));
     assert.deepEqual(footprintSpan(def.placement.footprint), [2, 3]);
@@ -106,7 +109,10 @@ test('LIV-109 Tier B baked Phase 1', async (t) => {
     assert.equal(NATIVE_TILE, 32);
   });
 
-  await t.test('4. archer is a single-tile 32x32 baked actor', () => {
+  // The Phase 1 static proof artifact (`rukiya_archer_baked`) is a historical
+  // 32-native baseline for the flat-vs-baked read; the LIVE archer (`archer.json`,
+  // integrated from `rukiya_archer_rigged`) is N64 and covered by LIV-111.
+  await t.test('4. archer Phase 1 proof artifact stays a single-tile 32x32 baked actor', () => {
     const def = readDef(ARCHER_BAKED);
     assert.equal(def.kind, 'actor');
     assert.deepEqual(def.native, { w: 32, h: 32 });

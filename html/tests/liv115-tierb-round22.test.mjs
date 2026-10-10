@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { tileCanvasSize } from '../../tools/gltf-to-sprite.mjs';
+import { nativePerTile } from '../../tools/validate-sprite-def.mjs';
 import { BUILDING_CATALOG, PROP_CATALOG, SPRITE_CATALOG } from '../assets/sprites/index.js';
 import { getTownDefinition, DEFAULT_TOWN_ID } from '../data/index.js';
 import { composeSceneById } from '../services/scene-composer.js';
@@ -127,7 +128,7 @@ test('LIV-115 fix 3 — side huts frame the full model with margin on every edge
     for (const silhouette of ['fishing_hut_left', 'fishing_hut_right']) {
       const def = BUILDING_CATALOG[silhouette];
       assert.match(def.method, /stretchX/, `${silhouette} still stretches width`);
-      assert.deepEqual(tileCanvasSize(def.tiles), def.native);
+      assert.deepEqual(tileCanvasSize(def.tiles, nativePerTile(def)), def.native);
       const b = town.buildings.find((x) => x.silhouette === silhouette);
       assert.ok(b, `${silhouette} placed`);
       assert.deepEqual([b.footprint[2] - b.footprint[0] + 1, b.footprint[3] - b.footprint[1] + 1], [4, 3]);
@@ -141,13 +142,15 @@ test('LIV-115 fix 4 — nets render 2x1 / 1x2 by orientation', async (t) => {
     const v = PROP_CATALOG.prop_fishers_net_vertical;
     assert.ok(h && v, 'both net orientations registered');
     assert.deepEqual(h.tiles, { w: 2, h: 1 }, 'horizontal net is 2x1');
-    assert.deepEqual(h.native, { w: 64, h: 32 });
+    // LIV-121: the 3D-baked nets are N64, so 2x1 is 128x64 and 1x2 is 64x128.
+    assert.deepEqual(h.native, { w: 128, h: 64 });
     assert.deepEqual(v.tiles, { w: 1, h: 2 }, 'vertical net is 1x2');
-    assert.deepEqual(v.native, { w: 32, h: 64 });
+    assert.deepEqual(v.native, { w: 64, h: 128 });
     for (const def of [h, v]) {
       assert.equal(def.renderTier, 'baked');
+      assert.equal(nativePerTile(def), 64, 'N64 net');
       assert.equal(def.outline, false, 'nets drop the outline too');
-      assert.deepEqual(tileCanvasSize(def.tiles), def.native);
+      assert.deepEqual(tileCanvasSize(def.tiles, nativePerTile(def)), def.native);
     }
     // Face-on views live in the horizontal def; edge-on views in the vertical.
     assert.ok(h.frames.view_0 && h.frames.view_180, 'horizontal net bakes face-on views');

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   validateSpriteDef,
   validateMultiTileDef,
+  nativePerTile,
 } from '../../tools/validate-sprite-def.mjs';
 import { tileCanvasSize } from '../../tools/gltf-to-sprite.mjs';
 import { BUILDING_CATALOG, PROP_CATALOG } from '../assets/sprites/index.js';
@@ -28,13 +29,15 @@ test('LIV-113 fisher assets — longhouse, fishers house, fishers net', async (t
       assert.ok(Object.keys(def.palette).length <= 32, `${id} respects the baked palette cap`);
       assert.deepEqual(validateSpriteDef(def, { label: id }).errors, [], `${id} passes the sprite schema`);
       assert.deepEqual(validateMultiTileDef(def, { label: id }).errors, [], `${id} passes the multi-tile validator`);
-      assert.deepEqual(tileCanvasSize(def.tiles), def.native, `${id} native == tiles * 32`);
+      assert.equal(nativePerTile(def), 64, `${id} is 3D-baked N64`);
+      assert.deepEqual(tileCanvasSize(def.tiles, nativePerTile(def)), def.native, `${id} native == tiles * 64`);
       assert.match(def.source, /_optimized\.glb/, `${id} baked from a provided GLB`);
     }
     // The board asked for the longhouse ~6x12; the projection is ~2.8:1, so the
     // aspect-correct whole-tile multiple at the requested 12-tile width is 12x4.
+    // LIV-121: at N64 that is 768x256 native (12*64 x 4*64).
     assert.deepEqual(BUILDING_CATALOG.longhouse.tiles, { w: 12, h: 4 });
-    assert.deepEqual(BUILDING_CATALOG.longhouse.native, { w: 384, h: 128 });
+    assert.deepEqual(BUILDING_CATALOG.longhouse.native, { w: 768, h: 256 });
   });
 
   await t.test('2. longhouse is placed center-top, front-facing (replaces the middle hut)', () => {

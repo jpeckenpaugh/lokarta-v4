@@ -23,6 +23,53 @@ export const OUTLINE_COLOR = '#0b0d12';
 export const HIT_TINT = '#ff4d4d';
 export const TOWER_LEVEL_COUNT = 5;
 
+/**
+ * Data-driven ground-shadow style defaults (art-direction.md §7, LIV-120). A
+ * sprite def may override any field via `groundShadow`; the renderer derives the
+ * shadow from the actor's own per-frame alpha mask, so no separate shadow art is
+ * authored. Used by Tier A and Tier B alike; the procedural fallback uses
+ * `shape:"ellipse"` when no frame mask exists.
+ */
+export const GROUND_SHADOW_DEFAULTS = {
+  enabled: true,
+  shape: 'silhouette',
+  color: '#0a0d16',
+  alpha: 0.45,
+  squashY: 0.34,
+  offset: { x: 0.05, y: 0.02 },
+};
+
+/** Resolves a def's ground-shadow style over the shared defaults (never throws). */
+export function groundShadowStyle(def) {
+  const d = GROUND_SHADOW_DEFAULTS;
+  const s = (def && def.groundShadow) || {};
+  const off = s.offset || d.offset;
+  return {
+    enabled: s.enabled !== false,
+    shape: s.shape || d.shape,
+    color: s.color || d.color,
+    alpha: Number.isFinite(Number(s.alpha)) ? Number(s.alpha) : d.alpha,
+    squashY: Number.isFinite(Number(s.squashY)) ? Number(s.squashY) : d.squashY,
+    offset: {
+      x: Number.isFinite(Number(off.x)) ? Number(off.x) : d.offset.x,
+      y: Number.isFinite(Number(off.y)) ? Number(off.y) : d.offset.y,
+    },
+  };
+}
+
+/**
+ * The atomic native tile size of a def, in native px. A single-tile def's atomic
+ * tile is its whole canvas (`native.w`); a multi-tile def's is `native.w / tiles.w`
+ * (e.g. a 2×1 net authored 128×64 has a 64 px atomic tile, N64). This is what the
+ * native-aware display scale divides the display tile by.
+ */
+export function atomicNative(def) {
+  const nw = (def && def.native && def.native.w) || SPRITE_NATIVE;
+  const tw = def && def.tiles && def.tiles.w;
+  if (Number.isFinite(tw) && tw > 0) return nw / tw;
+  return nw;
+}
+
 /** Chest tier fallback tints (used only when the authored prop is missing). */
 const TIER_TINTS = {
   copper: { light: '#e8a86a', dark: '#7a4a1e' },
@@ -233,11 +280,12 @@ export function resolvePropId(item) {
  */
 function drawPropFrame(ctx, def, frameId, dx, dy, size) {
   if (!def || !def.frames || !def.frames[frameId] || !def.palette) return false;
-  // LIV-115 (Fix 4): derive the blit scale from the ATOMIC tile (32 native px),
-  // not the def's width. A multi-tile prop (e.g. a 2x1 net = 64 native px) then
-  // blits at the engine SCALE across its whole canvas instead of collapsing to
-  // one tile; single-tile props are unchanged (64 / 32 == 2).
-  const scale = Math.max(1, Math.floor(size / SPRITE_NATIVE));
+  // LIV-115 (Fix 4) / LIV-121: derive the blit scale from the def's ATOMIC native
+  // tile, not its canvas width. A multi-tile prop (e.g. a 2x1 net = 64 native px
+  // per tile at N64) then blits its whole canvas at the engine SCALE instead of
+  // collapsing to one tile; single-tile N32 props are unchanged (64 / 32 == 2),
+  // and an N64 prop renders 1:1 (64 / 64 == 1).
+  const scale = SpriteRenderer.scaleForSize(size, atomicNative(def));
   const canvas = getFrameCanvas(def, frameId, scale, false, null);
   if (canvas && typeof ctx.drawImage === 'function') {
     if ('imageSmoothingEnabled' in ctx) ctx.imageSmoothingEnabled = false;
@@ -1155,6 +1203,66 @@ function getFrameCanvas(def, frameId, scale, flipX, tint) {
   return canvas;
 }
 
+/* ---- Per-frame silhouette ground shadow (art-direction.md §7, LIV-121) ---- */
+
+const _shadowCache = new Map();
+
+/**
+ * Builds the native-resolution squashed ground-shadow mask for one frame: the
+ * frame's own opaque pixels compressed vertically about the bottom (ground) edge
+ * by `style.squashY`, tinted to `style.color`. The result stays in the def's
+ * native space (bottom row == ground edge); `renderShadowPixels` then applies the
+ * display scale + mirror. Pure + deterministic (unit-testable). Returns
+ * `{ w, h, data }` or null when the frame is missing.
+ */
+export function buildShadowMask(def, frameId, style = groundShadowStyle(def)) {
+  const rows = def && def.frames && def.frames[frameId];
+  if (!rows) return null;
+  const src = parseFrame(rows, def.palette);
+  const { w, h, data } = src;
+  if (w <= 0 || h <= 0) return null;
+  const squash = Math.max(0.01, Math.min(1, style.squashY));
+  const bandH = Math.max(1, Math.round(h * squash));
+  const base = h - 1;
+  const [sr, sg, sb] = hexToRgb(style.color);
+  const shadow = new Uint8ClampedArray(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    const rel = h <= 1 ? 0 : y / (h - 1);
+    const ny = base - Math.round((1 - rel) * (bandH - 1));
+    const drow = ny * w * 4;
+    const srow = y * w * 4;
+    for (let x = 0; x < w; x++) {
+      if (data[srow + x * 4 + 3] === 0) continue;
+      const di = drow + x * 4;
+      shadow[di] = sr; shadow[di + 1] = sg; shadow[di + 2] = sb; shadow[di + 3] = 255;
+    }
+  }
+  return { w, h, data: shadow };
+}
+
+/** Scales + mirrors a native shadow mask to the sprite's display canvas space. */
+function renderShadowPixels(def, frameId, scale, flipX, style) {
+  const mask = buildShadowMask(def, frameId, style);
+  if (!mask) return null;
+  return scalePixels(mask, scale, flipX);
+}
+
+function getShadowCanvas(def, frameId, scale, flipX, style) {
+  const key = `shadow|${def.id}|${frameId}|${scale}|${flipX ? 1 : 0}|${style.color}|${style.squashY}`;
+  if (_shadowCache.has(key)) return _shadowCache.get(key);
+  const pixels = renderShadowPixels(def, frameId, scale, flipX, style);
+  if (!pixels) { _shadowCache.set(key, null); return null; }
+  const canvas = createCanvas(pixels.w, pixels.h);
+  if (!canvas) { _shadowCache.set(key, null); return null; }
+  const cctx = canvas.getContext('2d');
+  if (!cctx) { _shadowCache.set(key, null); return null; }
+  const img = cctx.createImageData(pixels.w, pixels.h);
+  img.data.set(pixels.data);
+  cctx.putImageData(img, 0, 0);
+  _shadowCache.set(key, canvas);
+  return canvas;
+}
+
 function drawPixels(ctx, pixels, dx, dy, scale) {
   for (let y = 0; y < pixels.h; y += scale) {
     for (let x = 0; x < pixels.w; x += scale) {
@@ -1237,8 +1345,16 @@ export class SpriteRenderer {
     ctx.fillText(`${item.quantity}`, screenX + size - 2 * u, screenY + size - 3 * u);
   }
 
-  static scaleForSize(size = CONFIG.GRID_SIZE) {
-    return Math.max(1, Math.floor(size / SPRITE_NATIVE));
+  /**
+   * Native-aware display scale (art-direction.md §6, LIV-121): the largest integer
+   * scale that fits the def's atomic native tile into the display tile. A 64-native
+   * (N64, 3D-baked) sprite is 1:1 at the default 64 px tile; a 32-native (N32)
+   * sprite keeps its ×2 path. `native` defaults to N32 so every legacy caller that
+   * omits it is byte-for-byte unchanged.
+   */
+  static scaleForSize(size = CONFIG.GRID_SIZE, native = SPRITE_NATIVE) {
+    const n = Number(native) || SPRITE_NATIVE;
+    return Math.max(1, Math.floor(size / n));
   }
 
   /**
@@ -1333,7 +1449,9 @@ export class SpriteRenderer {
     if (!id) return null;
     const def = SPRITE_CATALOG[id];
     const size = opts.size || CONFIG.GRID_SIZE;
-    const scale = SpriteRenderer.scaleForSize(size);
+    // Native-aware: a 64-native (N64) sprite renders 1:1 at the default 64 px
+    // tile; a 32-native (N32) sprite keeps its ×2 path (art-direction.md §6).
+    const scale = SpriteRenderer.scaleForSize(size, def.native.w);
     if (!Number.isInteger(scale) || scale < 1) return null;
 
     const reduced = prefersReducedMotion();
@@ -1346,17 +1464,12 @@ export class SpriteRenderer {
     const dx = Math.round(screenX + (size - nw) / 2);
     const dy = screenY + size - nh;
 
-    // Ground contact shadow (shared across all actors).
-    ctx.save();
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.beginPath();
-    ctx.ellipse(screenX + size / 2, screenY + size * 0.82, size / 3, size / 6, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
     const dim = typeof opts.dim === 'number' ? opts.dim : 1;
     ctx.save();
-    if (dim !== 1) ctx.globalAlpha = Math.max(0, Math.min(1, dim));
+    // Preserve the caller's alpha when no dim is given (legacy behaviour); a dim
+    // overrides it, exactly as before the shadow was added.
+    const spriteAlpha = dim !== 1 ? Math.max(0, Math.min(1, dim)) : ctx.globalAlpha;
+    if (dim !== 1) ctx.globalAlpha = spriteAlpha;
 
     // Hit feedback: a static tint under reduced motion, otherwise the same tint
     // baked into the frame (no per-frame shake, no alpha edge fades). An explicit
@@ -1382,12 +1495,32 @@ export class SpriteRenderer {
       drawY = dy - pivotY;
     }
 
-    const canvas = getFrameCanvas(def, frameId, scale, dir === 'side' && !!anim?.flipX, tint);
+    // Per-frame silhouette ground shadow (art-direction.md §7): the actor's own
+    // alpha mask, squashed toward the ground edge and offset toward the key-light
+    // bounce, drawn UNDER the sprite in the same layer. Data-driven style via
+    // `def.groundShadow`; cached per (def, frame, scale, flip) so the hot path
+    // stays allocation-free.
+    const flip = dir === 'side' && !!anim?.flipX;
+    const style = groundShadowStyle(def);
+    if (style.enabled && typeof ctx.drawImage === 'function') {
+      const shadow = getShadowCanvas(def, frameId, scale, flip, style);
+      if (shadow) {
+        const offNative = size / scale;
+        const offX = Math.round(style.offset.x * offNative);
+        const offY = Math.round(style.offset.y * offNative);
+        ctx.globalAlpha = Math.max(0, Math.min(1, spriteAlpha * style.alpha));
+        if ('imageSmoothingEnabled' in ctx) ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(shadow, drawX + offX, drawY + offY);
+        ctx.globalAlpha = spriteAlpha;
+      }
+    }
+
+    const canvas = getFrameCanvas(def, frameId, scale, flip, tint);
     if (canvas && typeof ctx.drawImage === 'function') {
       if ('imageSmoothingEnabled' in ctx) ctx.imageSmoothingEnabled = false;
       ctx.drawImage(canvas, drawX, drawY);
     } else {
-      const pixels = renderFramePixels(def, frameId, scale, dir === 'side' && !!anim?.flipX, tint);
+      const pixels = renderFramePixels(def, frameId, scale, flip, tint);
       if (!pixels) { ctx.restore(); return null; }
       if (typeof ctx.fillRect === 'function') drawPixels(ctx, pixels, drawX, drawY, scale);
     }
@@ -1406,11 +1539,23 @@ export class SpriteRenderer {
     const geo = SpriteRenderer.drawActor(ctx, player, screenX, screenY, { size, ...opts });
 
     if (!geo) {
-      // Procedural fallback (pre-sprite renderer).
-      ctx.fillStyle = 'rgba(0,0,0,0.4)';
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + size / 3, size / 3, size / 6, 0, 0, Math.PI * 2);
-      ctx.fill();
+      // Procedural fallback (pre-sprite renderer). Routed through the same
+      // ground-shadow style (art-direction.md §7.1.6) so tone/squash/offset match
+      // the silhouette path; `shape:"ellipse"` when no frame mask exists.
+      const style = groundShadowStyle(null);
+      if (style.enabled) {
+        const offX = style.offset.x * size;
+        const offY = style.offset.y * size;
+        const rx = 0.28 * size;
+        const ry = 0.14 * size;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, style.alpha * (typeof opts.dim === 'number' ? opts.dim : 1)));
+        ctx.fillStyle = style.color;
+        ctx.beginPath();
+        ctx.ellipse(cx + offX, cy + size / 2 - ry + offY, rx, ry, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
 
       const vocKey = player.vocation || 'magician';
       const vocData = VOCATIONS_CATALOG[vocKey] || VOCATIONS_CATALOG.magician;

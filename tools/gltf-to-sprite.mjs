@@ -626,11 +626,11 @@ export function cropToContent(sprite) {
  * tiles tall. `{ tiles: { w: 4, h: 2 } }` -> `{ w: 128, h: 64 }`. This is the
  * ONLY place a tile count becomes pixels; callers never hardcode 128/64.
  */
-export function tileCanvasSize(tiles) {
+export function tileCanvasSize(tiles, pxPerTile = NATIVE_TILE) {
   if (!tiles || !Number.isInteger(tiles.w) || !Number.isInteger(tiles.h) || tiles.w < 1 || tiles.h < 1) {
     throw new Error(`tiles must be positive integers, got ${JSON.stringify(tiles)}`);
   }
-  return { w: tiles.w * NATIVE_TILE, h: tiles.h * NATIVE_TILE };
+  return { w: tiles.w * pxPerTile, h: tiles.h * pxPerTile };
 }
 
 /**
@@ -645,8 +645,8 @@ export function tileCanvasSize(tiles) {
  * Returns `{ w, h, rgba, fit, offset, tiles }` where `fit` is the fitted render
  * box and `offset` its top-left placement inside the tile canvas.
  */
-export function chopToTileCanvas(sprite, tiles, { align = 'bottom', anchor = 'center', stretchX = false, margin = 0 } = {}) {
-  const { w: cw, h: ch } = tileCanvasSize(tiles);
+export function chopToTileCanvas(sprite, tiles, { align = 'bottom', anchor = 'center', stretchX = false, margin = 0, pxPerTile = NATIVE_TILE } = {}) {
+  const { w: cw, h: ch } = tileCanvasSize(tiles, pxPerTile);
   // LIV-115 (Fix 3) "zoom to all": reserve `margin` native px on EVERY edge
   // BEFORE any horizontal stretch, so the full projected silhouette (all poses)
   // is framed inside the multi-tile canvas and can never be truncated by camera
@@ -681,16 +681,16 @@ export function chopToTileCanvas(sprite, tiles, { align = 'bottom', anchor = 'ce
  * engine itself keeps the single bitmap; this is authoring/verification only.
  * Returns `[{ tx, ty, rgba }]`.
  */
-export function tileSlices(sprite, tiles) {
-  const { w: cw } = tileCanvasSize(tiles);
+export function tileSlices(sprite, tiles, pxPerTile = NATIVE_TILE) {
+  const { w: cw } = tileCanvasSize(tiles, pxPerTile);
   const slices = [];
   for (let ty = 0; ty < tiles.h; ty++) for (let tx = 0; tx < tiles.w; tx++) {
-    const rgba = new Float32Array(NATIVE_TILE * NATIVE_TILE * 4);
-    for (let y = 0; y < NATIVE_TILE; y++) {
-      const src = ((ty * NATIVE_TILE + y) * cw + tx * NATIVE_TILE) * 4;
-      rgba.set(sprite.rgba.subarray(src, src + NATIVE_TILE * 4), y * NATIVE_TILE * 4);
+    const rgba = new Float32Array(pxPerTile * pxPerTile * 4);
+    for (let y = 0; y < pxPerTile; y++) {
+      const src = ((ty * pxPerTile + y) * cw + tx * pxPerTile) * 4;
+      rgba.set(sprite.rgba.subarray(src, src + pxPerTile * 4), y * pxPerTile * 4);
     }
-    slices.push({ tx, ty, rgba });
+    slices.push({ tx, ty, rgba, size: pxPerTile });
   }
   return slices;
 }
@@ -731,7 +731,7 @@ function sheet(rgbaTiles, size, scale, bg = [10, 11, 14, 255], pad = 4, cols = n
  * grid overlay (1px cyan lines every NATIVE_TILE px) so a reviewer can see the
  * raster align to 32px tiles. Neutral background under transparent pixels.
  */
-function gridSheet(sprite, scale, bg = [10, 11, 14, 255]) {
+function gridSheet(sprite, scale, bg = [10, 11, 14, 255], pxPerTile = NATIVE_TILE) {
   const W = sprite.w * scale, H = sprite.h * scale; const buf = Buffer.alloc(W * H * 4);
   for (let i = 0; i < W * H; i++) { buf[i * 4] = bg[0]; buf[i * 4 + 1] = bg[1]; buf[i * 4 + 2] = bg[2]; buf[i * 4 + 3] = bg[3]; }
   for (let y = 0; y < sprite.h; y++) for (let x = 0; x < sprite.w; x++) {
@@ -744,9 +744,9 @@ function gridSheet(sprite, scale, bg = [10, 11, 14, 255]) {
       buf[di + 3] = 255;
     }
   }
-  // Native tile-boundary lines (every NATIVE_TILE native px == one tile edge).
-  for (let tx = 1; tx < sprite.w / NATIVE_TILE; tx++) for (let y = 0; y < H; y++) { const di = (y * W + tx * NATIVE_TILE * scale) * 4; buf[di] = 40; buf[di + 1] = 200; buf[di + 2] = 220; buf[di + 3] = 255; }
-  for (let ty = 1; ty < sprite.h / NATIVE_TILE; ty++) for (let x = 0; x < W; x++) { const di = ((ty * NATIVE_TILE * scale) * W + x) * 4; buf[di] = 40; buf[di + 1] = 200; buf[di + 2] = 220; buf[di + 3] = 255; }
+  // Native tile-boundary lines (every pxPerTile native px == one tile edge).
+  for (let tx = 1; tx < sprite.w / pxPerTile; tx++) for (let y = 0; y < H; y++) { const di = (y * W + tx * pxPerTile * scale) * 4; buf[di] = 40; buf[di + 1] = 200; buf[di + 2] = 220; buf[di + 3] = 255; }
+  for (let ty = 1; ty < sprite.h / pxPerTile; ty++) for (let x = 0; x < W; x++) { const di = ((ty * pxPerTile * scale) * W + x) * 4; buf[di] = 40; buf[di + 1] = 200; buf[di + 2] = 220; buf[di + 3] = 255; }
   return { w: W, h: H, buf };
 }
 
@@ -755,13 +755,14 @@ function gridSheet(sprite, scale, bg = [10, 11, 14, 255]) {
  * each upscaled `scale`x, so the decomposition into whole tiles is visible.
  */
 function chopSheet(slices, scale, bg = [10, 11, 14, 255], pad = 6) {
-  const tile = NATIVE_TILE * scale; const n = slices.length;
+  const tileSize = (slices[0] && slices[0].size) || NATIVE_TILE;
+  const tile = tileSize * scale; const n = slices.length;
   const W = n * (tile + pad) + pad, H = tile + pad * 2; const buf = Buffer.alloc(W * H * 4);
   for (let i = 0; i < W * H; i++) { buf[i * 4] = bg[0]; buf[i * 4 + 1] = bg[1]; buf[i * 4 + 2] = bg[2]; buf[i * 4 + 3] = bg[3]; }
   slices.forEach((s, i) => {
     const ox = i * (tile + pad) + pad, oy = pad;
-    for (let y = 0; y < NATIVE_TILE; y++) for (let x = 0; x < NATIVE_TILE; x++) {
-      const si = (y * NATIVE_TILE + x) * 4, a = s.rgba[si + 3] / 255;
+    for (let y = 0; y < tileSize; y++) for (let x = 0; x < tileSize; x++) {
+      const si = (y * tileSize + x) * 4, a = s.rgba[si + 3] / 255;
       for (let dy = 0; dy < scale; dy++) for (let dx = 0; dx < scale; dx++) {
         const di = ((oy + y * scale + dy) * W + (ox + x * scale + dx)) * 4;
         buf[di] = Math.round(s.rgba[si] * a + bg[0] * (1 - a));
@@ -774,7 +775,7 @@ function chopSheet(slices, scale, bg = [10, 11, 14, 255], pad = 6) {
   return { w: W, h: H, buf };
 }
 
-export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 90, 180, 270], colors = 14, rise = 10, flat = false, renderRes = 512, tiles = null, kind = null, tier = 'indexed', families = 6, steps = 4, stretchX = false, margin = 0, outline = tier !== 'baked' }) {
+export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 90, 180, 270], colors = 14, rise = 10, flat = false, renderRes = 512, tiles = null, kind = null, tier = 'indexed', families = 6, steps = 4, stretchX = false, margin = 0, outline = tier !== 'baked', pxPerTile = NATIVE_TILE }) {
   const baked = tier === 'baked';
   const glb = parseGLB(glbPath);
   const tex = flat ? null : await loadBaseColor(glb, glb.json.meshes[0].primitives[0].material);
@@ -787,7 +788,7 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
     // Single-tile classes box-downscale the whole render into ONE 32x32 tile.
     // Multi-tile buildings CHOP the render into a whole-tile canvas instead of
     // squishing it into a single tile (LIV-106).
-    viewPix.push({ az, px: multiTile ? chopToTileCanvas(cropToContent(hi), tiles, { stretchX, margin }) : downscale(hi, size, size) });
+    viewPix.push({ az, px: multiTile ? chopToTileCanvas(cropToContent(hi), tiles, { stretchX, margin, pxPerTile }) : downscale(hi, size, size) });
   }
   const all = [];
   for (const v of viewPix) for (let i = 0; i < v.px.w * v.px.h; i++) if (v.px.rgba[i * 4 + 3] > 128) all.push([v.px.rgba[i * 4], v.px.rgba[i * 4 + 1], v.px.rgba[i * 4 + 2]]);
@@ -818,7 +819,7 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
     }
     frameRgba.push({ w: vw, h: vh, rgba: new Float32Array(rgba) });
   }
-  const canvas = multiTile ? tileCanvasSize(tiles) : null;
+  const canvas = multiTile ? tileCanvasSize(tiles, pxPerTile) : null;
   fs.mkdirSync(outDir, { recursive: true });
   const outlineNote = outline ? '1px outline' : 'no outline (Tier B)';
   const pipeline = baked
@@ -830,10 +831,10 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
     ...(outline ? {} : { outline: false }),
     source: `${path.basename(glbPath)} (glTF-Transform ${glb.json.asset && glb.json.asset.generator})`,
     method: multiTile
-      ? `ortho-software-raster@${renderRes} -> chop-to-tile-canvas(${tiles.w}x${tiles.h}${stretchX ? ', stretchX' : ''}${margin ? `, margin ${margin}` : ''}) -> ${pipeline}`
+      ? `ortho-software-raster@${renderRes} -> chop-to-tile-canvas(${tiles.w}x${tiles.h}@${pxPerTile}px${stretchX ? ', stretchX' : ''}${margin ? `, margin ${margin}` : ''}) -> ${pipeline}`
       : `ortho-software-raster@${renderRes} -> ${size}px box-downscale -> ${pipeline}`,
-    native: multiTile ? { w: tiles.w * NATIVE_TILE, h: tiles.h * NATIVE_TILE } : { w: size, h: size },
-    anchor: multiTile ? { x: Math.floor((tiles.w * NATIVE_TILE) / 2), y: tiles.h * NATIVE_TILE - 2 } : { x: Math.floor(size / 2), y: size - 2 },
+    native: multiTile ? { w: tiles.w * pxPerTile, h: tiles.h * pxPerTile } : { w: size, h: size },
+    anchor: multiTile ? { x: Math.floor((tiles.w * pxPerTile) / 2), y: tiles.h * pxPerTile - 2 } : { x: Math.floor(size / 2), y: size - 2 },
     palette, frames,
   };
   if (multiTile) {
@@ -848,9 +849,9 @@ export async function buildAsset({ glbPath, id, outDir, size = 32, views = [0, 9
   fs.writeFileSync(path.join(outDir, `${id}.sprite.json`), JSON.stringify(def, null, 2) + '\n');
   if (multiTile) {
     const zoom = 4;
-    const g = gridSheet(frameRgba[0], zoom);
+    const g = gridSheet(frameRgba[0], zoom, [10, 11, 14, 255], pxPerTile);
     fs.writeFileSync(path.join(outDir, `${id}_${canvas.w}x${canvas.h}_x${zoom}_grid.png`), encodePNG(g.w, g.h, g.buf));
-    const c = chopSheet(tileSlices(frameRgba[0], tiles), 8);
+    const c = chopSheet(tileSlices(frameRgba[0], tiles, pxPerTile), 8);
     fs.writeFileSync(path.join(outDir, `${id}_chop.png`), encodePNG(c.w, c.h, c.buf));
   } else {
     const s = sheet(frameRgba.map((f) => f.rgba), size, 8);
@@ -970,13 +971,14 @@ export async function buildAnimatedAsset({
 }
 
 function parseArgs(argv) {
-  const a = { views: [0, 90, 180, 270], size: 32, colors: 14, rise: 10, flat: false, renderRes: 512, tiles: null, kind: null, tier: 'indexed', families: 6, steps: 4, margin: 0, outline: undefined, ambient: undefined, exposure: undefined };
+  const a = { views: [0, 90, 180, 270], size: 32, colors: 14, rise: 10, flat: false, renderRes: 512, tiles: null, kind: null, tier: 'indexed', families: 6, steps: 4, margin: 0, pxPerTile: undefined, outline: undefined, ambient: undefined, exposure: undefined };
   const rest = [];
   for (let i = 0; i < argv.length; i++) {
     const t = argv[i];
     if (t === '--id') a.id = argv[++i];
     else if (t === '--out') a.out = argv[++i];
     else if (t === '--size') a.size = +argv[++i];
+    else if (t === '--px-per-tile') a.pxPerTile = +argv[++i];
     else if (t === '--colors') a.colors = +argv[++i];
     else if (t === '--rise') a.rise = +argv[++i];
     else if (t === '--render-res') a.renderRes = +argv[++i];
@@ -1013,7 +1015,7 @@ if (isMain) {
     console.log(`${res.id}: ${res.frames} skinned frames, ${res.palette.length}-colour palette (${res.renderTier}), clip=${a.anim}, ${a.views.length} views x ${res.sampleTimes.length} phases -> ${path.relative(ROOT, outDir)}`);
     process.exit(0);
   }
-  const res = await buildAsset({ glbPath, id, outDir, size: a.size, views: a.views, colors: a.colors, rise: a.rise, flat: a.flat, renderRes: a.renderRes, tiles: a.tiles, kind: a.kind, tier: a.tier, families: a.families, steps: a.steps, stretchX: a.stretchX, margin: a.margin, ...(a.outline === undefined ? {} : { outline: a.outline }) });
+  const res = await buildAsset({ glbPath, id, outDir, size: a.size, views: a.views, colors: a.colors, rise: a.rise, flat: a.flat, renderRes: a.renderRes, tiles: a.tiles, kind: a.kind, tier: a.tier, families: a.families, steps: a.steps, stretchX: a.stretchX, margin: a.margin, ...(a.pxPerTile === undefined ? {} : { pxPerTile: a.pxPerTile }), ...(a.outline === undefined ? {} : { outline: a.outline }) });
   const shape = res.tiles ? `${res.tiles.w}x${res.tiles.h} tiles` : `${a.size}px`;
   console.log(`${res.id}: ${res.opaquePixels} opaque px, ${res.palette.length}-colour palette (${res.renderTier}), textured=${res.textured}, ${shape} -> ${path.relative(ROOT, outDir)}`);
 }

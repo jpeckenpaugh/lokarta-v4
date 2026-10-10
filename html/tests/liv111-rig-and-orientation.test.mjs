@@ -15,6 +15,7 @@ import {
   unionBounds,
   tileCanvasSize,
 } from '../../tools/gltf-to-sprite.mjs';
+import { nativePerTile } from '../../tools/validate-sprite-def.mjs';
 import { buildArcherBaked, ARCHER_ANIMATIONS, RIGGED_ARTIFACT } from '../../tools/integrate-actor-bake.mjs';
 import { archerPoses } from '../../tools/bake-rigged-archer.mjs';
 import { getTownDefinition } from '../data/index.js';
@@ -88,7 +89,8 @@ test('LIV-111 rigged actor bake — skeleton sampling + animation helpers', asyn
     assert.equal(art.renderTier, 'baked');
     assert.equal(art.clip, 'Walking', 'baked from the rigged clip, not a static pose');
     assert.match(art.method, /skinned-skeleton-sample/);
-    assert.deepEqual(art.native, { w: 32, h: 32 });
+    // LIV-121: the live rigged archer artifact is N64 (64 px per tile, 1:1).
+    assert.deepEqual(art.native, { w: 64, h: 64 });
     assert.equal(art.tiles, undefined, 'actor stays one tile');
     // One frame per runtime id, and a palette inside the Tier B cap with a rim
     // clearing the 3:1 floor contrast the art contract requires.
@@ -96,8 +98,8 @@ test('LIV-111 rigged actor bake — skeleton sampling + animation helpers', asyn
     const best = Math.max(0, ...Object.values(art.palette).filter(Boolean).map((v) => contrast(v, FLOOR)));
     assert.ok(best >= 3.0, `archer rim contrast ${best.toFixed(2)} >= 3`);
     for (const rows of Object.values(art.frames)) {
-      assert.equal(rows.length, 32);
-      assert.ok(rows.every((r) => r.length === 32));
+      assert.equal(rows.length, 64);
+      assert.ok(rows.every((r) => r.length === 64));
     }
   });
 
@@ -159,15 +161,17 @@ test('LIV-111 rigged actor bake — skeleton sampling + animation helpers', asyn
     assert.equal(ids.size, Object.keys(c.frames).length, 'no orphan frames');
   });
 
-  await t.test('8. LIV-112: upright frames fill the tile; every frame stays grounded + inside', () => {
+  await t.test('8. LIV-112/121: upright N64 frames fill the tile; every frame stays grounded + inside', () => {
     // Regression: the rig bake normalized to the union pose bbox, which a
-    // sunk death pose inflated, shrinking the drawn character inside the 32x32
-    // canvas. The fix keeps the feet planted, so upright frames must read
-    // near full-tile height with the head near the top and feet on the anchor.
+    // sunk death pose inflated, shrinking the drawn character inside the canvas.
+    // The fix keeps the feet planted, so upright frames must read near full-tile
+    // height with the head near the top and feet on the anchor. LIV-121 scales
+    // the bounds with the def's own native size (N64 = 64 px, not 32).
     const c = SPRITE_CATALOG.archer;
-    const anchorY = c.anchor.y; // 30 (bottom-centre ground contact)
+    const N = c.native.w; // 64 (N64)
+    const anchorY = c.anchor.y; // bottom-centre ground contact
     const bbox = (rows) => {
-      let minx = 99, maxx = -1, miny = 99, maxy = -1;
+      let minx = N, maxx = -1, miny = N, maxy = -1;
       rows.forEach((r, y) => [...r].forEach((ch, x) => {
         if (ch === '.') return;
         if (x < minx) minx = x; if (x > maxx) maxx = x;
@@ -179,12 +183,10 @@ test('LIV-111 rigged actor bake — skeleton sampling + animation helpers', asyn
       for (const dir of ['down', 'up', 'side']) {
         for (const fid of c.animations[state][dir]) {
           const b = bbox(c.frames[fid]);
-          // LIV-115: the Tier B outline opt-out removes the 1px outline ring, so
-          // a full-tile upright frame now reads one pixel shorter (>=27 not 28).
-          assert.ok(b.h >= 27, `${fid} fills the tile height (h=${b.h})`);
-          assert.ok(b.miny <= 3, `${fid} head nears the tile top (miny=${b.miny})`);
-          assert.ok(b.maxy >= anchorY - 1 && b.maxy <= 31, `${fid} feet on the ground anchor (maxy=${b.maxy})`);
-          assert.ok(b.minx >= 0 && b.maxx <= 31, `${fid} stays inside the tile`);
+          assert.ok(b.h >= Math.round(N * 0.80), `${fid} fills the tile height (h=${b.h})`);
+          assert.ok(b.miny <= Math.round(N * 0.12), `${fid} head nears the tile top (miny=${b.miny})`);
+          assert.ok(b.maxy >= anchorY - 3 && b.maxy <= N - 1, `${fid} feet on the ground anchor (maxy=${b.maxy})`);
+          assert.ok(b.minx >= 0 && b.maxx <= N - 1, `${fid} stays inside the tile`);
         }
       }
     }
@@ -192,8 +194,8 @@ test('LIV-111 rigged actor bake — skeleton sampling + animation helpers', asyn
     for (const dir of ['down', 'up', 'side']) {
       for (const fid of c.animations.death[dir]) {
         const b = bbox(c.frames[fid]);
-        assert.ok(b.minx >= 0 && b.maxx <= 31 && b.miny >= 0 && b.maxy <= 31, `${fid} must not clip`);
-        assert.ok(b.maxy >= anchorY - 2, `${fid} collapses onto the ground (maxy=${b.maxy})`);
+        assert.ok(b.minx >= 0 && b.maxx <= N - 1 && b.miny >= 0 && b.maxy <= N - 1, `${fid} must not clip`);
+        assert.ok(b.maxy >= anchorY - 3, `${fid} collapses onto the ground (maxy=${b.maxy})`);
       }
     }
   });
@@ -262,8 +264,9 @@ test('LIV-111 hut orientation — variants + Havenreach placement rules', async 
     for (const b of town.buildings) {
       const def = BUILDING_CATALOG[b.silhouette];
       assert.deepEqual(span(b.footprint), [def.tiles.w, def.tiles.h], `${b.id} footprint vs ${b.silhouette}`);
-      // The baked canvas is exactly whole tiles (native == tiles * 32).
-      assert.deepEqual(tileCanvasSize(def.tiles), def.native);
+      // The baked canvas is exactly whole tiles at the def's own density (N64
+      // for the 3D-baked huts, per LIV-121).
+      assert.deepEqual(tileCanvasSize(def.tiles, nativePerTile(def)), def.native);
     }
   });
 
