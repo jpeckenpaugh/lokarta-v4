@@ -1,0 +1,63 @@
+{
+  "id": "prop_net",
+  "kind": "prop",
+  "class": "free",
+  "native": {
+    "w": 32,
+    "h": 32
+  },
+  "anchor": {
+    "x": 16,
+    "y": 30
+  },
+  "palette": {
+    "0": "#0b0d12",
+    ".": null,
+    "d": "#3f2817",
+    "e": "#6b4423",
+    "f": "#8a5a2b",
+    "t": "#b9a07f",
+    "o": "#8a9099",
+    "r": "#c96f3a",
+    "n": "#9fd8c8",
+    "w": "#dcefe6",
+    "g": "#9aa3ab",
+    "h": "#c7cfd6"
+  },
+  "frames": {
+    "idle": [
+      "................................",
+      "................................",
+      "................................",
+      ".....tttttttttttttttttttttt.....",
+      ".....tttttttttttttttttttttt.....",
+      ".....dd..................dd.....",
+      ".....ddwwwnwrwnwwwnwrwnwwdd.....",
+      ".....ddn.n.n.n.n.n.n.n.n.dd.....",
+      ".....dd.n.r.n...n.r.n...ndd.....",
+      ".....ddn.n.n.n.n.n.n.n.n.dd.....",
+      ".....dd.r.n...n.r.n...n.rdd.....",
+      ".....ddn.n.n.n.n.n.n.n.n.dd.....",
+      ".....dd.n...n.r.n...n.r.ndd.....",
+      ".....ddn.n.n.n.n.n.n.n.n.dd.....",
+      ".....dd...n.r.n...n.r.n..dd.....",
+      ".....ddn.n.n.n.n.n.n.n.n.dd.....",
+      ".....dd.n.r.n...n.r.n...ndd.....",
+      ".....ddn.n.n.n.n.n.n.n.n.dd.....",
+      ".....dd.r.n...n.r.n...n.rdd.....",
+      ".....ddn.n.n.n.n.n.n.n.n.dd.....",
+      ".....dd.n...n.r.n...n.r.ndd.....",
+      ".....ddn.n.n.n.n.n.n.n.n.dd.....",
+      ".....dd...n.r.n...n.r.n..dd.....",
+      ".....ddn.n.n.n.n.n.n.n.n.dd.....",
+      ".....dd.n.r.n...n.r.n...ndd.....",
+      ".....ddn.n.n.n.n.n.n.n.n.dd.....",
+      ".....dd.r.n...n.r.n...n.rdd.....",
+      ".....ddn.n.n.n.n.n.n.n.n.dd.....",
+      ".....dddddddddddddddddddddd.....",
+      ".....dd..................dd.....",
+      "................................",
+      "................................"
+    ]
+  }
+}

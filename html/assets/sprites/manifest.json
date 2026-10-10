@@ -39,6 +39,12 @@
     "prop_sarcophagus": { "kind": "prop", "class": "wall", "file": "./props/prop_sarcophagus.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 29 }, "frames": ["idle"] },
     "prop_altar": { "kind": "prop", "class": "free", "file": "./props/prop_altar.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 29 }, "frames": ["idle"] },
     "prop_throne": { "kind": "prop", "class": "wall", "file": "./props/prop_throne.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 29 }, "frames": ["idle"] },
+    "prop_net": { "kind": "prop", "class": "free", "file": "./props/prop_net.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 }, "frames": ["idle"] },
+    "prop_drying_rack": { "kind": "prop", "class": "free", "file": "./props/prop_drying_rack.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 }, "frames": ["idle"] },
+    "prop_fish_barrel": { "kind": "prop", "class": "free", "file": "./props/prop_fish_barrel.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 29 }, "frames": ["idle"] },
+    "prop_boat": { "kind": "prop", "class": "free", "file": "./props/prop_boat.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 27 }, "frames": ["idle"] },
+    "prop_buoy": { "kind": "prop", "class": "free", "file": "./props/prop_buoy.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 29 }, "frames": ["idle"] },
+    "prop_smoke_plume": { "kind": "prop", "class": "free", "file": "./props/prop_smoke_plume.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 }, "frames": ["idle"] },
     "decor_rug": { "kind": "decor", "class": "decor", "file": "./decor/decor_rug.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 0, "y": 0 }, "frames": ["idle"] }
   }
 }

@@ -28,6 +28,12 @@ import propBookshelf from './props/prop_bookshelf.json' with { type: 'json' };
 import propSarcophagus from './props/prop_sarcophagus.json' with { type: 'json' };
 import propAltar from './props/prop_altar.json' with { type: 'json' };
 import propThrone from './props/prop_throne.json' with { type: 'json' };
+import propNet from './props/prop_net.json' with { type: 'json' };
+import propDryingRack from './props/prop_drying_rack.json' with { type: 'json' };
+import propFishBarrel from './props/prop_fish_barrel.json' with { type: 'json' };
+import propBoat from './props/prop_boat.json' with { type: 'json' };
+import propBuoy from './props/prop_buoy.json' with { type: 'json' };
+import propSmokePlume from './props/prop_smoke_plume.json' with { type: 'json' };
 import decorRug from './decor/decor_rug.json' with { type: 'json' };
 
 export const PROP_MANIFEST = manifest.props;
@@ -53,12 +59,20 @@ export const PROP_CATALOG = {
   prop_sarcophagus: propSarcophagus,
   prop_altar: propAltar,
   prop_throne: propThrone,
+  // LIV-100 fishing-village props. Flat `idle` frame map, same pipeline;
+  // placement comes from the scene catalogs (towns.json/islands.json `props[]`).
+  prop_net: propNet,
+  prop_drying_rack: propDryingRack,
+  prop_fish_barrel: propFishBarrel,
+  prop_boat: propBoat,
+  prop_buoy: propBuoy,
+  prop_smoke_plume: propSmokePlume,
   decor_rug: decorRug,
 };
 
 /** Furniture/decor ids grouped by `kind`, for data-driven placement lookups. */
 export const PROP_IDS_BY_KIND = {
-  prop: ['prop_table', 'prop_crate', 'prop_barrel', 'prop_brazier', 'prop_candelabra', 'prop_bookshelf', 'prop_sarcophagus', 'prop_altar', 'prop_throne'],
+  prop: ['prop_table', 'prop_crate', 'prop_barrel', 'prop_brazier', 'prop_candelabra', 'prop_bookshelf', 'prop_sarcophagus', 'prop_altar', 'prop_throne', 'prop_net', 'prop_drying_rack', 'prop_fish_barrel', 'prop_boat', 'prop_buoy', 'prop_smoke_plume'],
   decor: ['decor_rug'],
 };
 
