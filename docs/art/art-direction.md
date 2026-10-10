@@ -75,12 +75,12 @@ it is a *building/landmark* that rides the footprint mechanism above.
 
 ## 2. Facing & Animation Models
 
-* **3-Direction Facing:** Sprites are authored for three directions (`down`, `up`, `side`). `left` is rendered by mirroring `side` horizontally.
+* **8-Direction Facing (LIV-146):** The runtime facing vocabulary is the eight 45-degree directions, clockwise from front: `down` (0°), `down_right` (45°), `right` (90°), `up_right` (135°), `up` (180°), `up_left` (225°), `left` (270°), `down_left` (315°). A continuous facing angle selects the nearest bucket (`dir8FromAngle`), and 3D-baked actors author the **five unique yaw views** (`down`, `down_side`, `side`, `up_side`, `up`); the left-hand three directions render as the horizontal mirror of their right-hand counterpart (`side` → authored profile, `down_side`/`up_side` → authored three-quarter views). Legacy flat Tier A sprites author only `down`/`up`/`side`; the renderer resolves every 8-dir request to a direction the def owns (left still mirrors the profile), so the extension is backward compatible.
 * **Frame Sets per Actor:**
-  * `idle`: 3 directions (1 frame each)
-  * `walk`: 3 directions (2 frames each, step-driven)
-  * `attack`: 3 directions (3 frames each)
-  * `hit`: 3 directions (1 frame each)
+  * `idle`: 5 authored directions for 3D-baked actors / 3 for flat sprites (1 frame each)
+  * `walk`: 5 / 3 directions (2 frames each, step-driven)
+  * `attack`: 5 / 3 directions (3 frames each)
+  * `hit`: 5 / 3 directions (1 frame each)
   * `death`: 4 frames (`death_0`..`death_3`) non-directional (Boss `abyssal_overlord` has 6 frames: `death_0`..`death_5`).
 * **Outline & Shading:** Standard $1\text{ px}$ silhouette outline (`#0b0d12`) with $\le 16$-color indexed palettes and flat pixel ramps. A new opt-in **Tier B "baked"** class (≤32 colors for 2D-derived defs; **≤256 entries / 255 opaque for 3D-baked defs, §11** (supersedes §10), ordered dither, baked key light) is specified in [art-direction-target.md](art-direction-target.md) for heroes, bosses, and signature NPCs/props; it keeps the pixelated rule and the ≥3:1 rim bar.
   * **Tier B outline exception (LIV-115, round 2.2):** 3D-baked (Tier B) renders **drop the $1\text{ px}$ outline** — the board read the `#0b0d12` ring as a "pencil trace", so baked colours now end naturally at the silhouette. The bake emits `outline:false` and the renderer honours it (sprite + building + prop paths). **Tier A flat sprites keep the outline unchanged.** Rim-light/ramp shading stays: it is form, not an outline.

@@ -35,11 +35,35 @@ export const MONSTER_DIR = path.join(ROOT, 'html', 'assets', 'sprites', 'monster
  * adds a step-driven walk (×2) per direction.
  */
 export const STATIC_ANIMATIONS = {
-  idle: { down: ['idle_down'], up: ['idle_up'], side: ['idle_side'], frameMs: null, advanceOn: 'timer' },
+  idle: {
+    down: ['idle_down'],
+    down_side: ['idle_down_side'],
+    side: ['idle_side'],
+    up_side: ['idle_up_side'],
+    up: ['idle_up'],
+    frameMs: null,
+    advanceOn: 'timer',
+  },
 };
 export const WALK_ANIMATIONS = {
-  idle: { down: ['idle_down'], up: ['idle_up'], side: ['idle_side'], frameMs: null, advanceOn: 'timer' },
-  walk: { down: ['walk_down_0', 'walk_down_1'], up: ['walk_up_0', 'walk_up_1'], side: ['walk_side_0', 'walk_side_1'], frameMs: null, advanceOn: 'step' },
+  idle: {
+    down: ['idle_down'],
+    down_side: ['idle_down_side'],
+    side: ['idle_side'],
+    up_side: ['idle_up_side'],
+    up: ['idle_up'],
+    frameMs: null,
+    advanceOn: 'timer',
+  },
+  walk: {
+    down: ['walk_down_0', 'walk_down_1'],
+    down_side: ['walk_down_side_0', 'walk_down_side_1'],
+    side: ['walk_side_0', 'walk_side_1'],
+    up_side: ['walk_up_side_0', 'walk_up_side_1'],
+    up: ['walk_up_0', 'walk_up_1'],
+    frameMs: null,
+    advanceOn: 'step',
+  },
 };
 export const ANIMATIONS_BY_MOVEMENT = { static: STATIC_ANIMATIONS, walking: WALK_ANIMATIONS };
 

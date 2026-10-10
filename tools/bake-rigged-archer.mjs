@@ -44,8 +44,13 @@ export function findRiggedGlb() {
 }
 
 /* ---- facing azimuths: az 0 looks at the model's front (down), az 180 its
- * back (up), az 90 its right side (the runtime mirrors this for left). ---- */
-export const DIR_AZ = { down: 0, up: 180, side: 90 };
+ * back (up), az 90 its right side. LIV-146 adds the two 45-degree three-quarter
+ * views (down_side front-right, up_side back-right); the runtime mirrors the
+ * right-hand views for the left-hand half, so the archer carries eight
+ * directions from five unique yaw bakes. ---- */
+export const DIR_AZ = { down: 0, down_side: 45, side: 90, up_side: 135, up: 180 };
+/** Authored directions per actor (unique yaw bakes; left = mirrored right). */
+export const BAKE_DIRS = ['down', 'down_side', 'side', 'up_side', 'up'];
 
 /* Walk-cycle phases chosen from the rig: the two stride extremes (max foot
  * separation) and a neutral standing phase for idle. */
@@ -125,7 +130,7 @@ export function buildPoseList(bones, rest) {
   const P = archerPoses(bones, rest);
   const list = [];
   const add = (key, dir, time, override = null) => list.push({ key, az: DIR_AZ[dir], time, override });
-  for (const dir of ['down', 'up', 'side']) {
+  for (const dir of BAKE_DIRS) {
     add(`idle_${dir}`, dir, IDLE_PHASE);
     add(`walk_${dir}_0`, dir, WALK_PHASES[0]);
     add(`walk_${dir}_1`, dir, WALK_PHASES[1]);
@@ -133,8 +138,11 @@ export function buildPoseList(bones, rest) {
     add(`attack_${dir}_1`, dir, IDLE_PHASE, P.fire);
     add(`attack_${dir}_2`, dir, IDLE_PHASE, P.settle);
     add(`hit_${dir}`, dir, IDLE_PHASE, P.recoil);
-    P.death.forEach((ov, i) => add(`death_${i}`, dir, IDLE_PHASE, ov));
   }
+  // Death is direction-independent (the collapse pose reads the same from every
+  // yaw), so it is authored ONCE at the right-profile azimuth the runtime has
+  // always shipped (`death_0..3`), keeping those frames byte-stable.
+  P.death.forEach((ov, i) => add(`death_${i}`, 'side', IDLE_PHASE, ov));
   return list;
 }
 

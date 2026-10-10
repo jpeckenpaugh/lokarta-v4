@@ -34,15 +34,40 @@ export const ARCHER_RUNTIME = path.join(ROOT, 'html', 'assets', 'sprites', 'voca
  * contract every vocation shares; only the baked pixels changed in Phase 3.
  */
 export const ARCHER_ANIMATIONS = {
-  idle: { down: ['idle_down'], up: ['idle_up'], side: ['idle_side'], frameMs: null, advanceOn: 'timer' },
-  walk: { down: ['walk_down_0', 'walk_down_1'], up: ['walk_up_0', 'walk_up_1'], side: ['walk_side_0', 'walk_side_1'], frameMs: null, advanceOn: 'step' },
+  idle: {
+    down: ['idle_down'],
+    down_side: ['idle_down_side'],
+    side: ['idle_side'],
+    up_side: ['idle_up_side'],
+    up: ['idle_up'],
+    frameMs: null, advanceOn: 'timer',
+  },
+  walk: {
+    down: ['walk_down_0', 'walk_down_1'],
+    down_side: ['walk_down_side_0', 'walk_down_side_1'],
+    side: ['walk_side_0', 'walk_side_1'],
+    up_side: ['walk_up_side_0', 'walk_up_side_1'],
+    up: ['walk_up_0', 'walk_up_1'],
+    frameMs: null, advanceOn: 'step',
+  },
   attack: {
     down: ['attack_down_0', 'attack_down_1', 'attack_down_2'],
-    up: ['attack_up_0', 'attack_up_1', 'attack_up_2'],
+    down_side: ['attack_down_side_0', 'attack_down_side_1', 'attack_down_side_2'],
     side: ['attack_side_0', 'attack_side_1', 'attack_side_2'],
+    up_side: ['attack_up_side_0', 'attack_up_side_1', 'attack_up_side_2'],
+    up: ['attack_up_0', 'attack_up_1', 'attack_up_2'],
     frameMs: 90, advanceOn: 'timer',
   },
-  hit: { down: ['hit_down'], up: ['hit_up'], side: ['hit_side'], frameMs: 120, advanceOn: 'timer' },
+  hit: {
+    down: ['hit_down'],
+    down_side: ['hit_down_side'],
+    side: ['hit_side'],
+    up_side: ['hit_up_side'],
+    up: ['hit_up'],
+    frameMs: 120, advanceOn: 'timer',
+  },
+  // Death is direction-independent (one collapse pose seen from the side); the
+  // runtime resolves every 8-dir request to the same edited set.
   death: {
     down: ['death_0', 'death_1', 'death_2', 'death_3'],
     up: ['death_0', 'death_1', 'death_2', 'death_3'],

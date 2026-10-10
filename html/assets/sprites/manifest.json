@@ -3,7 +3,7 @@
   "outline": "#0b0d12",
   "actors": {
     "magician": { "kind": "vocation", "file": "./vocations/magician.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
-    "archer": { "kind": "vocation", "file": "./vocations/archer.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
+    "archer": { "kind": "vocation", "directions": 8, "file": "./vocations/archer.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
     "fighter": { "kind": "vocation", "file": "./vocations/fighter.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
     "paladin": { "kind": "vocation", "file": "./vocations/paladin.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
     "giant_rat": { "kind": "monster", "file": "./monsters/giant_rat.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
@@ -11,15 +11,15 @@
     "shadow_cultist": { "kind": "monster", "file": "./monsters/shadow_cultist.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
     "elite_cultist": { "kind": "monster", "file": "./monsters/elite_cultist.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 30 } },
     "abyssal_overlord": { "kind": "monster", "file": "./monsters/abyssal_overlord.json", "native": { "w": 48, "h": 48 }, "anchor": { "x": 24, "y": 46 } },
-    "river_piranha": { "kind": "monster", "file": "./monsters/river_piranha.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
-    "river_eel": { "kind": "monster", "file": "./monsters/river_eel.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
-    "river_rat": { "kind": "monster", "file": "./monsters/river_rat.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
-    "npc_elder_rowan_vane": { "kind": "npc", "file": "./npc/npc_elder_rowan_vane.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
-    "npc_captain_halden": { "kind": "npc", "file": "./npc/npc_captain_halden.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
-    "npc_wick": { "kind": "npc", "file": "./npc/npc_wick.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
-    "npc_mara": { "kind": "npc", "file": "./npc/npc_mara.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
-    "npc_pilgrims_apprentice_tam": { "kind": "npc", "file": "./npc/npc_pilgrims_apprentice_tam.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
-    "npc_child_kes": { "kind": "npc", "file": "./npc/npc_child_kes.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } }
+    "river_piranha": { "kind": "monster", "directions": 8, "file": "./monsters/river_piranha.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
+    "river_eel": { "kind": "monster", "directions": 8, "file": "./monsters/river_eel.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
+    "river_rat": { "kind": "monster", "directions": 8, "file": "./monsters/river_rat.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
+    "npc_elder_rowan_vane": { "kind": "npc", "directions": 8, "file": "./npc/npc_elder_rowan_vane.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
+    "npc_captain_halden": { "kind": "npc", "directions": 8, "file": "./npc/npc_captain_halden.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
+    "npc_wick": { "kind": "npc", "directions": 8, "file": "./npc/npc_wick.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
+    "npc_mara": { "kind": "npc", "directions": 8, "file": "./npc/npc_mara.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
+    "npc_pilgrims_apprentice_tam": { "kind": "npc", "directions": 8, "file": "./npc/npc_pilgrims_apprentice_tam.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } },
+    "npc_child_kes": { "kind": "npc", "directions": 8, "file": "./npc/npc_child_kes.json", "native": { "w": 64, "h": 64 }, "anchor": { "x": 32, "y": 62 } }
   },
   "props": {
     "key_copper": { "kind": "item", "tier": "copper", "file": "./items/key_copper.json", "native": { "w": 32, "h": 32 }, "anchor": { "x": 16, "y": 26 }, "frames": ["icon"] },

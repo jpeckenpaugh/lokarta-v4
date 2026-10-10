@@ -50,8 +50,13 @@ export const ARTIFACT_DIR = path.join(ROOT, 'docs', 'art', '3d-poc', 'phase5');
 export const PX_PER_TILE = 64;
 /** Actor-exception camera pitch (art-direction.md §12.1) — matches the archer/NPC bakes. */
 export const ACTOR_RISE = 8;
-/* Facing azimuths: az 0 looks front (down), 180 back (up), 90 the right side. */
-export const DIR_AZ = { down: 0, up: 180, side: 90 };
+/* Facing azimuths: az 0 looks front (down), 180 back (up), 90 the right side.
+ * LIV-146 adds the two 45-degree three-quarter views (down_side front-right,
+ * up_side back-right); the runtime mirrors the right-hand views for the
+ * left-hand half, so each creature carries eight directions. */
+export const DIR_AZ = { down: 0, down_side: 45, side: 90, up_side: 135, up: 180 };
+/** Authored directions per creature (unique yaw bakes; left = mirrored right). */
+export const BAKE_DIRS = ['down', 'down_side', 'side', 'up_side', 'up'];
 /** Normalized stride extremes (fraction of the walking clip duration). */
 export const WALK_PHASES = [0.26, 0.781];
 export const IDLE_PHASE = 0;
@@ -170,15 +175,15 @@ export function mergeDefs(base, parts) {
 export async function bakeStatic(spec, outDir = ARTIFACT_DIR) {
   const glbPath = findGlb(spec.glb);
   await buildAsset({
-    glbPath, id: spec.id, outDir, size: PX_PER_TILE, views: [0, 90, 180],
+    glbPath, id: spec.id, outDir, size: PX_PER_TILE, views: [0, 45, 90, 135, 180],
     kind: 'monster', tier: 'baked', rise: ACTOR_RISE, renderRes: 512, outline: false,
   });
   const artifact = path.join(outDir, `${spec.id}.sprite.json`);
   const def = JSON.parse(fs.readFileSync(artifact, 'utf8'));
-  // Runtime frame ids are directional (idle_down/side/up); drop the generic
-  // `view_<az>` keys so the def matches the actor animation contract.
+  // Runtime frame ids are directional (idle_down/down_side/side/up_side/up);
+  // drop the generic `view_<az>` keys so the def matches the actor contract.
   const renamed = {};
-  for (const [dir, az] of [['down', 0], ['side', 90], ['up', 180]]) {
+  for (const [dir, az] of [['down', 0], ['down_side', 45], ['side', 90], ['up_side', 135], ['up', 180]]) {
     renamed[`idle_${dir}`] = def.frames[`view_${az}`];
   }
   def.frames = renamed;
@@ -218,13 +223,13 @@ export async function bakeWalking(spec, outDir = ARTIFACT_DIR) {
   };
 
   const idleList = [];
-  for (const dir of ['down', 'up', 'side']) {
+  for (const dir of BAKE_DIRS) {
     idleList.push({ key: `idle_${dir}`, az: DIR_AZ[dir], time: IDLE_PHASE * idleDuration });
   }
   const idleRes = await buildAnimatedAsset({ ...common, glbPath: idlePath, id: spec.id, clip: null, poseList: idleList });
 
   const walkList = [];
-  for (const dir of ['down', 'up', 'side']) {
+  for (const dir of BAKE_DIRS) {
     walkList.push({ key: `walk_${dir}_0`, az: DIR_AZ[dir], time: WALK_PHASES[0] * walkDuration });
     walkList.push({ key: `walk_${dir}_1`, az: DIR_AZ[dir], time: WALK_PHASES[1] * walkDuration });
   }
@@ -237,7 +242,7 @@ export async function bakeWalking(spec, outDir = ARTIFACT_DIR) {
     baked3d: true,
     outline: false,
     source: `${path.basename(spec.idleGlb)} + ${path.basename(spec.walkGlb)}`,
-    method: `dual-glb shared-bounds skinned bake @ rise ${ACTOR_RISE} -> 3-dir idle+walk -> direct median-cut`,
+    method: `dual-glb shared-bounds skinned bake @ rise ${ACTOR_RISE} -> 5-dir (8-dir mirrored) idle+walk -> direct median-cut`,
     native: { w: PX_PER_TILE, h: PX_PER_TILE },
     anchor: { x: Math.floor(PX_PER_TILE / 2), y: PX_PER_TILE - 2 },
     movement: spec.movement,

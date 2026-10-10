@@ -46,9 +46,13 @@ export const PX_PER_TILE = 64;
 export const ACTOR_RISE = 8;
 
 /* ---- facing azimuths (matches tools/bake-rigged-archer.mjs): az 0 looks at
- * the model's front (down), 180 its back (up), 90 its right side (the runtime
- * mirrors this for left). ---- */
-export const DIR_AZ = { down: 0, up: 180, side: 90 };
+ * the model's front (down), 180 its back (up), 90 its right side. LIV-146 adds
+ * the two 45-degree three-quarter views (down_side front-right, up_side
+ * back-right) so each actor carries eight directions (the runtime mirrors the
+ * right-hand views for the left-hand half). ---- */
+export const DIR_AZ = { down: 0, down_side: 45, side: 90, up_side: 135, up: 180 };
+/** Authored directions per actor (unique yaw bakes; left = mirrored right). */
+export const BAKE_DIRS = ['down', 'down_side', 'side', 'up_side', 'up'];
 
 /** Normalized clip phases for the two stride extremes (fraction of duration). */
 export const WALK_PHASES = [0.26, 0.781];
@@ -132,7 +136,7 @@ export function clipDuration(glbPath) {
 export function poseListFor(duration) {
   const list = [];
   const add = (key, dir, time) => list.push({ key, az: DIR_AZ[dir], time });
-  for (const dir of ['down', 'up', 'side']) {
+  for (const dir of BAKE_DIRS) {
     add(`idle_${dir}`, dir, IDLE_PHASE);
     add(`walk_${dir}_0`, dir, WALK_PHASES[0] * duration);
     add(`walk_${dir}_1`, dir, WALK_PHASES[1] * duration);

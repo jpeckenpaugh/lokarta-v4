@@ -13,7 +13,7 @@
 import { CONFIG, TILE_TYPES } from '../engine/index.js';
 import { TILE_THEMES_CATALOG, VOCATIONS_CATALOG, CHESTS_CATALOG, MONSTERS_CATALOG, DEFAULT_TOWER_ID, getTowerDefinition, PROCEDURAL_SQUISH } from '../data/index.js';
 import { SPRITE_CATALOG, PROP_CATALOG, PROP_IDS_BY_TIER } from '../assets/sprites/index.js';
-import { dirFromFacing, resolveFrameIndex, squishScaleFor } from './animation-state.js';
+import { resolveFrameDir, resolveFrameIndex, squishScaleFor } from './animation-state.js';
 
 // Minimal hairline guard so 1px strokes stay visible even if GRID_SIZE shrinks.
 const HAIRLINE = (u) => Math.max(1, u);
@@ -1253,15 +1253,18 @@ export function resolveActorTint(actor, opts = {}, hitTint = null) {
 
 export function resolveSpriteFrame(def, anim) {
   const state = anim && def.animations[anim.state] ? anim.state : 'idle';
-  let dir = (anim && anim.dir) || 'down';
-  if (!def.animations[state][dir]) dir = def.animations[state].down ? 'down' : Object.keys(def.animations[state])[0];
+  // LIV-146: resolve the requested (possibly continuous-angle / 8-dir) facing to
+  // the authored frame direction + mirror for this def. A def that authors only
+  // the legacy 3 directions still resolves every 8-dir request through the
+  // fallback chain in `resolveFrameDir`, so the extension is backward compatible.
+  const { dir, flip } = resolveFrameDir(def.animations[state], (anim && anim.dir) || 'down');
   const list = def.animations[state][dir] || [];
   const rawFrame = (anim && anim.frame) || 0;
   const idx = state === 'death'
     ? Math.max(0, Math.min(rawFrame, Math.max(0, list.length - 1)))
     : resolveFrameIndex({ frame: rawFrame }, list.length);
   const frameId = list[idx] || (def.animations.idle && def.animations.idle.down ? def.animations.idle.down[0] : null);
-  return { state, dir, frameId };
+  return { state, dir, frameId, flip };
 }
 
 function prefersReducedMotion() {
@@ -1572,7 +1575,7 @@ export class SpriteRenderer {
 
     const reduced = prefersReducedMotion();
     const anim = actor.anim || null;
-    const { state, dir, frameId } = resolveSpriteFrame(def, anim);
+    const { state, dir, frameId, flip } = resolveSpriteFrame(def, anim);
     if (!frameId) return null;
 
     // LIV-142: a 3D-baked humanoid renders in a larger-than-tile box (72x96 at
@@ -1622,8 +1625,7 @@ export class SpriteRenderer {
     // alpha mask, squashed toward the ground edge and offset toward the key-light
     // bounce, drawn UNDER the sprite in the same layer. Data-driven style via
     // `def.groundShadow`; cached per (def, frame, scale, flip) so the hot path
-    // stays allocation-free.
-    const flip = dir === 'side' && !!anim?.flipX;
+    // stays allocation-free. `flip` comes from the resolved facing (LIV-146).
     const style = groundShadowStyle(def);
     if (style.enabled && typeof ctx.drawImage === 'function') {
       const shadow = getShadowCanvas(def, frameId, scale, flip, style);

@@ -34,7 +34,7 @@ and §12.1–§13 by this issue. It is **not** restated per asset below.
 | Ground contact | **Silhouette ground shadow** (§7), data-driven `groundShadow`, distinct from an outline | art-direction §7 |
 | Palette | **`renderTier:"baked"`, `baked3d:true`** — `≤256` entries (≤255 opaque + `.` transparent), direct quantizer | art-direction §11 |
 | Contrast | Every palette keeps a **≥3:1** rim entry vs the ≤0.02 floor | art-direction §3 |
-| Facing / frames | 3-direction (`down`/`up`/`side`, `left` = mirrored `side`) | art-direction §2 |
+| Facing / frames | 8-direction (LIV-146): five authored yaw views `down`/`down_side`/`side`/`up_side`/`up`; the left-hand three directions render as the mirror of their right-hand counterpart | art-direction §2 |
 | Frame sets | Actors that move author **idle (×1) + walk (×2, step-driven)** per direction; static actors author **idle only** (the renderer falls back to `idle.down[0]` for any missing state) | art-direction §2; `sprite-renderer.js:1139-1150` |
 
 **Why the actor exception is mandatory here (readability + game feel).** NPCs and
@@ -100,7 +100,7 @@ regression in exchange for art integrity.
 ### 2.4 Animation & engine contract
 
 * **Ambient NPCs (`aiType:"wander"` — Mara, Tam, Kes):** full directional walk + idle.
-  The bake ships `walk_down/up/side` (×2) + `idle_down/up/side` (×1); the engine wires
+  The bake ships `walk_<dir>` (×2) + `idle_<dir>` (×1) for the five authored directions `down`/`down_side`/`side`/`up_side`/`up` (LIV-146), the other three being the runtime mirror; the engine wires
   `npc.anim = createAnimState(npc.facing)` and calls `setAnimState(npc,'walk')` on a
   step / `'idle'` when stationary — no per-NPC branch.
 * **Stationary NPCs (the 3 quest givers):** `aiType:"stationary"` — idle only is

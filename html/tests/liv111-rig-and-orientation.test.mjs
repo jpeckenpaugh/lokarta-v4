@@ -143,13 +143,15 @@ test('LIV-111 rigged actor bake — skeleton sampling + animation helpers', asyn
     }
   });
 
-  await t.test('7. the runtime contract still holds (25 frame ids, same state table)', () => {
+  await t.test('7. the runtime contract still holds (39 frame ids, 8-dir state table)', () => {
     const c = SPRITE_CATALOG.archer;
     const expected = {
-      idle: { down: 1, up: 1, side: 1 },
-      walk: { down: 2, up: 2, side: 2 },
-      attack: { down: 3, up: 3, side: 3 },
-      hit: { down: 1, up: 1, side: 1 },
+      // LIV-146: five authored directions (down/down_side/side/up_side/up); the
+      // left three are the runtime mirror, so no separate left frames are baked.
+      idle: { down: 1, down_side: 1, side: 1, up_side: 1, up: 1 },
+      walk: { down: 2, down_side: 2, side: 2, up_side: 2, up: 2 },
+      attack: { down: 3, down_side: 3, side: 3, up_side: 3, up: 3 },
+      hit: { down: 1, down_side: 1, side: 1, up_side: 1, up: 1 },
       death: { down: 4, up: 4, side: 4 },
     };
     const ids = new Set();

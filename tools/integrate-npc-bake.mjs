@@ -28,13 +28,33 @@ export const NPC_DIR = path.join(ROOT, 'html', 'assets', 'sprites', 'npc');
 
 /**
  * The runtime animation contract for baked NPC actors (art-direction.md §2):
- * directional idle (x1) + walk (x2, step-driven). The renderer falls back to
- * `idle.down[0]` for any state/dir an actor does not author, so shipping only
- * idle+walk is legal (docs/art/3d-sprite-mapping.md §1, §2.4).
+ * directional idle (x1) + walk (x2, step-driven) across the eight LIV-146
+ * directions. Five directions are authored (`down`, `down_side`, `side`,
+ * `up_side`, `up`); the left-hand three (`down_left`, `left`, `up_left`) render
+ * as the runtime mirror of their right-hand counterpart, so no left frames are
+ * baked. The renderer falls back to `idle.down[0]` for any state/dir an actor
+ * does not author, so shipping only idle+walk is legal
+ * (docs/art/3d-sprite-mapping.md §1, §2.4).
  */
 export const NPC_ANIMATIONS = {
-  idle: { down: ['idle_down'], up: ['idle_up'], side: ['idle_side'], frameMs: null, advanceOn: 'timer' },
-  walk: { down: ['walk_down_0', 'walk_down_1'], up: ['walk_up_0', 'walk_up_1'], side: ['walk_side_0', 'walk_side_1'], frameMs: null, advanceOn: 'step' },
+  idle: {
+    down: ['idle_down'],
+    down_side: ['idle_down_side'],
+    side: ['idle_side'],
+    up_side: ['idle_up_side'],
+    up: ['idle_up'],
+    frameMs: null,
+    advanceOn: 'timer',
+  },
+  walk: {
+    down: ['walk_down_0', 'walk_down_1'],
+    down_side: ['walk_down_side_0', 'walk_down_side_1'],
+    side: ['walk_side_0', 'walk_side_1'],
+    up_side: ['walk_up_side_0', 'walk_up_side_1'],
+    up: ['walk_up_0', 'walk_up_1'],
+    frameMs: null,
+    advanceOn: 'step',
+  },
 };
 
 /** The NPC sprite ids the baked set owns (must match npcs.json `npcSpriteId`s). */
