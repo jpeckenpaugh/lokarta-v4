@@ -122,10 +122,14 @@ test('LIV-123/LIV-125 3D-baked palette capacity (75 -> 255 opaque)', async (t) =
       assert.equal(paletteCapFor(def), 16, `${id} indexed cap stays 16`);
       assert.equal(nativePerTile(def), NATIVE_TILE, `${id} stays N32`);
     }
-    // Every catalog actor except the one 3D-baked runtime def (archer) is untouched.
+    // The only 3D-baked runtime defs are the rigged archer (LIV-110) and the
+    // LIV-134 3D-baked NPC actors; every other catalog actor stays non-3D.
     for (const [id, def] of Object.entries(SPRITE_CATALOG)) {
-      if (id === 'archer') continue;
-      assert.equal(isBaked3d(def), false, `${id} is not 3D-baked`);
+      if (isBaked3d(def)) {
+        assert.ok(id === 'archer' || def.kind === 'npc', `${id} is an expected 3D-baked class`);
+        continue;
+      }
+      assert.equal(resolveRenderTier(def), 'indexed', `${id} stays non-3D (indexed)`);
     }
   });
 

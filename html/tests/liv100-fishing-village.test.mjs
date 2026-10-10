@@ -147,10 +147,13 @@ test('LIV-100 scene props pipeline', async (t) => {
     });
     app.applySceneData(scene);
     assert.equal(app.props.length, scene.props.length, 'props loaded, not the old empty []');
-    // Town props carry no `layer`, so none is marked blocked — walkability and
-    // the south gate are untouched by wiring the props path.
+    // Blocking is data-driven by `layer`: `layer:"prop"` (furniture) blocks,
+    // decor/undefined stays walk-over. LIV-134 introduced blocking 3D props
+    // (barrel/palms/rocks) plus a walk-over dock, so assert per authored prop.
     for (const prop of app.props) {
-      assert.notEqual(app.gridMap.getTile(prop.x, prop.y).blocked, true, `town prop ${prop.propId} must not block`);
+      const expectBlocked = prop.layer === 'prop';
+      assert.equal(app.gridMap.getTile(prop.x, prop.y).blocked === true, expectBlocked,
+        `town prop ${prop.propId}@(${prop.x},${prop.y}) blocked must be ${expectBlocked}`);
     }
   });
 

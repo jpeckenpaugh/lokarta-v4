@@ -37,10 +37,19 @@ import {
   validateSpriteDef,
   validateMultiTileDef,
   isMultiTile,
+  isBaked3d,
   validateCommittedMultiTileDefs,
   NATIVE_TILE,
   RENDER_TIERS,
 } from '../../tools/validate-sprite-def.mjs';
+
+/**
+ * LIV-134: the 3D-baked NPC actor class (docs/art/3d-sprite-mapping.md §1-§2).
+ * Baked from rigged GLBs at 64 px/tile, no outline, per-NPC palette; it authors
+ * only directional idle (x1) + walk (x2), NOT the full 5-state actor contract —
+ * the renderer's idle fallback covers any missing state.
+ */
+const isBakedNpc = (def) => !!def && def.kind === 'npc' && isBaked3d(def);
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');
@@ -153,8 +162,11 @@ test('Sprite assets', async t => {
 
   await t.test('4. required states/dirs and frame counts', () => {
     for (const [id, def] of Object.entries(SPRITE_CATALOG)) {
+      // LIV-134: 3D-baked NPC actors author idle+walk only (renderer idle
+      // fallback covers attack/hit/death); every other actor keeps full 5-state.
+      const states = isBakedNpc(def) ? ['idle', 'walk'] : ['idle', 'walk', 'attack', 'hit', 'death'];
       const expectedDeath = id === 'abyssal_overlord' ? 6 : 4;
-      for (const state of ['idle', 'walk', 'attack', 'hit', 'death']) {
+      for (const state of states) {
         assert.ok(def.animations[state], `${id} missing animation ${state}`);
         for (const dir of ['down', 'up', 'side']) {
           assert.ok(Array.isArray(def.animations[state][dir]), `${id}.${state}.${dir}`);
@@ -165,9 +177,11 @@ test('Sprite assets', async t => {
       for (const dir of ['down', 'up', 'side']) {
         assert.equal(def.animations.idle[dir].length, 1, `${id} idle ${dir}`);
         assert.equal(def.animations.walk[dir].length, 2, `${id} walk ${dir}`);
-        assert.equal(def.animations.attack[dir].length, 3, `${id} attack ${dir}`);
-        assert.equal(def.animations.hit[dir].length, 1, `${id} hit ${dir}`);
-        assert.equal(def.animations.death[dir].length, expectedDeath, `${id} death ${dir}`);
+        if (!isBakedNpc(def)) {
+          assert.equal(def.animations.attack[dir].length, 3, `${id} attack ${dir}`);
+          assert.equal(def.animations.hit[dir].length, 1, `${id} hit ${dir}`);
+          assert.equal(def.animations.death[dir].length, expectedDeath, `${id} death ${dir}`);
+        }
       }
       assert.equal(def.animations.walk.advanceOn, 'step', `${id} walk should advance on step`);
     }
@@ -521,16 +535,21 @@ test('NPC identity atlas (LIV-81)', async t => {
   await t.test('25. NPC frame geometry, palette and per-actor rim contrast hold', () => {
     for (const npc of npcs) {
       const def = SPRITE_CATALOG[npc.npcSpriteId];
+      const baked = isBakedNpc(def);
       const { w, h } = def.native;
-      assert.equal(w, SPRITE_NATIVE, `${def.id} native width`);
-      assert.equal(h, SPRITE_NATIVE, `${def.id} native height`);
+      // 3D-baked NPC actors are N64 (64 px/tile); legacy 2D NPC art stays N32.
+      const perTile = baked ? 64 : SPRITE_NATIVE;
+      assert.equal(w, perTile, `${def.id} native width`);
+      assert.equal(h, perTile, `${def.id} native height`);
       for (const [frameId, rows] of Object.entries(def.frames)) {
         assert.equal(rows.length, h, `${def.id}/${frameId} row count`);
         for (const row of rows) assert.equal(row.length, w, `${def.id}/${frameId} row width`);
       }
       const entries = Object.entries(def.palette);
       assert.ok(entries.length <= paletteCapFor(def), `${def.id} palette has ${entries.length} entries`);
-      assert.equal(def.palette['0'], OUTLINE_COLOR, `${def.id} must use the shared outline`);
+      // The shared outline slot is a Tier A contract; 3D bakes drop it (LIV-115).
+      if (!baked) assert.equal(def.palette['0'], OUTLINE_COLOR, `${def.id} must use the shared outline`);
+      else assert.equal(def.outline, false, `${def.id} 3D bake drops the outline`);
       for (const [k, v] of entries) {
         assert.equal(k.length, 1, `${def.id} palette key ${k}`);
         if (v === null) { assert.equal(k, '.'); continue; }
@@ -543,8 +562,9 @@ test('NPC identity atlas (LIV-81)', async t => {
       }
       const best = Math.max(0, ...Object.values(def.palette).filter(Boolean).map(v => contrast(v, FLOOR)));
       assert.ok(best >= 3.0, `${def.id} best contrast ${best.toFixed(2)} < 3.0`);
-      // Full 5-state x 3-dir contract.
-      for (const state of ['idle', 'walk', 'attack', 'hit', 'death']) {
+      // Baked NPC actors author idle+walk only; legacy art keeps full 5-state.
+      const states = baked ? ['idle', 'walk'] : ['idle', 'walk', 'attack', 'hit', 'death'];
+      for (const state of states) {
         for (const dir of ['down', 'up', 'side']) {
           assert.ok(Array.isArray(def.animations[state][dir]) && def.animations[state][dir].length > 0, `${def.id}.${state}.${dir}`);
           for (const fid of def.animations[state][dir]) assert.ok(def.frames[fid], `${def.id} missing frame ${fid}`);
@@ -552,22 +572,33 @@ test('NPC identity atlas (LIV-81)', async t => {
       }
       assert.equal(def.animations.idle.down.length, 1, `${def.id} idle down`);
       assert.equal(def.animations.walk.down.length, 2, `${def.id} walk down`);
-      assert.equal(def.animations.attack.down.length, 3, `${def.id} attack down`);
-      assert.equal(def.animations.death.down.length, 4, `${def.id} death down`);
+      if (!baked) {
+        assert.equal(def.animations.attack.down.length, 3, `${def.id} attack down`);
+        assert.equal(def.animations.death.down.length, 4, `${def.id} death down`);
+      }
       assert.equal(def.animations.walk.advanceOn, 'step', `${def.id} walk advance`);
     }
   });
 
-  await t.test('26. no two NPCs share an idle_down silhouette (the point of I1)', () => {
+  await t.test('26. NPC identity holds: distinct palettes for the baked set (silhouette-exempt)', () => {
+    // docs/art/3d-sprite-mapping.md §2.3: 13 cast over 6 rigged meshes means 7
+    // roles necessarily share a silhouette, so the recolour palette is the
+    // identity carrier for the 3D-baked set and the mask-uniqueness rule is
+    // superseded there. Non-baked NPC art still keeps distinct silhouettes.
+    const palettes = new Map();
     const masks = new Map();
     for (const npc of npcs) {
       const def = SPRITE_CATALOG[npc.npcSpriteId];
-      const mask = alphaMask(def.frames.idle_down, def.palette);
-      const clash = masks.get(mask);
-      assert.ok(!clash, `${npc.npcSpriteId} silhouette matches ${clash}`);
-      masks.set(mask, npc.npcSpriteId);
+      const palKey = Object.values(def.palette).filter(Boolean).sort().join(',');
+      assert.ok(!palettes.has(palKey), `${npc.npcSpriteId} shares a palette with ${palettes.get(palKey)}`);
+      palettes.set(palKey, npc.npcSpriteId);
+      if (!isBakedNpc(def)) {
+        const mask = alphaMask(def.frames.idle_down, def.palette);
+        assert.ok(!masks.has(mask), `${npc.npcSpriteId} silhouette matches ${masks.get(mask)}`);
+        masks.set(mask, npc.npcSpriteId);
+      }
     }
-    assert.equal(masks.size, npcs.length, 'every NPC silhouette must be distinct');
+    assert.equal(palettes.size, npcs.length, 'every NPC palette must be distinct');
   });
 
   await t.test('27. NPC previews are committed and match a fresh export (no drift)', () => {
@@ -683,11 +714,10 @@ test('Tier B sprite contract (LIV-108)', async t => {
     assert.equal(paletteCapFor({ renderTier: 'baked', baked3d: true }), 256);
 
     // Tier A is the default: every committed actor stays indexed at the ≤16 cap
-    // unless it is an explicit opt-in Tier B asset (LIV-110 integrated the baked
-    // rukiya archer into the live catalog).
-    const TIERB_ACTORS = new Set(['archer']);
+    // unless it is an explicit 3D-baked asset (the rigged archer + the LIV-134
+    // 3D-baked NPC actors carry the pipeline's `baked3d` marker).
     for (const [id, def] of Object.entries(SPRITE_CATALOG)) {
-      if (TIERB_ACTORS.has(id)) {
+      if (isBaked3d(def)) {
         assert.equal(resolveRenderTier(def), 'baked', `${id} opts into Tier B`);
         assert.equal(paletteCapFor(def), 256, `${id} is 3D-baked -> ≤256 cap`);
         assert.ok(Object.keys(def.palette).length <= 256, `${id} baked cap`);
