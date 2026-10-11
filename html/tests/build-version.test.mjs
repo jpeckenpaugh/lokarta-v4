@@ -21,6 +21,7 @@ import {
   hasPersistedClientState,
   ensureCurrentBuild,
   isCurrentServiceWorker,
+  awaitServiceWorkerControl,
   normalizeBuildId,
 } from '../services/build-version.js';
 import {
@@ -192,6 +193,54 @@ test('build version guard', async (t) => {
       buildReloadUrl('/lokarta/index.html?v=b1&flushed=b1', 'b2'),
       '/lokarta/index.html?v=b2&flushed=b2'
     );
+  });
+
+  await t.test('awaitServiceWorkerControl resolves on control / timeout', async () => {
+    // No worker support -> immediately false (caller imports anyway).
+    assert.equal(await awaitServiceWorkerControl(null), false);
+    assert.equal(await awaitServiceWorkerControl({}), false);
+
+    // Already controlled -> true without waiting.
+    assert.equal(await awaitServiceWorkerControl({ controller: {}, addEventListener() {} }), true);
+
+    // Controller arrives via `controllerchange`.
+    {
+      const listeners = new Map();
+      const sw = {
+        controller: null,
+        addEventListener: (type, fn) => listeners.set(type, fn),
+        removeEventListener: (type) => listeners.delete(type),
+      };
+      let cleared = null;
+      const p = awaitServiceWorkerControl(sw, {
+        timeoutMs: 5000,
+        setTimeout: () => 'timer-1',
+        clearTimeout: (id) => { cleared = id; },
+      });
+      sw.controller = {};
+      listeners.get('controllerchange')();
+      assert.equal(await p, true);
+      assert.equal(cleared, 'timer-1', 'the timeout is cleared once control lands');
+      assert.equal(listeners.has('controllerchange'), false, 'the listener is removed');
+    }
+
+    // No control before the timeout -> resolves to the current (false) state.
+    {
+      let fire = null;
+      const listeners = new Map();
+      const sw = {
+        controller: null,
+        addEventListener: (type, fn) => listeners.set(type, fn),
+        removeEventListener: (type) => listeners.delete(type),
+      };
+      const p = awaitServiceWorkerControl(sw, {
+        timeoutMs: 1234,
+        setTimeout: (fn) => { fire = fn; return 'timer-2'; },
+        clearTimeout: () => {},
+      });
+      fire();
+      assert.equal(await p, false);
+    }
   });
 
   await t.test('isCurrentServiceWorker matches by path', () => {

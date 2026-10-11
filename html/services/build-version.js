@@ -318,6 +318,55 @@ export function isCurrentServiceWorker(scriptURL, expectedUrl) {
 }
 
 /**
+ * Resolve once the network-first service worker is **controlling** this page, so
+ * the nested ES module graph is fetched through the worker (network-first,
+ * `cache: 'no-store'`) instead of the browser HTTP cache.
+ *
+ * GitHub Pages serves every module with `cache-control: max-age=600`, and the
+ * entry-point build-id check only versions `app.js` — a module's static
+ * `import` specifiers are cached under their own unversioned URLs. A page that
+ * imports the bundle *before* the worker takes control can therefore run a
+ * **mix** of fresh and stale modules even though `build-id.json` matches the
+ * deployed commit (the board's "still sees the old turn after a deploy" case).
+ * Awaiting control closes that window.
+ *
+ * Pure and injected-timer friendly: pass `serviceWorker` plus optional
+ * `setTimeout`/`clearTimeout` for deterministic tests. Returns `true` when the
+ * page is controlled, `false` when there is no worker support or the bounded
+ * wait elapses (the caller then imports anyway — freshness is best-effort, not
+ * a hard dependency).
+ *
+ * @param {ServiceWorkerContainer|null|undefined} serviceWorker
+ * @param {{ timeoutMs?: number, setTimeout?: Function, clearTimeout?: Function }} [options]
+ * @returns {Promise<boolean>}
+ */
+export function awaitServiceWorkerControl(serviceWorker, options = {}) {
+  if (!serviceWorker || typeof serviceWorker.addEventListener !== 'function') {
+    return Promise.resolve(false);
+  }
+  if (serviceWorker.controller) return Promise.resolve(true);
+  const timeoutMs = Number.isFinite(options.timeoutMs) ? Math.max(0, options.timeoutMs) : 2000;
+  const setT = typeof options.setTimeout === 'function' ? options.setTimeout : (fn, ms) => setTimeout(fn, ms);
+  const clearT = typeof options.clearTimeout === 'function' ? options.clearTimeout : (id) => clearTimeout(id);
+  return new Promise((resolve) => {
+    let settled = false;
+    let timer = null;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      if (timer != null) clearT(timer);
+      if (typeof serviceWorker.removeEventListener === 'function') {
+        serviceWorker.removeEventListener('controllerchange', onChange);
+      }
+      resolve(value);
+    };
+    const onChange = () => finish(true);
+    serviceWorker.addEventListener('controllerchange', onChange);
+    timer = setT(() => finish(!!serviceWorker.controller), timeoutMs);
+  });
+}
+
+/**
  * Hard-flushes client-side state: localStorage, sessionStorage, IndexedDB,
  * CacheStorage, and stale/foreign service-worker registrations. The current
  * network-first worker is retained so the subsequent clean reload fetches the

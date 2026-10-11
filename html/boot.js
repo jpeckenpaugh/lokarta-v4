@@ -16,6 +16,7 @@
 import {
   ensureCurrentBuild,
   versionedUrl,
+  awaitServiceWorkerControl,
   SERVICE_WORKER_PATH,
 } from './services/build-version.js';
 
@@ -71,6 +72,15 @@ async function registerServiceWorker() {
 async function boot() {
   const env = currentEnv();
 
+  // Register the network-first worker FIRST and wait for it to control this
+  // page before importing the app bundle. Versioning only `app.js` is not
+  // enough: its nested static `import`s are cached under their own unversioned
+  // URLs (GitHub Pages sends `max-age=600`), so a page that imports before the
+  // worker controls it can run a stale module graph even when `build-id.json`
+  // matches the deployed commit. Awaiting control closes that window.
+  await registerServiceWorker();
+  await awaitServiceWorkerControl(env.serviceWorker);
+
   let result = null;
   try {
     result = await ensureCurrentBuild(env);
@@ -85,8 +95,6 @@ async function boot() {
 
   const buildId = result ? result.buildId : null;
   surfaceBuildId(buildId);
-
-  await registerServiceWorker();
 
   const appUrl = versionedUrl(new URL('./app.js', import.meta.url).href, buildId);
   await import(appUrl);
