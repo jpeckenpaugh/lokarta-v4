@@ -146,17 +146,31 @@ export function advanceTurn(actor, dtMs, stepMs = TURN_STEP_MS_FALLBACK) {
   // Commit (or re-commit on a new target) the single rotation direction for this
   // turn. `dir8Delta` resolves the exact 180-degree tie deterministically, so the
   // committed sign is stable and the arc can never flip partway through.
+  //
+  // LIV-152: a re-commit at the exact 180-degree tie **keeps the committed
+  // sign**. Without this, a target that churns to the drawn dir's exact opposite
+  // mid-turn (`dir8Delta` returns the +4 tie) re-committed `+1` and reversed an
+  // in-progress arc — the "flips direction partway" the board saw. A genuine
+  // same-side target still re-commits normally.
   if (anim.turnTarget !== target || !anim.turnSign) {
+    const delta = dir8Delta(anim.dir, target);
+    const tie = Math.abs(delta) === 4;
+    anim.turnSign = tie && anim.turnSign ? anim.turnSign : (Math.sign(delta) || 1);
     anim.turnTarget = target;
-    anim.turnSign = Math.sign(dir8Delta(anim.dir, target)) || 1;
   }
   const ms = Math.max(1, Number(stepMs) || TURN_STEP_MS_FALLBACK);
   anim.turnAccumMs = (anim.turnAccumMs || 0) + (Number(dtMs) || 0);
   let steps = Math.floor(anim.turnAccumMs / ms);
   if (steps <= 0) return anim;
-  // Never overshoot: the remaining distance measured along the committed sign.
-  const remaining = dir8Delta(anim.dir, target);
-  const along = anim.turnSign > 0 ? remaining : -remaining;
+  // Never overshoot: the remaining distance measured **along the committed
+  // sign** (not the shortest arc), so a kept tie sign still reaches the target
+  // in four buckets instead of stalling on a sign disagreement.
+  const n = DIR8.length;
+  const dirIdx = DIR8.indexOf(anim.dir);
+  const targetIdx = DIR8.indexOf(target);
+  const along = anim.turnSign > 0
+    ? ((targetIdx - dirIdx + n) % n)
+    : ((dirIdx - targetIdx + n) % n);
   if (steps > along) steps = along;
   if (steps <= 0) { anim.turnAccumMs = 0; return anim; }
   anim.turnAccumMs -= steps * ms;
