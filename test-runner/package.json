@@ -1,0 +1,1 @@
+{"name":"game-pending-browser-smoke","private":true,"type":"module","scripts":{"test":"node runner.mjs"},"dependencies":{"playwright":"1.55.0"}}

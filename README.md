@@ -1,16 +1,22 @@
-# Lokarta: Come Into The Light
+# 🕯️ Lokarta: Come Into The Light
 
-*A zero-backend, client-side 2D roguelike RPG running natively in modern web browsers.*
+> **A Gothic Roguelike Tower Ascent** — Zero-backend 2D roguelike RPG running at 60 FPS with a 10 Hz Web Worker simulation tick, 4 vocations, Fate Grant card drafting, and Havenreach town progression.
 
----
-
-## 🏰 Overview
-
-**Lokarta: Come Into The Light** is a retro-inspired 2D roguelike RPG featuring a real-time 10 Hz simulation tick and 60 FPS HTML5 Canvas rendering. Built entirely with native web standards (ES Modules, Web Workers, Canvas 2D, Web Audio API, and IndexedDB), Lokarta delivers a complete, offline-capable dungeon crawler experience with zero external dependencies.
+[![Play Now on Livive](https://img.shields.io/badge/▶_PLAY_NOW-lk.livive.net-f59e0b?style=for-the-badge)](https://lk.livive.net/)
 
 ---
 
-## 🚀 Quickstart
+## 🎮 Play in Your Browser ([lk.livive.net](https://lk.livive.net/))
+
+- **4 Vocations & Party Switching:** Choose **Magician**, **Archer**, **Fighter**, or **Paladin** (each with vocation-locked weapons, armor, and relics), recruit companions after clearing towers, and press `A` / `S` to hot-swap active party control while companions fight on auto-AI.
+- **Controls & 10 Action Slots:** Arrow keys to move & explore Dawnreach Isle / Havenreach Town / Towers; keys `1–9, 0` and `Q/W/E/R` to fire spells, swing weapons, and trigger relics (supporting Tap, Hold/Charge, and Double-Tap); walk over loot to auto-collect.
+- **Fate Grant Roguelike Draft:** Draft 2 of 5 offered spells, weapons, and relics at Level 1 and every Level-Up to customize your build.
+
+---
+
+## 🛠️ For Developers (The Other 10%)
+
+### Quickstart
 
 Serve the game locally over HTTP using the launcher script:
 
@@ -20,9 +26,7 @@ Serve the game locally over HTTP using the launcher script:
 
 Then open **`http://localhost:3000`** in any modern web browser. For custom ports (`PORT=8080`) and server options, see [Environment & System Notes](docs/engineering/environment.md).
 
----
-
-## 🧪 Automated Testing
+### Automated Testing
 
 Run the full zero-dependency native test suite:
 
